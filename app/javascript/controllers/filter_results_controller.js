@@ -24,8 +24,6 @@ export default class extends Controller {
   }
 
   connect() {
-    // DEBUG
-    console.log('FilterResultsController connected.')
     // Initialize filter state
     this.filterCards()
   }
@@ -68,9 +66,6 @@ export default class extends Controller {
         totalRowsVisible += rowStats.visible
       }
     })
-    
-    // DEBUG: Log filtering results
-    console.log(`Filter: ${visibleCardsCount} cards visible (${hiddenCardsCount} hidden), ${totalRowsVisible} rows visible (${totalRowsHidden} hidden), filter=${showOnlyIssues}`)
   }
   
   // Filter individual result rows within a card
@@ -85,8 +80,8 @@ export default class extends Controller {
     resultRows.forEach(row => {
       if (filterActive) {
         // Check if this row has missing data indicators
-        const hasMissingDataBadge = row.querySelector('.badge-warning[title*="missing"]') || 
-                                    row.querySelector('.badge-danger') ||
+        const hasMissingDataBadge = row.querySelector('.text-bg-warning[title*="missing"]') || 
+                                    row.querySelector('.text-bg-danger') ||
                                     row.querySelector('.text-warning')
         
         if (hasMissingDataBadge) {
@@ -102,30 +97,22 @@ export default class extends Controller {
       }
     })
     
-    // For relay results (div-based structure with border styling)
-    // Each result is a .border-bottom div directly under .card-body with inline border-left style if it has issues
+    // For relay results (div-based structure): each result is a .border-bottom div directly under .card-body,
+    // marked .data-fix-relay-issue (red left border) when it has issues
     const relayResultContainers = card.querySelectorAll('.card-body > .border-bottom')
-    
-    // DEBUG: Log relay result detection
-    if (relayResultContainers.length > 0) {
-      console.log(`Found ${relayResultContainers.length} relay result containers in card`)
-    }
-    
-    relayResultContainers.forEach((result, index) => {
+
+    relayResultContainers.forEach((result) => {
       if (filterActive) {
         // Check if this relay result has issues:
-        // 1. Inline style with red border-left (border-left: 4px solid #dc3545)
+        // 1. The red left border (.data-fix-relay-issue)
         // 2. OR has danger badges
         // 3. OR has missing data indicators
-        const hasRedBorder = result.style.borderLeft && result.style.borderLeft.includes('#dc3545')
-        const hasDangerBadge = result.querySelector('.badge-danger') !== null
+        const hasRedBorder = result.classList.contains('data-fix-relay-issue')
+        const hasDangerBadge = result.querySelector('.text-bg-danger') !== null
         const hasMissingDataIndicator = result.querySelector('[title*="missing"]') !== null
         
         const hasIssues = hasRedBorder || hasDangerBadge || hasMissingDataIndicator
-        
-        // DEBUG: Log issue detection
-        console.log(`  Relay result ${index}: hasRedBorder=${hasRedBorder}, hasDangerBadge=${hasDangerBadge}, hasMissingData=${hasMissingDataIndicator}, hasIssues=${hasIssues}`)
-        
+
         if (hasIssues) {
           result.style.display = ''  // Show result
           visibleCount++

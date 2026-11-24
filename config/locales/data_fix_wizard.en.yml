@@ -1,0 +1,165 @@
+en:
+  data_fix:
+    # Phase 12: the Data-Fix review pages (wizard chrome, cards, issue navigation, in-place saves, "Verify all")
+    wizard:
+      title: 'Data-Fix • Step %{number}: %{name}'
+      back_to_files: File list
+      proceed: 'Step %{number}: %{name}'
+      page_info: 'Page %{page} / %{pages} • rows %{range} / %{count}'
+      metadata: 'Phase %{number} Metadata'
+      issues_only: Needs you only
+      show_all: 'Show all (%{count} without issues hidden)'
+      card_issue: Needs you
+      badges:
+        new: NEW
+        id: 'ID: %{id}'
+        matched: Matched
+        unmatched: New/Unmatched
+        confirmed: Saved
+        missing_data: MISSING DATA
+      sessions:
+        header: Sessions (Meeting Sessions, Pools & Cities)
+        total: 'Total sessions: %{count}'
+        none: No sessions yet. Click "Add Session" above.
+        title: 'Session %{order}'
+        copy_hidden: '%{count} other session(s) hidden by "Needs you only": they can''t be copied from.'
+        copy_show_all: Show all
+        copied: 'Copied.'
+        copy_missing: 'Nothing copied: choose a session shown on this page.'
+      teams:
+        none: No teams found. Adjust filters or rescan to rebuild the phase 2 file.
+        review_help: '(needs you: unmatched + yellow/red matches + phase 3 hints)'
+        search_placeholder: Search teams...
+        quick_match: Quick match selection (fuzzy matches)
+        quick_match_hint: Select a match from the list to quickly populate team fields via AutoComplete.
+        verify_title: Cross-validate team via swimmer badges from Phase 3
+        verify_checking: Checking swimmer badges...
+        verify_failed: Verification failed
+        verify_empty: No matched swimmers found for this team in Phase 3.
+      swimmers:
+        none: No swimmers found. Adjust filters or rescan to rebuild the phase 3 file.
+        review_help: '(needs you: unmatched + yellow/red matches + duplicate badges + team-mismatch auto-assignments)'
+        search_placeholder: Search name...
+        quick_match: Quick match selection (fuzzy matches)
+        quick_match_hint: Select a match from the list to quickly populate swimmer fields via AutoComplete.
+      events:
+        add_title: Add New Event
+        none: No events found. Rescan to rebuild the phase 4 file.
+        session: 'Session %{order}'
+        session_order: 'Order: %{order}'
+      results:
+        populate_hint: No results loaded from the phase 5 JSON yet.
+        issues_found: '%{count} program(s) with issues detected'
+        issues_help: (missing program gender, unresolved required links excluding NEW meeting programs, or swimmer/team/badge/affiliation inconsistencies)
+        all_valid: All results are valid!
+        all_valid_hint: No unresolved required links detected.
+        new_results: '%{count} new result(s) will be created on commit'
+        unmatched_parents: '(%{count} unmatched parent rows)'
+        filtered_issues: 'Filtered: Issues'
+        filtered_new: 'Filtered: New only'
+        filtered_unmatched: 'Filtered: (+) Rows only'
+        programs_info: 'Page %{page} / %{pages} • programs %{shown} / %{count}'
+        individual_total: 'Total individual programs: %{count} (%{results} results)'
+        relay_title: Relay Results
+        relay_total: 'Total relay programs: %{count} (%{results} results)'
+        deletion_candidates: '%{count} deletion candidate(s)'
+      buttons:
+        save_meeting: Save Meeting
+        save_session: Save Session
+        save_swimmer: Save Swimmer
+        save_event: Save Event
+        add_team: Add Team
+        add_swimmer: Add Swimmer
+        add_event: Add Event
+        delete: Delete
+        verify_team: Verify via swimmers
+        collapse_all: Collapse All Results
+        expand_all: Expand All Results
+        populate: Populate DB Tables
+        show_all_programs: Show All Programs
+        show_only_issues: Show Only Issues
+        show_all: Show All
+        show_new_only: Show New Only
+        show_unmatched_only: Show Only (+) Rows
+        apply: Apply
+        saving: Saving…
+      confirm:
+        save_meeting: Save meeting data?
+        save_session: Save this session data?
+        delete_session: Delete this session? This will also clear all downstream data (events, results).
+        rescan_sessions: Rescan sessions from the selected meeting? This will replace the current sessions.
+        delete_team: "Delete team '%{key}'?"
+        add_team: Add a new blank team?
+        delete_swimmer: 'Delete swimmer %{name}?'
+        add_swimmer: Add a new blank swimmer?
+        delete_event: "Delete event '%{key}'?"
+        add_event: Add a new event?
+    issue_nav:
+      label: Issue navigation
+      previous: Previous
+      next: Next
+      previous_hint: Previous issue (k)
+      next_hint: Next issue (j)
+      position: 'Issue %{current} / %{total}'
+      total: '%{total} to review'
+      none: Nothing needs you here.
+      keys: next / previous issue
+    filter:
+      label: Filter
+      search: Search
+      search_placeholder: Search...
+      per_page: Per page
+      states:
+        none: Unfiltered
+        review: Needs you
+        diff_key: Diff. key
+    stepper:
+      nav_label: Data-Fix steps
+      actions: Step actions
+      being_prepared: Being prepared in the background
+      prepare_phase: 'Phase %{number}'
+      rescan_confirm_edits: 'Phase %{number} holds your edits (%{edits}): rebuilding it from the source discards them. Continue?'
+      edit_actions:
+        update_phase1_meeting: meeting saved
+        update_phase1_session: session saved
+        add_session: session added
+        delete_session: session deleted
+        rescan_phase1_sessions: sessions rescanned
+        update_phase2_team: team saved
+        add_team: team added
+        delete_team: team deleted
+        update_phase3_swimmer: swimmer saved
+        add_swimmer: swimmer added
+        delete_swimmer: swimmer deleted
+        merge_phase3_swimmers: swimmers merged
+        update_phase4_event: event saved
+        add_event: event added
+        delete_event: event deleted
+        toggle_individual_result_overwrite: overwrite switched
+        update_individual_result_overwrite_candidate: overwrite candidate changed
+        update_individual_result_merge_candidate: merge candidate changed
+        bulk_update_individual_result_overwrite: overwrite selection changed
+        confirm_result_duplicate: duplicate fixed
+    rebuild:
+      refused_edited: 'Phase %{number} holds your edits: the rebuild needs a confirmation (it discards them).'
+      invalid_phase: Unknown phase.
+      failed: 'The rebuild of phase %{number} failed: %{error}'
+    flash:
+      team_cascaded: 'Team updated. Cascaded team_id to %{count} downstream record(s).'
+      swimmer_cascaded: 'Swimmer updated. Cascaded swimmer links to %{count} downstream record(s).'
+      team_hints_changed: 'Saving updated the Phase 3 hints of %{count} other team(s) (%{teams}): reload the page to see them.'
+      swimmer_added: Swimmer added
+      cross_phase_review: 'Cross-phase review: %{summary}.'
+      conflicts_detected: '%{count} conflict(s) detected'
+      missing_links_detected: '%{count} missing link(s) detected'
+      hints_added: '%{count} hint candidate(s) added'
+      duplicate_badges: '%{count} swimmer(s) show duplicate badges in season(s): %{seasons}'
+      populated: 'Populated DB: %{results} results, %{laps} laps, %{relay_results} relay results, %{relay_swimmers} relay swimmers, %{relay_laps} relay laps, %{programs} programs matched'
+    verify_all:
+      button: Verify all
+      busy: Verifying…
+      title: Matches every new result having exactly one identical result in the DB (same event, category, team and timing). Never commits.
+      confirm: Match the new results having exactly one identical existing result? Possible duplicates with a different timing stay to review.
+      done: 'Verify all: %{fixed} matched an existing result, %{partial} possible duplicate(s) left to review, %{none} without a match (%{checked} checked).'
+      failed: 'Verify all stopped: %{error}'
+      progress: Verifying the staged results

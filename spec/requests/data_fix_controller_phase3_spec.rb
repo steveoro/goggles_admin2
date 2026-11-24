@@ -66,13 +66,13 @@ RSpec.describe DataFixController do
       it 'shows visual indicator for new swimmers (no DB ID)' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('bg-light-yellow') # New swimmer indicator
-        expect(response.body).to include('badge-primary') # NEW badge
+        expect(response.body).to include('text-bg-primary') # NEW badge
       end
 
       it 'shows visual indicator for matched swimmers (with DB ID)' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('bg-light') # Matched swimmer indicator
-        expect(response.body).to include('badge-success') # ID badge
+        expect(response.body).to include('text-bg-success') # ID badge
       end
 
       it 'displays empty swimmers message when no swimmers exist' do
@@ -80,7 +80,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: { 'swimmers' => [] }, meta: { 'generator' => 'test' })
 
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('No swimmers found')
+        expect(response.body).to include(I18n.t('data_fix.wizard.swimmers.none').split('.').first)
       end
 
       it 'paginates swimmers correctly (default 100 per page)' do
@@ -197,7 +197,7 @@ RSpec.describe DataFixController do
 
       it 'displays phase metadata' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Phase 3 Metadata') # Metadata header in collapsed card
+        expect(response.body).to include(I18n.t('data_fix.wizard.metadata', number: 3)) # Metadata header in collapsed card
       end
 
       it 'shows LegacyAutoComplete component for swimmer lookup' do
@@ -207,13 +207,13 @@ RSpec.describe DataFixController do
 
       it 'displays fuzzy matches dropdown when matches exist' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Quick match selection')
+        expect(response.body).to include(I18n.t('data_fix.wizard.swimmers.quick_match'))
         expect(response.body).to include('fuzzy_select')
       end
 
       it 'shows Add Swimmer button' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Add Swimmer')
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.add_swimmer'))
       end
 
       it 'displays delete button for each swimmer' do
@@ -284,7 +284,7 @@ RSpec.describe DataFixController do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('Cross-phase review:')
+        expect(response.body).to include(I18n.t('data_fix.flash.cross_phase_review', summary: '').split(':').first)
         expect(response.body).to include('flash-sticky')
 
         phase2_team = PhaseFileManager.new(phase2_file).data.fetch('teams').first
@@ -655,7 +655,7 @@ RSpec.describe DataFixController do
         post data_fix_add_swimmer_path, params: { file_path: source_file }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:notice]).to eq('Swimmer added')
+        expect(flash[:notice]).to eq(I18n.t('data_fix.flash.swimmer_added'))
 
         # Verify swimmer was added
         pfm = PhaseFileManager.new(phase3_file)
@@ -1000,7 +1000,7 @@ RSpec.describe DataFixController do
         # Request page 3 with per_page=100 (120 swimmers / 100 = 2 pages) — should clamp to page 2
         get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'none',
                                  swimmers_per_page: 100, swimmers_page: 3)
-        expect(response.body).not_to include('No swimmers found')
+        expect(response.body).not_to include(I18n.t('data_fix.wizard.swimmers.none').split('.').first)
         expect(response.body).to include('Swimmer101 Test')
       end
 

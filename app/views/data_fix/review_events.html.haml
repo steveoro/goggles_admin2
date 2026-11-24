@@ -3,26 +3,34 @@
 = render(partial: 'goggles/modal_progress')
 
 -# Phase 4 Events view
+:ruby
+  basename = File.basename(@file_path).split('.json').first
+  visible_events = @all_events.each_with_index.reject { |_event, index| @issues_only && @event_issue_codes[index].blank? }
+  hidden_count = @all_events.size - visible_events.size
 .container-fluid
-  = render(partial: 'data_fix/v2_phase_header',
-           locals: { title: 'Data-Fix V2 • Step 4: Events (Phase 4)',
-                     active_step: 4,
-                     file_path: @file_path,
-                     retry_needed: @retry_needed })
+  = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 4, name: t('data_fix.steps.events')),
+                                          subtitle: basename)) do |header|
+    - header.with_actions do
+      = link_to(pull_result_files_path, class: 'btn btn-sm btn-outline-secondary') do
+        %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
+        = t('data_fix.wizard.back_to_files')
+      = link_to(review_results_path(request.query_parameters.except('issues_only').merge(phase5_v2: 1)), class: 'btn btn-sm btn-primary') do
+        = t('data_fix.wizard.proceed', number: 5, name: t('data_fix.steps.results'))
+        %i.fa-solid.fa-arrow-right{ 'aria-hidden': 'true' }
 
-  -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
-    = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
+  = render(data_fix_stepper(4))
+  = render(DataFix::IssueNavComponent.new(nav: @issue_nav)) do |nav|
+    - nav.with_toggle do
+      = render(partial: 'data_fix/issues_only_toggle',
+               locals: { active: @issues_only, hidden_count:, available: @event_issue_codes.any?(&:present?),
+                         path_for: ->(value) { review_events_path(request.query_parameters.merge(file_path: @file_path, phase4_v2: 1, issues_only: value)) } })
 
-  -# Phase Metadata card
-  - basename = File.basename(@file_path).split('.json').first
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 4, metadata: @phase4_meta,
-                                                         extra_info: basename })
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 4, metadata: @phase4_meta, extra_info: basename })
+
   -# Add Event Form
   .card.my-2
     .card-header
-      %strong Add New Event
+      %strong= t('data_fix.wizard.events.add_title')
     .card-body.py-2
       = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post) do
         = hidden_field_tag 'file_path', @file_path
@@ -39,77 +47,55 @@
                                                         wrapper_class: 'w-100 autocomplete-lookup-fixed',
                                                         jwt: current_user&.jwt))
           .col-sm-5.col-md-4
-            .form-group.mb-0
-              .field
-                = label_tag 'session_index', 'Target Session'
-                = select_tag('session_index', options_for_select(session_option_list), class: 'form-select w-100')
+            .field
+              = label_tag 'session_index', 'Target Session', class: 'form-label'
+              = select_tag('session_index', options_for_select(session_option_list), class: 'form-select w-100')
           .col-auto
-            .form-group.mb-0
-              .field
-                %label.invisible.d-block.mb-0{ 'aria-hidden' => 'true' } &nbsp;
-                %button.btn.btn-success#btn-add-event{ type: 'submit',
-                  'aria-label' => 'Add event',
-                  data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
-                  %i.fa.fa-plus
-                  Add Event
+            .field
+              %label.form-label.invisible.d-block.mb-0{ 'aria-hidden' => 'true' } &nbsp;
+              %button.btn.btn-success#btn-add-event{ type: 'submit',
+                'aria-label' => 'Add event',
+                data: { turbo_confirm: t('data_fix.wizard.confirm.add_event'), turbo_submits_with: t('data_fix.wizard.buttons.saving') } }
+                %i.fa.fa-plus{ 'aria-hidden': 'true' }
+                = t('data_fix.wizard.buttons.add_event')
 
   -# Events grouped by session
   - if @all_events.empty?
     .alert.alert-info
-      %em No events found. Rescan to rebuild phase4 file.
+      %em= t('data_fix.wizard.events.none')
   - else
     - new_event_idx = params[:new_event_index]&.to_i
-    
-    -# Group events by session_order (stable identifier)
-    - events_by_session = @all_events.group_by { |e| e['_session_order'] }
+    -# Group events by session_order (stable identifier); with "needs you only" a session shows only its events to review
+    - events_by_session = visible_events.group_by { |event, _index| event['_session_order'] }
     - events_by_session.keys.sort.each do |session_order|
-      - session_events = events_by_session[session_order]
       - session_data = @sessions.find { |s| s['session_order'] == session_order } || {}
+      -# Session header
+      .d-flex.flex-wrap.align-items-center.gap-3.mt-3.mb-2.px-1.text-body-secondary
+        %strong= t('data_fix.wizard.events.session', order: session_order)
+        - if session_data['scheduled_date'].present?
+          %small
+            %i.fa.fa-calendar.me-1{ 'aria-hidden': 'true' }
+            = session_data['scheduled_date']
+        - if session_data['description'].present?
+          %small= session_data['description']
+        %small.badge.text-bg-secondary= t('data_fix.wizard.events.session_order', order: session_order)
 
-      -# Session header (small, white/transparent)
-      .card.mb-2.mt-3.bg-white.border-0
-        .card-body.py-2
-          .row.align-items-center
-            .col-auto
-              %strong.text-muted
-                = "Session #{session_order}"
-            - if session_data['scheduled_date'].present?
-              .col-auto
-                %small.text-muted
-                  %i.fa.fa-calendar.mr-1
-                  = session_data['scheduled_date']
-            - if session_data['description'].present?
-              .col-auto
-                %small.text-muted
-                  = session_data['description']
-            .col-auto
-              %small.badge.badge-secondary
-                = "Order: #{session_order}"
-
-      -# Events in this session (2-3 per row using Bootstrap columns)
-      .row
-        - session_events.each do |event|
+      -# Events in this session (2-3 per row)
+      .row.g-2
+        - events_by_session[session_order].each do |event, event_index|
           :ruby
-            # Calculate global event index for unique IDs
-            event_index = @all_events.index(event)
-            local_event_index = event['_event_index']
-            session_index = event['_session_index']
-            session_order = event['_session_order']
-            
-            is_new_event = new_event_idx.present? && new_event_idx == event_index
             event_id = event['id']
             has_match = event_id.to_i.positive?
-            card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-            border_color = has_match ? 'border-secondary' : 'border-warning'
-            border_width = 'border-2'
-            event_key = event['key'] || "#{event['distance']}#{event['stroke']}"
-
           .col-lg-4.col-md-6.col-sm-12
             = render(partial: 'event_form_card',
                      locals: { file_path: @file_path, api_url: @api_url, event:, event_index:,
-                               local_event_index:, session_index:, session_order:, sessions: @sessions,
-                               event_id:, has_match:, card_bg:, border_color:, border_width:,
-                               event_key:, is_new_event:, event_types_payload: @event_types_payload,
-                               existing_meeting_events: @existing_meeting_events, heat_types: @heat_types })
-
-  .mb-4 &nbsp;
+                               local_event_index: event['_event_index'], session_index: event['_session_index'],
+                               session_order: event['_session_order'], sessions: @sessions,
+                               event_id:, has_match:, card_bg: has_match ? 'bg-body-tertiary' : 'bg-light-yellow',
+                               border_color: has_match ? 'border-secondary' : 'border-warning', border_width: 'border-2',
+                               event_key: event['key'] || "#{event['distance']}#{event['stroke']}",
+                               is_new_event: new_event_idx.present? && new_event_idx == event_index,
+                               event_types_payload: @event_types_payload,
+                               existing_meeting_events: @existing_meeting_events, heat_types: @heat_types,
+                               issue_codes: @event_issue_codes[event_index] })
+  .mb-4

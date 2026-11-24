@@ -110,8 +110,8 @@ RSpec.describe DataFixController do
       def expect_no_phase5_issues!
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
         expect(response).to be_successful
-        expect(response.body).to include('All results are valid!')
-        expect(response.body).to include('No unresolved required links detected.')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.all_valid'))
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.all_valid_hint'))
       end
 
       before(:each) do
@@ -186,9 +186,8 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('program(s) with issues detected')
-        expect(response.body).to include('missing program gender')
-        expect(response.body).to include('unresolved required links')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.issues_found', count: '').strip)
+        expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_fix.wizard.results.issues_help')))
       end
 
       it 'does not flag nil meeting_program_id as issue when links are coherent and key has gender' do
@@ -581,8 +580,8 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('program(s) with issues detected')
-        expect(response.body).to include('Show All Programs')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.issues_found', count: '').strip)
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.show_all_programs'))
       end
 
       it 'keeps the issue filter off when explicitly disabled' do
@@ -591,8 +590,8 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1, filter_issues: 0)
 
         expect(response).to be_successful
-        expect(response.body).to include('Show Only Issues')
-        expect(response.body).not_to include('Show All Programs')
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.show_only_issues'))
+        expect(response.body).not_to include(I18n.t('data_fix.wizard.buttons.show_all_programs'))
       end
     end
 

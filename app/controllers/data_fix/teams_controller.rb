@@ -23,7 +23,8 @@ module DataFix
         prefix: 'teams',
         cookie_scope: teams_state_cookie_scope,
         default_per_page: 50,
-        text_fields: %w[name editable_name name_variations key]
+        text_fields: %w[name editable_name name_variations key],
+        default_filter_state: 'review'
       ) do |list, state|
         case state
         # Filter teams needing review (DataFix::ReviewRules): unconfirmed teams with a candidate, a match under the
@@ -41,6 +42,13 @@ module DataFix
         else
           list
         end
+      end
+
+      # (phase 12) next/previous issue across the pages of the filtered list
+      @issue_nav = DataFix::IssueNav.for_list(@filtered_collection.map { |team| DataFix::IssueMarkers.team(team).present? },
+                                              page: @page, per_page: @per_page) do |page, position|
+        review_teams_path(file_path: @file_path, phase2_v2: 1, filter_state: @filter_state, q: @q.presence,
+                          teams_per_page: @per_page, teams_page: page, anchor: "team-card-#{position}")
       end
 
       # Broadcast ready status to clear progress modal
@@ -174,6 +182,7 @@ module DataFix
       # Cascade team binding updates to Phase 3 badges and Phase 5 DataImport rows
       phase3_path = source_resolver.default_phase_path_for(source_path, 3)
       new_team_id = t['team_id']
+      cascade_count = 0
       if File.exist?(phase3_path)
         cascade_count = DataFix::TeamCascade.cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
         phase3_badges = Array(PhaseFileManager.new(phase3_path).data&.dig('badges'))
@@ -185,7 +194,6 @@ module DataFix
           phase2_affiliations: affiliations,
           phase3_badges: phase3_badges
         )
-        flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
         restamp_after_cascade!(phases: [3, 5], keys: ['p2'])
       elsif old_team_id != new_team_id
         cascade_count = DataFix::TeamCascade.cascade_team_to_data_import_rows(
@@ -195,17 +203,23 @@ module DataFix
           phase_file_path: source_path,
           phase2_affiliations: affiliations
         )
-        flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
         restamp_after_cascade!(phases: [5], keys: ['p2'])
       end
-      # Phase 2 saved: refresh the Phase 3 conflict hints (runner write, re-stamped)
+      # Phase 2 saved: refresh the Phase 3 conflict hints (runner write, re-stamped; it may add hints to OTHER teams)
+      hints_before = conflict_hints_by_key(teams)
       pipeline.reload!.harmonize!
+      cascade_info = I18n.t('data_fix.flash.team_cascaded', count: cascade_count) if cascade_count.positive?
 
-      # Preserve pagination and filter params
-      redirect_params = review_redirect_params(v2_flag: :phase2_v2,
-                                               keep: %i[teams_page teams_per_page q filter_state])
-
-      redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+      respond_to do |format|
+        # (phase 12) saved in place: the card, the team ranking, the stepper and the toasts are replaced
+        format.turbo_stream { render_team_saved(team_key:, cascade_info:, hints_before:) }
+        format.html do
+          flash[:info] = cascade_info if cascade_info
+          # Preserve pagination and filter params
+          redirect_params = review_redirect_params(v2_flag: :phase2_v2, keep: %i[teams_page teams_per_page q filter_state])
+          redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+        end
+      end
     end
 
     # Create a new blank team entry in Phase 2 and redirect back to v2 view
@@ -273,6 +287,35 @@ module DataFix
                                                keep: %i[teams_page teams_per_page q filter_state])
 
       redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+    end
+
+    private
+
+    # Phase 3 conflict hints of each team ({ key => [[candidate id, reason], ...] }).
+    def conflict_hints_by_key(teams)
+      Array(teams).to_h do |team|
+        hints = Array(team['fuzzy_matches']).select { |match| match['from_phase3_conflict_hint'] == true }
+        [team['key'], hints.map { |match| [match['id'], match['phase3_conflict_reason']] }]
+      end
+    end
+
+    # Turbo-stream answer of a team saved in place (update_phase2_team.turbo_stream.haml): the phase file is the one
+    # the HTML path writes; the edit marker is written first, so that the replaced stepper shows it. Only the saved
+    # card is replaced (the positions of the other cards on the page are not known here): when the harmonizer gave
+    # other teams new Phase 3 hints, a warning names them and asks for a reload.
+    def render_team_saved(team_key:, cascade_info:, hints_before:)
+      mark_phase_edited_now!
+      set_api_url
+      @phase2_data = PhaseFileManager.new(pipeline.phase_path(2)).data || {}
+      teams = Array(@phase2_data['teams'])
+      @team_key = team_key
+      @team_hash = teams.find { |team| team['key'] == team_key } || {}
+      @card_index = params[:card_index].presence&.to_i || teams.index(@team_hash).to_i
+      flash.now[:notice] = I18n.t('data_import.messages.updated')
+      flash.now[:info] = cascade_info if cascade_info
+      changed = conflict_hints_by_key(teams).reject { |key, hints| key == team_key || hints == hints_before.fetch(key, []) }.keys
+      flash.now[:warning] = I18n.t('data_fix.flash.team_hints_changed', count: changed.size, teams: changed.first(5).join(', ')) if changed.any?
+      render 'data_fix/update_phase2_team'
     end
   end
 end

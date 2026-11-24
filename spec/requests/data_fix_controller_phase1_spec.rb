@@ -66,11 +66,17 @@ RSpec.describe DataFixController do
       it 'wires the meeting fuzzy selector to the LegacyAutoComplete ID field' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
-        selector = response.parsed_body.css('#meeting_search')
-        onchange = selector.attr('onchange').value
-        expect(onchange).to include("document.getElementById('meeting_meeting_id').value = selected")
-        expect(onchange).to include("document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true }))")
-        expect(onchange).not_to include("$('#meeting').trigger('change')")
+        # (phase 12) a Stimulus action instead of the former inline onchange handler: meeting-card#selectMatch sets
+        # the chosen id on #meeting_meeting_id and dispatches 'change' (or restores the baseline param)
+        selector = response.parsed_body.at_css('#meeting_search')
+        expect(selector['onchange']).to be_nil
+        expect(selector['data-action']).to eq('change->meeting-card#selectMatch')
+        expect(JSON.parse(selector['data-meeting-card-baseline-param'])).to include('name', 'season_id', 'dateYear1')
+        expect(selector.ancestors("[data-controller~='meeting-card']")).to be_present
+        expect(response.parsed_body.at_css('#meeting_meeting_id')).to be_present
+        rescan_form = response.parsed_body.at_css("form[action='#{rescan_phase1_sessions_path}']")
+        expect(rescan_form['data-action']).to eq('submit->meeting-card#copyMeetingId')
+        expect(rescan_form.at_css('#rescan_meeting_id')['data-meeting-card-target']).to eq('rescanId')
       end
 
       it 'renders the LegacyAutoCompleteComponent with correct field target ID' do
@@ -127,7 +133,7 @@ RSpec.describe DataFixController do
 
       it 'displays empty sessions message when no sessions exist' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
-        expect(response.body).to include('No sessions yet')
+        expect(response.body).to include(I18n.t('data_fix.wizard.sessions.none').split('"').first)
       end
 
       context 'when two or more sessions exist' do
@@ -152,7 +158,8 @@ RSpec.describe DataFixController do
           expect(response).to be_successful
           expect(response.body).to include('copy_from_session_0')
           expect(response.body).to include('copy_from_session_1')
-          expect(response.body).to include('copySessionPoolAndCity')
+          # (phase 12: session-card#copyFromSibling, the former window.DataFix.copySessionPoolAndCity)
+          expect(response.parsed_body.css("button[data-action='session-card#copyFromSibling']").size).to eq(2)
         end
       end
 

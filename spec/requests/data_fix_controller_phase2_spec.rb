@@ -59,14 +59,14 @@ RSpec.describe DataFixController do
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response.body).to include('bg-light-yellow') # New team indicator
         expect(response.body).to include('fa-plus-circle') # Icon for new teams
-        expect(response.body).to include('badge-primary') # NEW badge
+        expect(response.body).to include('text-bg-primary') # NEW badge
       end
 
       it 'shows visual indicator for matched teams (with DB ID)' do
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response.body).to include('bg-light') # Matched team indicator
         expect(response.body).to include('fa-check-circle') # Icon for matched teams
-        expect(response.body).to include('badge-success') # ID badge
+        expect(response.body).to include('text-bg-success') # ID badge
       end
 
       it 'renders successfully when teams array is empty (meeting-only sources)' do
@@ -75,7 +75,7 @@ RSpec.describe DataFixController do
 
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response).to be_successful
-        expect(response.body).to include('No teams found')
+        expect(response.body).to include(I18n.t('data_fix.wizard.teams.none').split('.').first)
       end
 
       it 'redirects to rebuild when teams key is missing entirely' do
@@ -204,7 +204,7 @@ RSpec.describe DataFixController do
 
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response).to be_successful
-        expect(response.body).to include('Quick match selection')
+        expect(response.body).to include(I18n.t('data_fix.wizard.teams.quick_match'))
         expect(response.body).to include('Matched Team (ID: 123, City A)')
       end
 
@@ -829,7 +829,7 @@ RSpec.describe DataFixController do
                               teams_per_page: 50, teams_page: 3)
         # 55 teams, all with team_id=nil → review filter shows all 55, per_page=50 → 2 pages
         # Page 3 is out of range → should clamp to page 2
-        expect(response.body).not_to include('No teams found')
+        expect(response.body).not_to include(I18n.t('data_fix.wizard.teams.none').split('.').first)
         expect(response.body).to include('Team 51')
       end
 

@@ -5,44 +5,67 @@
   city_field_errors = (local_assigns.dig(:session_errors, 'city') || {}).with_indifferent_access
   session_invalid = session_field_errors.present? || pool_field_errors.present? || city_field_errors.present?
   invalid_cls = ->(errors_hash, attribute) { errors_hash[attribute].present? ? 'is-invalid' : nil }
-.card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "session-card-#{idx}" }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: "session-header-#{idx}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#session-collapse-#{idx}" } }
-    .d-flex.align-items-center
-      %span.mr-2
-        - if has_match
-          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-        - else
-          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
-      %strong
-        = "Session #{sess_hash['session_order'] || (idx + 1)}"
-      - if sess_hash['scheduled_date'].present?
-        %small.ml-2.text-muted
-          = sess_hash['scheduled_date']
-      - if sess_hash['description'].present?
-        %small.ml-2.text-muted
-          = ": #{sess_hash['description']}"
+  issue_codes = Array(local_assigns[:issue_codes])
+  expanded = is_new_session || session_invalid
+  # Pool + city fields (with their LegacyAutoComplete widgets)
+  pool_data = sess_hash['swimming_pool'] || {}
+  city_data = pool_data['city'] || sess_hash['city'] || {}
+  pool_id = pool_data['id']
+  city_id = city_data['id'] || pool_data['city_id']
+  maps_search_url = 'https://www.google.com/maps/search/'
+  initial_maps_href = "#{maps_search_url}?q=#{ERB::Util.url_encode([pool_data['name'], pool_data['address']].join(', '))}"
+  # (restored by session-card#selectPool when the "existing pools in this city" choice is cleared)
+  baseline_pool_data = {
+    id: pool_id, name: pool_data['name'], nick_name: pool_data['nick_name'], address: pool_data['address'],
+    pool_type_id: pool_data['pool_type_id'], lanes_number: pool_data['lanes_number'], maps_uri: pool_data['maps_uri'],
+    plus_code: pool_data['plus_code'], latitude: pool_data['latitude'], longitude: pool_data['longitude'],
+    city_id: city_id, city_name: city_data['name'], city_area: city_data['area'], city_zip: city_data['zip'],
+    city_country: city_data['country'], city_country_code: city_data['country_code'],
+    city_latitude: city_data['latitude'], city_longitude: city_data['longitude']
+  }
+  card_data = { controller: 'session-card', session_card_index_value: idx,
+                session_card_copied_label_value: t('data_fix.wizard.sessions.copied'),
+                session_card_copy_missing_label_value: t('data_fix.wizard.sessions.copy_missing'),
+                session_card_existing_sessions_value: Array(existing_meeting_sessions).to_json,
+                session_card_baseline_value: baseline_pool_data.to_json, session_card_maps_search_url_value: maps_search_url,
+                issue: issue_codes.join(' ').presence }
+.card.mb-2.data-fix-card{ class: "#{card_bg} #{border_color} #{border_width}", id: "session-card-#{idx}", data: card_data }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: "session-header-#{idx}", role: 'button',
+                                                                  aria: { expanded: expanded.to_s, controls: "session-collapse-#{idx}" },
+                                                                  data: { bs_toggle: 'collapse', bs_target: "#session-collapse-#{idx}" } }
+    .d-flex.flex-wrap.align-items-center.gap-2
       - if has_match
-        %small.ml-2.badge.badge-success
-          ID: #{session_id}
+        %i.fa.fa-check-circle.text-success{ title: t('data_fix.wizard.badges.matched') }
       - else
-        %small.ml-2.badge.badge-primary
-          NEW
+        %i.fa.fa-plus-circle.text-warning{ title: t('data_fix.wizard.badges.unmatched') }
+      %strong= t('data_fix.wizard.sessions.title', order: sess_hash['session_order'] || (idx + 1))
+      - if sess_hash['scheduled_date'].present?
+        %small.text-body-secondary= sess_hash['scheduled_date']
+      - if sess_hash['description'].present?
+        %small.text-body-secondary= ": #{sess_hash['description']}"
+      - if has_match
+        %small.badge.text-bg-success= t('data_fix.wizard.badges.id', id: session_id)
+      - else
+        %small.badge.text-bg-primary= t('data_fix.wizard.badges.new')
       - if session_invalid
-        %small.ml-2.badge.badge-danger
+        %small.badge.text-bg-danger
           = t('data_import.data_fix.fields_with_issues', count: session_field_errors.size + pool_field_errors.size + city_field_errors.size)
+      - if issue_codes.any?
+        %small.badge.text-bg-warning.data-fix-issue-badge{ title: issue_codes.map { |code| t("data_fix.verdicts.issues.#{code}", default: code.humanize) }.join(' • ') }
+          %i.fa-solid.fa-hand-point-right{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.card_issue')
     .d-flex.align-items-center
-      = form_tag(data_fix_delete_session_path, method: :delete,
-                 class: 'd-inline',
-                 onsubmit: "return confirm('Delete this session? This will also clear all downstream data (events, results).');") do
+      = form_tag(data_fix_delete_session_path, method: :delete, class: 'd-inline',
+                 data: { turbo_confirm: t('data_fix.wizard.confirm.delete_session') }) do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :session_index, idx
-        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete session', onclick: 'event.stopPropagation();' }
-          %i.fa.fa-trash
+        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => t('data_fix.wizard.buttons.delete'),
+                                       data: { action: 'click->session-card#stop' } }
+          %i.fa.fa-trash{ 'aria-hidden': 'true' }
 
-  .collapse{ class: (is_new_session || session_invalid ? 'show' : ''), id: "session-collapse-#{idx}",
-             'aria-labelledby' => "session-header-#{idx}",
-             'data-parent' => "#session-card-#{idx}" }
-    .card-body.border-bottom.border-secondary
+  .collapse{ class: ('show' if expanded), id: "session-collapse-#{idx}", 'aria-labelledby': "session-header-#{idx}",
+             data: { issue_panel: true } }
+    .card-body.border-bottom
       = form_tag(update_phase1_session_path, method: :patch,
                  data: { controller: 'coded-name', 'coded-name-result-type-value' => 'nick_name',
                          'coded-name-jwt-value' => current_user.jwt }) do
@@ -51,38 +74,38 @@
 
         -# Session Fields
         %h6.text-primary Session Details
-        .form-row
-          .form-group.col-md-3
-            %label Session ID
+        .row.g-2.mb-2
+          .col-md-3
+            %label.form-label Session ID
             - if existing_meeting_sessions.present?
               - session_options = existing_meeting_sessions.map { |ms| ["#{ms['description']} (#{ms['session_order']}, ID: #{ms['id']})", ms['id']] }
               = select_tag('meeting_session_id',
                            options_for_select([['-- New Session --', '']] + session_options, sess_hash['id']),
-                           class: 'form-control form-control-sm',
+                           class: 'form-select form-select-sm',
                            id: "meeting_session_#{idx}_id",
-                           onchange: "DataFix.populateSessionFromExisting(#{idx}, this.value, #{existing_meeting_sessions.to_json.gsub('"', "'")})")
-              %small.form-text.text-muted Select to populate from existing
+                           data: { action: 'change->session-card#populateFromExisting' })
+              %small.form-text.text-body-secondary Select to populate from existing
             - else
               = number_field_tag('meeting_session_id', sess_hash['id'],
                                  class: 'form-control form-control-sm', placeholder: 'ID (auto)')
-              %small.form-text.text-muted No meeting sessions available
-          .form-group.col-md-4
-            %label Description
+              %small.form-text.text-body-secondary No meeting sessions available
+          .col-md-4
+            %label.form-label Description
             = text_field_tag(:description, sess_hash['description'],
                              required: true, class: ['form-control form-control-sm', invalid_cls.call(session_field_errors, 'description')],
                              id: "session_#{idx}_description",
                              placeholder: 'Session description')
             - if session_field_errors['description'].present?
               .invalid-feedback= Array(session_field_errors['description']).join(', ')
-          .form-group.col-md-2
-            %label Order
+          .col-md-2
+            %label.form-label Order
             = number_field_tag(:session_order, sess_hash['session_order'] || (idx + 1),
                                required: true, class: ['form-control form-control-sm', invalid_cls.call(session_field_errors, 'session_order')], min: 1,
                                id: "session_#{idx}_order")
             - if session_field_errors['session_order'].present?
               .invalid-feedback= Array(session_field_errors['session_order']).join(', ')
-          .form-group.col-md-3
-            %label Scheduled Date
+          .col-md-3
+            %label.form-label Scheduled Date
             - if sess_hash['scheduled_date'].blank?
               %span
                 %i.fa.fa-exclamation.text-danger
@@ -91,85 +114,60 @@
                              id: "session_#{idx}_scheduled_date")
             - if session_field_errors['scheduled_date'].present?
               .invalid-feedback= Array(session_field_errors['scheduled_date']).join(', ')
-          .form-group.col-md-1
-            %label Day Part
+          .col-md-1
+            %label.form-label Day Part
             = select_tag(:day_part_type_id,
                          options_for_select(GogglesDb::DayPartType.all.map { |t| [t.long_label, t.id] }, sess_hash['day_part_type_id']),
-                         class: 'form-control form-control-sm',
+                         class: 'form-select form-select-sm',
                          id: "session_#{idx}_day_part_type_id")
 
         %hr.my-3
-
-        :ruby
-          # Pool Fields with AutoComplete
-          pool_data = sess_hash['swimming_pool'] || {}
-          city_data = pool_data['city'] || sess_hash['city'] || {}
-          pool_id = pool_data['id']
-          city_id = city_data['id'] || pool_data['city_id']
-          search_engine = 'https://www.google.com/maps/search/'
-          initial_query = "?q=#{pool_data['name']}, #{pool_data['address']}".gsub(' ', '%20')
-          initial_maps_href = "#{search_engine}#{initial_query}"
-          name_part = "${document.getElementById('pool_#{idx}_name').value}"
-          addr_part = "${document.getElementById('pool_#{idx}_address').value}"
-          search_query = "?q=#{name_part}, #{addr_part}, ${document.getElementById('city_#{idx}_name').value}"
-          onchange_event = "document.querySelector('#maps-uri-search-#{idx}').href = `#{search_engine}#{search_query}`;"
 
         .d-flex.justify-content-between.align-items-center
           %h6.text-secondary Swimming Pool
           - if all_sessions.size > 1
             :ruby
+              # (only the sessions rendered on the page can be copied: their fields, unsaved edits included, are the source)
+              copy_sources = local_assigns[:copy_sources] || all_sessions.each_index.to_a
               sibling_options = all_sessions.each_with_index.filter_map do |s, i|
-                next if i == idx
+                next if i == idx || copy_sources.exclude?(i)
+
                 label = "Session #{s['session_order'] || (i + 1)}"
                 label += " (#{s['scheduled_date']})" if s['scheduled_date'].present?
                 label += " — #{s.dig('swimming_pool', 'name')}" if s.dig('swimming_pool', 'name').present?
                 [label, i]
               end
-            .form-inline.mb-2
-              %label.mr-2.mb-0{ for: "copy_from_session_#{idx}" }
-                %small= t('data_import.data_fix.copy_from_session_label')
-              = select_tag("copy_from_session_#{idx}",
-                           options_for_select([['—', '']] + sibling_options),
-                           class: 'form-control form-control-sm mr-2',
-                           id: "copy_from_session_#{idx}")
-              %button.btn.btn-sm.btn-outline-secondary{ type: 'button',
-                  onclick: "DataFix.copySessionPoolAndCity(#{idx}, document.getElementById('copy_from_session_#{idx}').value); this.blur();" }
-                %i.fa.fa-copy
-                = t('data_import.data_fix.btn_copy_session_pool')
+              hidden_siblings = all_sessions.size - 1 - sibling_options.size
+            .d-flex.flex-wrap.align-items-center.gap-2.mb-2
+              - if sibling_options.any?
+                %label.form-label.mb-0{ for: "copy_from_session_#{idx}" }
+                  %small= t('data_import.data_fix.copy_from_session_label')
+                = select_tag("copy_from_session_#{idx}",
+                             options_for_select([['—', '']] + sibling_options),
+                             class: 'form-select form-select-sm w-auto',
+                             id: "copy_from_session_#{idx}", data: { session_card_target: 'copySource' })
+                %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'session-card#copyFromSibling' } }
+                  %i.fa.fa-copy{ 'aria-hidden': 'true' }
+                  = t('data_import.data_fix.btn_copy_session_pool')
+                %small{ id: "copy-from-session-feedback-#{idx}", role: 'status', aria: { live: 'polite' },
+                        data: { session_card_target: 'copyFeedback' } }
+              - if hidden_siblings.positive? && local_assigns[:show_all_path]
+                %small.text-body-secondary{ id: "copy-from-session-hidden-#{idx}" }
+                  = t('data_fix.wizard.sessions.copy_hidden', count: hidden_siblings)
+                  = link_to(t('data_fix.wizard.sessions.copy_show_all'), show_all_path)
 
         -# City-filtered pool dropdown (when city is selected)
         - if city_id.present?
-          .form-row.mb-2
-            .form-group.col-md-8
-              %label Existing pools in selected city
+          .row.g-2.mb-2.mb-2
+            .col-md-8
+              %label.form-label Existing pools in selected city
               - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
-              :ruby
-                baseline_pool_data = {
-                  id: pool_id,
-                  name: pool_data['name'],
-                  nick_name: pool_data['nick_name'],
-                  address: pool_data['address'],
-                  pool_type_id: pool_data['pool_type_id'],
-                  lanes_number: pool_data['lanes_number'],
-                  maps_uri: pool_data['maps_uri'],
-                  plus_code: pool_data['plus_code'],
-                  latitude: pool_data['latitude'],
-                  longitude: pool_data['longitude'],
-                  city_id: city_id,
-                  city_name: city_data['name'],
-                  city_area: city_data['area'],
-                  city_zip: city_data['zip'],
-                  city_country: city_data['country'],
-                  city_country_code: city_data['country_code'],
-                  city_latitude: city_data['latitude'],
-                  city_longitude: city_data['longitude']
-                }
-                baseline_pool_data_json = json_escape(baseline_pool_data.to_json)
-                onclick_copy = "var poolId = document.getElementById('search_pool_#{idx}').value; if (poolId && poolId.toString().trim().length > 0) { document.getElementById('pool_#{idx}_swimming_pool_id').value = poolId; document.getElementById('pool_#{idx}_swimming_pool_id').dispatchEvent(new Event('change', { bubbles: true })); DataFix.rehydrateSessionPoolAndCity(#{idx}, poolId); } else { DataFix.resetSessionPoolAndCityToOriginal(#{baseline_pool_data_json}, #{idx}); }"
-              = select_tag "search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id), { include_blank: true, class: 'form-control form-control-sm', onclick: onclick_copy }
+              = select_tag("search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id),
+                           include_blank: true, class: 'form-select form-select-sm',
+                           data: { action: 'change->session-card#selectPool', session_card_target: 'poolChoice' })
 
-        .form-row
-          .form-group.col-md-6
+        .row.g-2.mb-2
+          .col-md-6
             = hidden_field_tag('pool[id]', pool_id, id: "pool_#{idx}_id_field")
             = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: "pool[#{idx}]", base_api_url: api_url,
                                                default_value: pool_id, detail_endpoint: 'swimming_pool', base_name: 'swimming_pool',
@@ -186,68 +184,69 @@
                                                target12_dom_id: "city_#{idx}_id_field", target12_column: 'city_id',
                                                target13_dom_id: "pool_#{idx}_id_field", target13_column: 'id',
                                                jwt: current_user.jwt))
-            %small.form-text.text-muted Search by ID or Pool name. Clear search to create new pool.
-          .form-group.col-md-4
-            %label{ for: "pool_#{idx}_name" } Pool Name
+            %small.form-text.text-body-secondary Search by ID or Pool name. Clear search to create new pool.
+          .col-md-4
+            %label.form-label{ for: "pool_#{idx}_name" } Pool Name
             = text_field_tag('pool[name]', pool_data['name'],
                              id: "pool_#{idx}_name", required: true, class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'name')],
-                             placeholder: 'Pool name', onchange: onchange_event,
-                             data: { 'coded-name-target' => 'name' })
+                             placeholder: 'Pool name',
+                             data: { 'coded-name-target' => 'name', action: 'change->session-card#refreshMapsLink' })
             - if pool_field_errors['name'].present?
               .invalid-feedback= Array(pool_field_errors['name']).join(', ')
-          .form-group.col-md-2
-            %label{ for: "pool_#{idx}_nick_name" } Nick Name
+          .col-md-2
+            %label.form-label{ for: "pool_#{idx}_nick_name" } Nick Name
             = text_field_tag('pool[nick_name]', pool_data['nick_name'],
                              id: "pool_#{idx}_nick_name", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'nick_name')],
                              placeholder: 'Coded', data: { 'coded-name-target' => 'field' })
             - if pool_field_errors['nick_name'].present?
               .invalid-feedback= Array(pool_field_errors['nick_name']).join(', ')
 
-        .form-row
-          .form-group.col-md-5
-            %label Address
+        .row.g-2.mb-2
+          .col-md-5
+            %label.form-label Address
             = text_field_tag('pool[address]', pool_data['address'],
                              id: "pool_#{idx}_address", class: 'form-control form-control-sm',
-                             placeholder: 'Street address', onchange: onchange_event)
-          .form-group.col-md-2
-            %label Pool Type
+                             placeholder: 'Street address', data: { action: 'change->session-card#refreshMapsLink' })
+          .col-md-2
+            %label.form-label Pool Type
             - pool_type_opts = options_for_select(GogglesDb::PoolType.all.map { |t| [t.long_label, t.id] },
                                                   pool_data['pool_type_id'])
             = select_tag('pool[pool_type_id]', pool_type_opts,
-                          { id: "pool_#{idx}_pool_type_id", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'pool_type')],
+                          { id: "pool_#{idx}_pool_type_id", class: ['form-select form-select-sm', invalid_cls.call(pool_field_errors, 'pool_type')],
                             data: { 'autocomplete-target' => 'field2', 'coded-name-target' => 'pool' } })
             - if pool_field_errors['pool_type'].present?
               .invalid-feedback.d-block= Array(pool_field_errors['pool_type']).join(', ')
-          .form-group.col-md-1
-            %label Lanes
+          .col-md-1
+            %label.form-label Lanes
             = number_field_tag('pool[lanes_number]', pool_data['lanes_number'],
                                id: "pool_#{idx}_lanes_number", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'lanes_number')], min: 1, max: 10)
             - if pool_field_errors['lanes_number'].present?
               .invalid-feedback= Array(pool_field_errors['lanes_number']).join(', ')
-          .form-group.col-md-4
+          .col-md-4
             %label
               Maps URI
               %a.btn.btn-sm.btn-outline-primary{ id: "maps-uri-search-#{idx}", href: initial_maps_href,
-                                                 target: '_blank', data: { toggle: 'tooltip', title: 'Search on Google Maps' } }
+                                                 target: '_blank', rel: 'noopener',
+                                                 data: { bs_toggle: 'tooltip', bs_title: 'Search on Google Maps', session_card_target: 'mapsLink' } }
                 %i.fa.fa-search
                 Search Maps
             = text_field_tag('pool[maps_uri]', pool_data['maps_uri'],
                              id: "pool_#{idx}_maps_uri", class: 'form-control form-control-sm',
                              placeholder: 'Google Maps URI')
 
-        .form-row
-          .form-group.col-md-2
-            %label Plus Code
+        .row.g-2.mb-2
+          .col-md-2
+            %label.form-label Plus Code
             = text_field_tag('pool[plus_code]', pool_data['plus_code'],
                              id: "pool_#{idx}_plus_code", class: 'form-control form-control-sm',
                              placeholder: '+ code')
-          .form-group.col-md-2
-            %label Latitude
+          .col-md-2
+            %label.form-label Latitude
             = text_field_tag('pool[latitude]', pool_data['latitude'],
                              id: "pool_#{idx}_latitude", class: 'form-control form-control-sm',
                              placeholder: 'lat')
-          .form-group.col-md-2
-            %label Longitude
+          .col-md-2
+            %label.form-label Longitude
             = text_field_tag('pool[longitude]', pool_data['longitude'],
                              id: "pool_#{idx}_longitude", class: 'form-control form-control-sm',
                              placeholder: 'lng')
@@ -256,9 +255,9 @@
 
         -# City Fields with AutoComplete
         %h6.text-info City
-        .form-row
-          .form-group.col-md-5
-            = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field", onchange: "DataFix.rehydrateSessionCityFromId(#{idx}, this.value);")
+        .row.g-2.mb-2
+          .col-md-5
+            = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field", data: { action: 'change->session-card#cityIdChanged' })
             = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
                                                default_value: city_id, detail_endpoint: 'city', base_name: 'city',
                                                label_column: 'area', search_endpoint: 'cities', search_column: 'name',
@@ -271,53 +270,53 @@
                                                target9_dom_id: "city_#{idx}_longitude", target9_column: 'longitude',
                                                target10_dom_id: "city_#{idx}_id_field", target10_column: 'id',
                                                jwt: current_user.jwt))
-            %small.form-text.text-muted Search by ID or City name. Clear search to create new city.
-          .form-group.col-md-3
-            %label City Name
+            %small.form-text.text-body-secondary Search by ID or City name. Clear search to create new city.
+          .col-md-3
+            %label.form-label City Name
             = text_field_tag('city[name]', city_data['name'],
                              id: "city_#{idx}_name", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'name')],
-                             placeholder: 'City name', onchange: onchange_event,
-                             data: { 'coded-name-target' => 'city' })
+                             placeholder: 'City name',
+                             data: { 'coded-name-target' => 'city', action: 'change->session-card#refreshMapsLink' })
             - if city_field_errors['name'].present?
               .invalid-feedback= Array(city_field_errors['name']).join(', ')
-          .form-group.col-md-2
-            %label Area
+          .col-md-2
+            %label.form-label Area
             = text_field_tag('city[area]', city_data['area'],
                              id: "city_#{idx}_area", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'area')],
                              placeholder: 'Province/State')
             - if city_field_errors['area'].present?
               .invalid-feedback= Array(city_field_errors['area']).join(', ')
-          .form-group.col-md-2
-            %label ZIP
+          .col-md-2
+            %label.form-label ZIP
             = text_field_tag('city[zip]', city_data['zip'],
                              id: "city_#{idx}_zip", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'zip')],
                              placeholder: 'ZIP')
             - if city_field_errors['zip'].present?
               .invalid-feedback= Array(city_field_errors['zip']).join(', ')
 
-        .form-row
-          .form-group.col-md-3
-            %label Country
+        .row.g-2.mb-2
+          .col-md-3
+            %label.form-label Country
             = text_field_tag('city[country]', city_data['country'], id: "city_#{idx}_country",
                              class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'country')], placeholder: 'Country')
             - if city_field_errors['country'].present?
               .invalid-feedback= Array(city_field_errors['country']).join(', ')
-          .form-group.col-md-1
-            %label Code
+          .col-md-1
+            %label.form-label Code
             = text_field_tag('city[country_code]', city_data['country_code'],
                              id: "city_#{idx}_country_code",
                              class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'country_code')], placeholder: 'IT')
             - if city_field_errors['country_code'].present?
               .invalid-feedback= Array(city_field_errors['country_code']).join(', ')
-          .form-group.col-md-2
-            %label Latitude
+          .col-md-2
+            %label.form-label Latitude
             = text_field_tag('city[latitude]', city_data['latitude'],
                              id: "city_#{idx}_latitude",
                              class: 'form-control form-control-sm', placeholder: 'lat')
-          .form-group.col-md-2
-            %label Longitude
+          .col-md-2
+            %label.form-label Longitude
             = text_field_tag('city[longitude]', city_data['longitude'],
                              id: "city_#{idx}_longitude",
                              class: 'form-control form-control-sm', placeholder: 'lng')
 
-        = submit_tag('Save Session', class: 'btn btn-primary', data: { turbo_confirm: 'Save this session data?' })
+        = submit_tag(t('data_fix.wizard.buttons.save_session'), class: 'btn btn-primary', data: { turbo_confirm: t('data_fix.wizard.confirm.save_session') })

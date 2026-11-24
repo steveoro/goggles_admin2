@@ -1,0 +1,15 @@
+-#
+  A Step 2 team saved in place (phase 12): replaces its card (key-based frame, same position N), the team ranking
+  card (its "matched team" column), the stepper (recomputed verdicts) and the toasts. The badges cascaded to the
+  Phase 3 swimmers are shown by Step 3 when it opens (its cards are not on this page).
+= turbo_stream.replace(data_fix_card_frame_id('team', @team_key)) do
+  = render(partial: 'data_fix/team_card_frame', locals: { team_hash: @team_hash, team_index: @card_index,
+                                                          file_path: @file_path, api_url: @api_url })
+- team_scores = Array(@phase2_data['team_scores'])
+- if team_scores.any?
+  = turbo_stream.replace('phase2-team-scores-card') do
+    = render(partial: 'data_fix/team_scores_card', locals: { team_scores:, teams: @phase2_data['teams'] })
+= turbo_stream.replace(DataFix::StepperComponent::DOM_ID) do
+  = render(data_fix_stepper(2))
+= turbo_stream.update('flash-messages-container') do
+  = render(partial: 'goggles/flash_messages')

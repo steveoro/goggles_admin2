@@ -40,6 +40,10 @@ The pipeline is divided in stages so that each phase consolidates the data neede
 3. **Phase 3: Swimmers & Badges** - Match swimmers, calculate categories, enrich relays
 4. **Phase 4: Events** - Match event types, create meeting events (individual + relay)
 5. **Phase 5: Results & Laps** - Populate temporary DB tables, display review UI
+
+Every review step opens on what needs the operator ("needs you only"), with next / previous issue navigation (`j` / `k`),
+a stale banner with a one-click Rebuild, Step 2/3 cards saved in place and "Verify all" on Step 5: see
+[PHASES.md](./PHASES.md), *Review pages (phase 12)*.
 6. **Phase 6: Commit** - Atomic commit to production with SQL generation
 
 ### Key Innovations

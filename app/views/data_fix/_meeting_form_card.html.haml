@@ -7,38 +7,41 @@
                       edition_type_id timing_type timing_type_id dateYear1 dateMonth1 dateDay1
                       dateYear2 dateMonth2 dateDay2 venue1 address1]
   extra_errors = field_errors.except(*rendered_attrs)
-.card.my-2{ class: "#{card_bg} #{border_color} #{border_width}", id: 'meeting-card' }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: 'meeting-header', style: 'cursor: pointer;', data: { toggle: 'collapse', target: '#meeting-collapse' } }
-    .d-flex.align-items-center
-      %span.mr-2
-        - if has_match
-          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-        - else
-          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
-      %strong
-        Meeting
-      - if meeting_data['name'].present?
-        %small.ml-2.text-muted
-          = meeting_data['name']
-      &nbsp;
+:ruby
+  issue_codes = Array(local_assigns[:issue_codes])
+  expanded = !(all_required_filled && field_errors.blank?) || issue_codes.include?('structure_invalid')
+.card.my-2.data-fix-card{ class: "#{card_bg} #{border_color} #{border_width}", id: 'meeting-card',
+                          data: { issue: issue_codes.join(' ').presence } }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: 'meeting-header', role: 'button',
+                                                                  aria: { expanded: expanded.to_s, controls: 'meeting-collapse' },
+                                                                  data: { bs_toggle: 'collapse', bs_target: '#meeting-collapse' } }
+    .d-flex.flex-wrap.align-items-center.gap-2
       - if has_match
-        %small.ml-2.badge.badge-success
-          ID: #{meeting_id}
+        %i.fa.fa-check-circle.text-success{ title: t('data_fix.wizard.badges.matched') }
+      - else
+        %i.fa.fa-plus-circle.text-warning{ title: t('data_fix.wizard.badges.unmatched') }
+      %strong= t('data_fix.commit_summary.meeting')
+      - if meeting_data['name'].present?
+        %small.text-body-secondary= meeting_data['name']
+      - if has_match
+        %small.badge.text-bg-success= t('data_fix.wizard.badges.id', id: meeting_id)
         - meeting_match = meeting_data['meeting_match'] || {}
         - if meeting_match['source'] == 'fin_event_id' && meeting_match['meeting_id'].to_s == meeting_id.to_s
-          %small.ml-2.badge.badge-info{ id: 'meeting-fin-event-id-match' }
-            %i.fa.fa-link
+          %small.badge.text-bg-info{ id: 'meeting-fin-event-id-match' }
+            %i.fa.fa-link{ 'aria-hidden': 'true' }
             = t('data_import.data_fix.matched_by_fin_event_id', id: meeting_match['fin_event_id'])
       - else
-        %small.ml-2.badge.badge-primary
-          NEW
+        %small.badge.text-bg-primary= t('data_fix.wizard.badges.new')
       - if field_errors.present?
-        %small.ml-2.badge.badge-danger
+        %small.badge.text-bg-danger
           = t('data_import.data_fix.fields_with_issues', count: field_errors.size)
+      - if issue_codes.any?
+        %small.badge.text-bg-warning.data-fix-issue-badge{ title: issue_codes.map { |code| t("data_fix.verdicts.issues.#{code}", default: code.humanize) }.join(' • ') }
+          %i.fa-solid.fa-hand-point-right{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.card_issue')
 
-  .collapse{ class: (all_required_filled && field_errors.blank? ? '' : 'show'), id: 'meeting-collapse',
-             'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
-    .card-body.border-bottom.border-secondary
+  .collapse{ class: ('show' if expanded), id: 'meeting-collapse', 'aria-labelledby': 'meeting-header', data: { issue_panel: true } }
+    .card-body.border-bottom
       - if extra_errors.present?
         .alert.alert-warning.py-1.mb-2
           - extra_errors.each do |attribute, msgs|
@@ -81,9 +84,9 @@
         = hidden_field_tag(:file_path, file_path)
 
         -# Fuzzy matches dropdown + LegacyAutoCompleteComponent
-        .form-row
-          .form-group.col-md-6
-            %label{ for: 'meeting_search' } Fuzzy Matches (from solver)
+        .row.g-2.mb-2
+          .col-md-6
+            %label.form-label{ for: 'meeting_search' } Fuzzy Matches (from solver)
             :ruby
               fuzzy_matches = meeting_data['meeting_fuzzy_matches'] || []
               baseline_data = {
@@ -111,15 +114,13 @@
                 venue1: meeting_data['venue1'],
                 address1: meeting_data['address1']
               }
-              src_dom = '#meeting_search'
-              target_dom = '#meeting_meeting_id'
-              baseline_data_json = json_escape(baseline_data.to_json)
-              onchange_event = "var selected = document.getElementById('meeting_search').value; if (selected && selected.toString().trim().length > 0) { document.getElementById('meeting_meeting_id').value = selected; document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetMeetingFormToOriginal(#{baseline_data_json}); }"
+            -# (meeting-card controller: see review_sessions; a blank choice restores this baseline)
             = select_tag('meeting_search',
                          options_for_select(fuzzy_matches.map { |m| [m['description'], m['id']] }, meeting_data['id']),
-                         include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)
-            %small.form-text.text-muted Select to populate from existing meeting
-          .form-group.col-md-6
+                         include_blank: true, class: 'form-select form-select-sm',
+                         data: { action: 'change->meeting-card#selectMatch', meeting_card_baseline_param: baseline_data.to_json })
+            %small.form-text.text-body-secondary Select to populate from existing meeting
+          .col-md-6
             = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting',
                                                default_value: meeting_data['id'], base_api_url: api_url,
                                                detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',
@@ -135,20 +136,20 @@
                                                target11_dom_id: 'meeting_cancelled', target11_column: 'cancelled',
                                                target12_dom_id: 'meeting_confirmed', target12_column: 'confirmed',
                                                jwt: current_user.jwt))
-            %small.form-text.text-muted Or search manually by description. Clear search to create new meeting.
+            %small.form-text.text-body-secondary Or search manually by description. Clear search to create new meeting.
 
         -# Basic fields: description, code
-        .form-row
-          .form-group.col-md-8
-            %label{ for: 'meeting_description' } Description
+        .row.g-2.mb-2
+          .col-md-8
+            %label.form-label{ for: 'meeting_description' } Description
             = text_field_tag(:description, meeting_data['name'],
                              id: 'meeting_description', class: ['form-control form-control-sm', invalid_cls.call('description')],
                              required: true, maxlength: 200, placeholder: 'Meeting description',
                              data: { 'coded-name-target' => 'desc' })
             - if field_errors['description'].present?
               .invalid-feedback= Array(field_errors['description']).join(', ')
-          .form-group.col-md-4
-            %label{ for: 'meeting_code' } Code
+          .col-md-4
+            %label.form-label{ for: 'meeting_code' } Code
             = text_field_tag(:code, meeting_data['code'],
                              id: 'meeting_code', class: ['form-control form-control-sm', invalid_cls.call('code')],
                              placeholder: 'Auto-generated', data: { 'coded-name-target' => 'field' })
@@ -157,67 +158,67 @@
                 = "#{Array(field_errors['code']).join(', ')} — #{t('data_import.data_fix.code_autocomputed_hint')}"
 
         -# Season, header_year, header_date
-        .form-row
-          .form-group.col-md-3
-            %label{ for: 'meeting_season_id' } Season ID
+        .row.g-2.mb-2
+          .col-md-3
+            %label.form-label{ for: 'meeting_season_id' } Season ID
             = number_field_tag(:season_id, season&.id || meeting_data['season_id'],
                                id: 'meeting_season_id', class: ['form-control form-control-sm', invalid_cls.call('season')],
                                min: 1, step: 1, placeholder: 'e.g. 242')
             - if field_errors['season'].present?
               .invalid-feedback= Array(field_errors['season']).join(', ')
-          .form-group.col-md-3
-            %label{ for: 'meeting_header_year' } Header Year
+          .col-md-3
+            %label.form-label{ for: 'meeting_header_year' } Header Year
             = text_field_tag(:header_year, meeting_data['header_year'] || season&.header_year,
                              id: 'meeting_header_year', class: ['form-control form-control-sm', invalid_cls.call('header_year')],
                              placeholder: 'YYYY/YYYY+1')
             - if field_errors['header_year'].present?
               .invalid-feedback= Array(field_errors['header_year']).join(', ')
-          .form-group.col-md-3
-            %label{ for: 'meeting_header_date' } Header Date
+          .col-md-3
+            %label.form-label{ for: 'meeting_header_date' } Header Date
             = date_field_tag(:header_date, meeting_data['header_date'],
                              id: 'meeting_header_date', class: ['form-control form-control-sm', invalid_cls.call('header_date')])
             - if field_errors['header_date'].present?
               .invalid-feedback= Array(field_errors['header_date']).join(', ')
-          .form-group.col-md-3
-            %label{ for: 'meeting_meetingURL' } Meeting URL
+          .col-md-3
+            %label.form-label{ for: 'meeting_meetingURL' } Meeting URL
             = text_field_tag('meetingURL', meeting_data['meetingURL'],
                              class: 'form-control form-control-sm',
                              pattern: 'https?://.*', placeholder: 'https://...')
 
         -# Edition, edition_type, timing_type
-        .form-row
-          .form-group.col-md-2
-            %label{ for: 'meeting_edition' } Edition
+        .row.g-2.mb-2
+          .col-md-2
+            %label.form-label{ for: 'meeting_edition' } Edition
             = number_field_tag(:edition, meeting_data['edition'],
                                id: 'meeting_edition', class: ['form-control form-control-sm', invalid_cls.call('edition')],
                                placeholder: 'edition #')
             - if field_errors['edition'].present?
               .invalid-feedback= Array(field_errors['edition']).join(', ')
-          .form-group.col-md-3
-            %label{ for: 'meeting_edition_type_id' } Edition Type
+          .col-md-3
+            %label.form-label{ for: 'meeting_edition_type_id' } Edition Type
             = select_tag(:edition_type_id,
                          options_for_select(GogglesDb::EditionType.all.map { |t| [t.long_label, t.id] },
                                             meeting_data['edition_type_id'] || GogglesDb::EditionType::ORDINAL_ID),
                          include_blank: true, id: 'meeting_edition_type_id',
-                         class: ['form-control form-control-sm', invalid_cls.call('edition_type')])
+                         class: ['form-select form-select-sm', invalid_cls.call('edition_type')])
             - if field_errors['edition_type'].present?
               .invalid-feedback.d-block= Array(field_errors['edition_type']).join(', ')
-          .form-group.col-md-3
-            %label{ for: 'meeting_timing_type_id' } Timing Type
+          .col-md-3
+            %label.form-label{ for: 'meeting_timing_type_id' } Timing Type
             = select_tag(:timing_type_id,
                          options_for_select(GogglesDb::TimingType.all.map { |t| [t.long_label, t.id] },
                                             meeting_data['timing_type_id'] || GogglesDb::TimingType::AUTOMATIC_ID),
                          include_blank: true, id: 'meeting_timing_type_id',
-                         class: ['form-control form-control-sm', invalid_cls.call('timing_type')])
+                         class: ['form-select form-select-sm', invalid_cls.call('timing_type')])
             - if field_errors['timing_type'].present?
               .invalid-feedback.d-block= Array(field_errors['timing_type']).join(', ')
-          .form-group.col-md-2
+          .col-md-2
             .form-check.mt-4
               = check_box_tag(:cancelled, '1',
                               meeting_data['cancelled'].present? && meeting_data['cancelled'],
                               id: 'meeting_cancelled', class: 'form-check-input')
               %label.form-check-label{ for: 'meeting_cancelled' } Cancelled
-          .form-group.col-md-2
+          .col-md-2
             .form-check.mt-4
               = check_box_tag(:confirmed, '1',
                               meeting_data['confirmed'].nil? ? true : meeting_data['confirmed'],
@@ -225,69 +226,69 @@
               %label.form-check-label{ for: 'meeting_confirmed' } Confirmed
 
         -# Max individual events
-        .form-row
-          .form-group.col-md-3
-            %label Max Individual Events
+        .row.g-2.mb-2
+          .col-md-3
+            %label.form-label Max Individual Events
             = number_field_tag(:max_individual_events, meeting_data['max_individual_events'] || 3,
                                class: 'form-control form-control-sm', min: 1)
-          .form-group.col-md-3
-            %label Max Events Per Session
+          .col-md-3
+            %label.form-label Max Events Per Session
             = number_field_tag(:max_individual_events_per_session,
                                meeting_data['max_individual_events_per_session'] || 3,
                                class: 'form-control form-control-sm', min: 1)
-          .form-group.col-md-2
-            %label Pool Length
+          .col-md-2
+            %label.form-label Pool Length
             - current_len = meeting_data['poolLength'].to_s
             - options = [['25m', '25'], ['50m', '50']]
             - options << [current_len, current_len] if current_len.present? && !options.map(&:last).include?(current_len)
             = select_tag(:poolLength, options_for_select(options, current_len),
-                         class: 'form-control form-control-sm')
+                         class: 'form-select form-select-sm')
 
         -# Legacy date fields (keep for compatibility)
         %details.mb-3
-          %summary.text-muted
+          %summary.text-body-secondary
             %small Legacy date fields (for LT2 compatibility)
-          .form-row.mt-2
-            .form-group.col-md-2
-              %label Date Day 1
+          .row.g-2.mb-2.mt-2
+            .col-md-2
+              %label.form-label Date Day 1
               = number_field_tag(:dateDay1, meeting_data['dateDay1'],
                                  class: 'form-control form-control-sm',
                                  min: 1, max: 31, step: 1, placeholder: 'DD')
-            .form-group.col-md-2
-              %label Date Month 1
+            .col-md-2
+              %label.form-label Date Month 1
               = number_field_tag(:dateMonth1, meeting_data['dateMonth1'],
                                  class: ['form-control form-control-sm', invalid_cls.call('dateMonth1')],
                                  min: 1, max: 12, step: 1, placeholder: 'MM')
-            .form-group.col-md-2
-              %label Date Year 1
+            .col-md-2
+              %label.form-label Date Year 1
               = number_field_tag(:dateYear1, meeting_data['dateYear1'],
                                  class: ['form-control form-control-sm', invalid_cls.call('dateYear1')],
                                  min: 1900, max: 2100, step: 1, placeholder: 'YYYY')
-            .form-group.col-md-2
-              %label Date Day 2
+            .col-md-2
+              %label.form-label Date Day 2
               = number_field_tag(:dateDay2, meeting_data['dateDay2'],
                                  class: 'form-control form-control-sm',
                                  min: 1, max: 31, step: 1, placeholder: 'DD')
-            .form-group.col-md-2
-              %label Date Month 2
+            .col-md-2
+              %label.form-label Date Month 2
               = number_field_tag(:dateMonth2, meeting_data['dateMonth2'],
                                  class: 'form-control form-control-sm',
                                  min: 1, max: 12, step: 1, placeholder: 'MM')
-            .form-group.col-md-2
-              %label Date Year 2
+            .col-md-2
+              %label.form-label Date Year 2
               = number_field_tag(:dateYear2, meeting_data['dateYear2'],
                                  class: 'form-control form-control-sm',
                                  min: 1900, max: 2100, step: 1, placeholder: 'YYYY')
-          .form-row
-            .form-group.col-md-6
-              %label Venue
+          .row.g-2.mb-2
+            .col-md-6
+              %label.form-label Venue
               = text_field_tag(:venue1, meeting_data['venue1'],
                                class: 'form-control form-control-sm',
                                placeholder: 'Venue name')
-            .form-group.col-md-6
-              %label Address
+            .col-md-6
+              %label.form-label Address
               = text_field_tag(:address1, meeting_data['address1'],
                                class: 'form-control form-control-sm',
                                placeholder: 'Street, number, ZIP')
 
-        = submit_tag('Save Meeting', class: 'btn btn-primary', data: { turbo_confirm: 'Save meeting data?' })
+        = submit_tag(t('data_fix.wizard.buttons.save_meeting'), class: 'btn btn-primary', data: { turbo_confirm: t('data_fix.wizard.confirm.save_meeting') })

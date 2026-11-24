@@ -1,0 +1,20 @@
+.data-fix-issue-nav.d-flex.flex-wrap.align-items-center.gap-2.mb-2#data-fix-issue-nav{ data: controller_data }
+  .btn-group.btn-group-sm{ role: 'group', aria: { label: t('data_fix.issue_nav.label') } }
+    %button.btn.btn-outline-secondary#btn-issue-prev{ type: 'button', title: t('data_fix.issue_nav.previous_hint'),
+                                                      disabled: nav.total.zero?,
+                                                      data: { action: 'issue-nav#previous', issue_nav_target: 'previous' } }
+      %i.fa-solid.fa-chevron-up{ 'aria-hidden': 'true' }
+      = t('data_fix.issue_nav.previous')
+    %button.btn.btn-outline-secondary#btn-issue-next{ type: 'button', title: t('data_fix.issue_nav.next_hint'),
+                                                      disabled: nav.total.zero?,
+                                                      data: { action: 'issue-nav#next', issue_nav_target: 'next' } }
+      %i.fa-solid.fa-chevron-down{ 'aria-hidden': 'true' }
+      = t('data_fix.issue_nav.next')
+  %span.small.text-body-secondary#data-fix-issue-position{ aria: { live: 'polite' }, data: { issue_nav_target: 'position' } }= summary_text
+  %span.small.text-body-secondary.d-none.d-lg-inline
+    %kbd j
+    \/
+    %kbd k
+    = t('data_fix.issue_nav.keys')
+  - if toggle?
+    .ms-auto.d-flex.flex-wrap.align-items-center.gap-2= toggle

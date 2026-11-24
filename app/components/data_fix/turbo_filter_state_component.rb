@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module DataFix
-  # Reusable Turbo GET filter component with 3-state radio button group and search query input.
-  # Auto-submits on filter state change and per-page change.
+  # Reusable Turbo GET filter component with 3-state radio button group (native Bootstrap 5 `.btn-check` toggles)
+  # and search query input. Auto-submits on filter state change and per-page change.
   # Search query submit is explicit via Enter key or search button.
   # Preserves q input exactly as typed (no trimming). Deselects "none" when q is present.
   class TurboFilterStateComponent < ViewComponent::Base
@@ -16,17 +16,22 @@ module DataFix
       @per_page_value = options[:per_page_value]
       @filter_state = FILTER_STATES.include?(options[:filter_state].to_s) ? options[:filter_state].to_s : 'none'
       @q = options[:q].to_s
-      @filter_label = options[:filter_label] || 'Filter'
-      @q_placeholder = options[:q_placeholder] || 'Search...'
+      @filter_label = options[:filter_label] || I18n.t('data_fix.filter.label')
+      @q_placeholder = options[:q_placeholder] || I18n.t('data_fix.filter.search_placeholder')
       @review_help_text = options[:review_help_text]
       @per_page_options = options[:per_page_options] || [50, 100, 150]
       @q_min_length = options[:q_min_length] || 3
-      @form_class = options[:form_class] || 'form-inline'
+      @form_class = options[:form_class] || 'd-flex flex-wrap align-items-center gap-2'
       @dom_id_prefix = "turbo-filter-state-#{@per_page_param_name.to_s.dasherize}"
     end
 
     def render?
       @target_url.present? && @per_page_param_name.present?
+    end
+
+    # [value, DOM id suffix, label] of the 3 filter states.
+    def filter_states
+      FILTER_STATES.map { |state| [state, state.dasherize, I18n.t("data_fix.filter.states.#{state}")] }
     end
 
     protected

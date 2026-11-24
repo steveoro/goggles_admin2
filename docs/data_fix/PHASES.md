@@ -72,12 +72,13 @@ runner*) builds each phase through one recipe, stamps it, checks it and stores a
 
 - **Stepper.** Each step tab shows the phase verdict and its issue count: *clean*, *needs review*, *blocked* (the
   commit would fail), *stale* (an earlier step changed after the build), *build failed*, *not built*. The active step
-  shows a banner when it is stale (with a Rebuild link), and a note when it holds edits ("edited (pre-existing)" for
-  the files that existed before this release).
+  shows a banner when it is stale (with a Rebuild button, see *Review pages* below), and a note when it holds edits
+  ("edited (pre-existing)" for the files that existed before this release).
 - **Operator edits win.** Every save marks its phase as edited (`_meta.operator_edit`); an automatic rebuild never
-  rewrites or deletes an edited phase. Only the rescan link (with a confirmation) rebuilds an edited phase.
+  rewrites or deletes an edited phase. Only the operator's rebuilds (the step menu's rescan, or the stale banner with
+  force), both with a confirmation, rebuild an edited phase.
 - **Stale steps.** A Phase 4 event edit makes Phase 5 stale. Opening Step 5 then rebuilds it by itself when it holds
-  no edits, fixes or overwrite selections; otherwise the step asks first (Rebuild link).
+  no edits, fixes or overwrite selections; otherwise the step asks first (Rebuild button).
 - **Source changed under edits.** When the category normalization or a manifest supersede would delete phase files
   holding edits, nothing is deleted: the step header shows "the source file changed under your edits" with a
   "Rebuild (discard edits)" button (POST, with a confirmation; `.orig` backups are kept).
@@ -93,6 +94,40 @@ runner*) builds each phase through one recipe, stamps it, checks it and stores a
   reopened from its URL. It links the Outbox script and shows the season checks of the triggered health runs.
   "Committed, archiving failed" keeps its own state and its "Retry archiving" button. Without the ops DB the commit
   is refused with the `bin/rails ops:prepare` notice.
+
+### Review pages (phase 12)
+
+Every step is a native Bootstrap 5 page (light and dark themes) driven by Stimulus controllers only: no inline
+handler, no inline script, no `window.DataFix` global (the former `data_fix_helpers.js` moved into the card
+controllers `meeting_card`, `session_card`, `team_card`, `swimmer_card`, `event_card`, plus `verify_team`, sharing
+`app/javascript/lib/form_fields.js`).
+
+- **Page header and stepper.** Each step opens with the page header (title, source name, "File list" and the next
+  step) and the stepper (`DataFix::StepperComponent`, `#data-fix-stepper`): one tab per phase with its verdict pill
+  and issue count, the "being prepared" state (spinner, run progress) while a prepare job holds the lease, the crawl
+  retry banner, and the active step's menu with "Rebuild this phase from the source" (its confirmation names the
+  edits it discards, e.g. "team saved ×3"). Below the md breakpoint the inactive tabs show only their number.
+- **Stale banner.** A stale step says which input changed and offers **Rebuild**: `POST data_fix/rebuild_phase`
+  (`phase=N`), one click for an unedited phase; an edited one asks first and passes `force=1` (the action refuses an
+  edited phase without it). Step 4 shows it when the Step 1 sessions changed; Step 5 keeps its automatic rebuild
+  (unedited, no fixes or overwrite selections), so its banner appears only when it holds edits or is result-free.
+- **Needs you only.** Steps 2 and 3 open on the "Needs you" filter (`filter_state=review`) when no filter is
+  remembered; an explicit "Unfiltered" (`filter_state=none`) wins and is remembered in the per-file cookie. Steps 1
+  and 4 have a "Needs you only" switch (`issues_only=1|0`), on by default when a card needs the operator (Step 1
+  always keeps the meeting card: its id feeds "rescan sessions"). Step 5 keeps its issue filter, on by default.
+- **Next / previous issue.** The toolbar under the stepper (`#data-fix-issue-nav`) jumps between the cards needing
+  the operator (markers `data-issue`, from `DataFix::IssueMarkers`: the verdict issues for Steps 1 and 4,
+  `DataFix::ReviewRules` for Steps 2-3, the issue programs for Step 5): it scrolls to the card, expands it and
+  focuses it; past the page it opens the previous / next page holding an issue on that card (anchor). Keys `j` / `k`
+  (ignored while typing in a field).
+- **Saved in place (Steps 2 and 3).** A team or swimmer card is saved without a page reload: the update answers a
+  Turbo stream replacing the card (its key-based frame, same position), the stepper (fresh verdicts) and the toasts;
+  Step 2 also replaces the team ranking card. The phase file is the one a full-page save writes, and the edit marker
+  is stamped the same way. The swimmer cards a team save cascades to are on Step 3 and show the new badges when it
+  opens. Deletes and additions keep the full-page redirect.
+- **Verify all (Step 5).** Matches every new staged result having exactly one identical existing result (same event,
+  category, team and timing; never a merge target) and reports the counts: matched, possible duplicates left to
+  review, without a match. It never commits.
 
 ### Unattended preparation (phase 10)
 
@@ -471,9 +506,12 @@ Created in goggles_db gem v0.8.11+:
 - Expandable lap details
 - Match status badges (green = matched, yellow = new)
 
-**Relay Results** 🟡:
-- UI partials not yet created
+**Relay Results** ✅:
+- Card-based UI (`_relay_program_card.html.haml`), with the relay swimmers and laps of each result
 - See [RELAY_IMPLEMENTATION.md](./RELAY_IMPLEMENTATION.md)
+
+Both card kinds carry the "needs you" marker of the programs in the issue list (next / previous issue, see
+*Review pages*); "Verify all" sits in the step toolbar.
 
 ### Individual-result overwrite mode
 

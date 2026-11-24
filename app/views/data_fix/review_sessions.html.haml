@@ -2,36 +2,46 @@
 
 = render(partial: 'goggles/modal_progress')
 
-.container-fluid
-  = render(partial: 'data_fix/v2_phase_header',
-           locals: { title: 'Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)',
-                     active_step: 1,
-                     file_path: @file_path,
-                     retry_needed: @retry_needed })
+:ruby
+  meeting_id = @phase1_data['id']
+  meeting_name = @phase1_data['name']
+  sessions = Array(@phase1_data['meeting_session'])
+  session_markers = @issue_markers[:sessions]
+  visible_sessions = sessions.each_with_index.reject { |_sess, idx| @issues_only && session_markers[idx].blank? }
+  hidden_count = sessions.size - visible_sessions.size
+  show_all_path = review_sessions_path(request.query_parameters.merge(file_path: @file_path, phase_v2: 1, issues_only: '0'))
+-# (meeting-card: the fuzzy match select of the meeting card and the "rescan sessions" form below it)
+.container-fluid{ data: { controller: 'meeting-card' } }
+  = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 1, name: t('data_fix.steps.sessions')),
+                                          subtitle: [meeting_id, meeting_name].compact.join(': ').presence)) do |header|
+    - header.with_actions do
+      = link_to(pull_result_files_path, class: 'btn btn-sm btn-outline-secondary') do
+        %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
+        = t('data_fix.wizard.back_to_files')
+      = form_tag(recompute_source_categories_path, method: :post, class: 'd-inline') do
+        = hidden_field_tag(:file_path, @file_path)
+        %button.btn.btn-sm.btn-warning{ type: 'submit', data: { turbo_confirm: @recompute_confirm } }
+          %i.fa.fa-refresh{ 'aria-hidden': 'true' }
+          = t('data_import.data_fix.category_recompute_button')
+      = link_to(review_teams_path(request.query_parameters.except('issues_only').merge(phase2_v2: 1)), class: 'btn btn-sm btn-primary') do
+        = t('data_import.data_fix.proceed_to_teams')
+        %i.fa-solid.fa-arrow-right{ 'aria-hidden': 'true' }
 
-  -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    = link_to('< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2')
-    = form_tag(recompute_source_categories_path, method: :post, class: 'd-inline') do
-      = hidden_field_tag(:file_path, @file_path)
-      %button.btn.btn-warning{ type: 'submit', data: { turbo_confirm: @recompute_confirm } }
-        %i.fa.fa-refresh
-        = t('data_import.data_fix.category_recompute_button')
-    = link_to(t('data_import.data_fix.proceed_to_teams'), review_teams_path(request.query_parameters.merge(phase2_v2: 1)),
-              class: 'btn btn-primary')
+  = render(data_fix_stepper(1))
+  = render(DataFix::IssueNavComponent.new(nav: @issue_nav)) do |nav|
+    - nav.with_toggle do
+      = render(partial: 'data_fix/issues_only_toggle',
+               locals: { active: @issues_only, hidden_count:, available: session_markers.any?,
+                         path_for: ->(value) { review_sessions_path(request.query_parameters.merge(file_path: @file_path, phase_v2: 1, issues_only: value)) } })
 
-  :ruby
-    meeting_id = @phase1_data['id']
-    meeting_name = @phase1_data['name']
-    extra_info = [meeting_id, meeting_name].compact.join(': ').presence
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta,
-                                                         extra_info: extra_info })
+                                                         extra_info: [meeting_id, meeting_name].compact.join(': ').presence })
 
-  -# Extraction warnings recorded in the LT4 source _meta (e.g. unknown event
-  -# codes, date mismatches): shown early so they can be verified before commit.
+  -# Extraction warnings recorded in the LT4 source _meta (e.g. unknown event codes, date mismatches):
+  -# shown early so they can be verified before commit.
   - if @source_warnings.present?
-    .alert.alert-info.py-2
-      %i.fa.fa-info-circle.me-2
+    .alert.alert-info.py-2.mt-2
+      %i.fa.fa-info-circle.me-2{ 'aria-hidden': 'true' }
       %strong= t('data_import.data_fix.extraction_warnings_title')
       %ul.mb-0.mt-1
         - @source_warnings.first(8).each do |warning|
@@ -39,11 +49,11 @@
         - if @source_warnings.size > 8
           %li … (+#{@source_warnings.size - 8})
 
-  -# Non-blocking structure validation summary (missing required fields are
-  -# flagged inline in the cards below; saving partial data stays allowed).
+  -# Non-blocking structure validation summary (missing required fields are flagged inline in the cards below;
+  -# saving partial data stays allowed).
   - if @structure_report && !@structure_report.valid?
-    .alert.alert-warning.py-2
-      %i.fa.fa-exclamation-triangle.me-2
+    .alert.alert-warning.py-2.mt-2
+      %i.fa.fa-exclamation-triangle.me-2{ 'aria-hidden': 'true' }
       %strong= t('data_import.data_fix.structure_invalid_title')
       %ul.mb-0.mt-1
         - @structure_report.error_messages.first(8).each do |message|
@@ -51,72 +61,60 @@
         - if @structure_report.error_messages.size > 8
           %li= "… (+#{@structure_report.error_messages.size - 8})"
       %small.d-block.mt-1= t('data_import.data_fix.structure_invalid_hint')
-  -# Meeting card with consistent styling
+
   :ruby
     has_match = meeting_id.to_i.positive?
-    card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+    card_bg = has_match ? 'bg-body-tertiary' : 'bg-light-yellow'
     border_color = has_match ? 'border-secondary' : 'border-warning'
-    border_width = 'border-2'
-    
-    # Check if all required fields are filled to determine default collapse state
+    # Expanded by default unless every required field is filled
     @season ||= GogglesDb::Season.find_by(id: @phase1_data['season_id'])
-    name = @phase1_data['name']
-    date_year1 = @phase1_data['dateYear1']
-    date_month1 = @phase1_data['dateMonth1']
-    date_day1 = @phase1_data['dateDay1']
-    all_required_filled = @season.is_a?(GogglesDb::Season) && name.present? && date_year1.present? && date_month1.present? && date_day1.present?
-    
+    all_required_filled = @season.is_a?(GogglesDb::Season) && @phase1_data['name'].present? &&
+                          @phase1_data['dateYear1'].present? && @phase1_data['dateMonth1'].present? && @phase1_data['dateDay1'].present?
+  -# (always rendered, also with "needs you only": its id field feeds the "rescan sessions" form)
   = render(partial: 'meeting_form_card',
            locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
                      original_meeting_data: @phase1_data, season: @season,
-                     meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled:,
-                     meeting_errors: @structure_report.meeting_errors })
+                     meeting_id:, has_match:, card_bg:, border_color:, border_width: 'border-2', all_required_filled:,
+                     meeting_errors: @structure_report.meeting_errors, issue_codes: @issue_markers[:meeting] })
 
-  -# Sessions Section Header
+  -# Sessions toolbar
   .card.mb-2
-    .card-header
-      %strong Sessions (Meeting Sessions, Pools & Cities)
-    .card-body.py-2
-      .d-flex.justify-content-between.align-items-center
-        %div
-          %strong Total Sessions:
-          - sessions = @phase1_data['meeting_session'] || []
-          = sessions.size
-        %div
-          -# Rescan form (separate from meeting form to avoid nesting)
-          = form_tag(rescan_phase1_sessions_path, method: :post, class: 'd-inline-block mt-2',
-                      onsubmit: "document.getElementById('rescan_meeting_id').value = document.getElementById('meeting_meeting_id').value; return confirm('Rescan sessions from selected meeting? This will replace current sessions.');") do
-            = hidden_field_tag(:file_path, @file_path)
-            = hidden_field_tag(:meeting_id, nil, id: 'rescan_meeting_id')
-            %button.btn.btn-sm.btn-warning{ type: 'submit' }
-              %i.fa.fa-refresh
-              = t('data_import.data_fix.btn_reparse_session_label')
-        %div
-          = form_tag(data_fix_add_session_path, method: :post, class: 'd-inline') do
-            = hidden_field_tag :file_path, @file_path
-            %button.btn.btn-sm.btn-success{ type: 'submit', data: { turbo_confirm: t('data_import.data_fix.confirm_add_session') } }
-              %i.fa.fa-plus
-              = t('data_import.data_fix.btn_add_session')
+    .card-header.d-flex.flex-wrap.align-items-center.justify-content-between.gap-2
+      %strong= t('data_fix.wizard.sessions.header')
+      %span.text-body-secondary= t('data_fix.wizard.sessions.total', count: sessions.size)
+    .card-body.py-2.d-flex.flex-wrap.align-items-center.justify-content-between.gap-2
+      -# Rescan form (separate from the meeting form to avoid nesting: meeting-card#copyMeetingId sends its id)
+      = form_tag(rescan_phase1_sessions_path, method: :post, class: 'd-inline-block',
+                 data: { action: 'submit->meeting-card#copyMeetingId',
+                         turbo_confirm: t('data_fix.wizard.confirm.rescan_sessions') }) do
+        = hidden_field_tag(:file_path, @file_path)
+        = hidden_field_tag(:meeting_id, nil, id: 'rescan_meeting_id', data: { meeting_card_target: 'rescanId' })
+        %button.btn.btn-sm.btn-warning{ type: 'submit' }
+          %i.fa.fa-refresh{ 'aria-hidden': 'true' }
+          = t('data_import.data_fix.btn_reparse_session_label')
+      = form_tag(data_fix_add_session_path, method: :post, class: 'd-inline') do
+        = hidden_field_tag :file_path, @file_path
+        %button.btn.btn-sm.btn-success{ type: 'submit', data: { turbo_confirm: t('data_import.data_fix.confirm_add_session') } }
+          %i.fa.fa-plus{ 'aria-hidden': 'true' }
+          = t('data_import.data_fix.btn_add_session')
 
   -# Sessions as collapsible cards
   - if sessions.empty?
     .alert.alert-info
-      %em No sessions yet. Click "Add Session" above.
+      %em= t('data_fix.wizard.sessions.none')
   - else
     - new_session_idx = params[:new_session_index]&.to_i
-    - sessions.each_with_index do |sess_hash, idx|
+    - visible_sessions.each do |sess_hash, idx|
       :ruby
-        is_new_session = new_session_idx.present? && new_session_idx == idx
         session_id = sess_hash['id']
         has_match = session_id.to_i.positive?
-        card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-        border_color = has_match ? 'border-secondary' : 'border-warning'
-        border_width = 'border-2'
-
       = render(partial: 'session_form_card',
                locals: { file_path: @file_path, api_url: @api_url, sess_hash:, idx:,
-                         is_new_session:, session_id:, has_match:, card_bg:, border_color:, border_width:,
+                         is_new_session: new_session_idx.present? && new_session_idx == idx, session_id:, has_match:,
+                         card_bg: has_match ? 'bg-body-tertiary' : 'bg-light-yellow',
+                         border_color: has_match ? 'border-secondary' : 'border-warning', border_width: 'border-2',
                          existing_meeting_sessions: @existing_meeting_sessions,
-                         all_sessions: sessions,
+                         all_sessions: sessions, issue_codes: session_markers[idx],
+                         copy_sources: visible_sessions.map(&:last), show_all_path:,
                          session_errors: @structure_report.session_errors[idx] || {} })
-  .mb-4 &nbsp;
+  .mb-4

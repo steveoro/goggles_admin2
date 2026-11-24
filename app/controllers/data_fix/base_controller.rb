@@ -55,7 +55,7 @@ module DataFix
 
     # Expose issue detection helpers to views
     helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?, :pipeline_summary,
-                  :data_fix_being_prepared?
+                  :data_fix_being_prepared?, :data_fix_stepper
 
     private
 
@@ -106,6 +106,38 @@ module DataFix
       Ops::PipelineSource.find_by(season_id: Ops::PipelineSource.season_id_for(@source_path), base: Ops::PipelineSource.base_for(@source_path))
     end
 
+    # The DataFix::StepperComponent of a review page (phase 12): verdicts, "being prepared" progress, crawl retry flag
+    # and the edit marker of the active phase (named by the confirmations of the rebuilds that discard it).
+    def data_fix_stepper(active_step)
+      DataFix::StepperComponent.new(summary: pipeline_summary, active_step:, file_path: @file_path,
+                                    retry_needed: @retry_needed == true, being_prepared: data_fix_prepare_state,
+                                    edit_marker: phase_edit_marker(active_step))
+    end
+
+    # false, or the pending Ops::PipelineRun of the prepare job holding the lease (true when it can't be read).
+    def data_fix_prepare_state
+      return false unless data_fix_being_prepared?
+
+      Ops.safely(true) do
+        Ops::PipelineRun.pending.where(kind: 'prepare', pipeline_source_id: prepared_source_row&.id).recent.first || true
+      end
+    end
+
+    # '_meta.operator_edit' of a phase file (nil when none or unreadable).
+    def phase_edit_marker(phase)
+      return if @source_path.blank? || phase.blank?
+
+      marker = pipeline.phase_meta(phase)['operator_edit']
+      marker.is_a?(Hash) ? marker : nil
+    rescue StandardError
+      nil
+    end
+
+    # "Needs you only" switch of Steps 1 and 4: an explicit issues_only param wins, else on when a card needs the operator.
+    def issues_only_switch(any_issue)
+      params.key?(:issues_only) ? params[:issues_only].to_s == '1' : any_issue
+    end
+
     # True while any build holds an unexpired lease of the current source (read only).
     def source_leased?
       return false if @source_path.blank?
@@ -124,8 +156,16 @@ module DataFix
       message = I18n.t('pipeline_automation.review.edit_refused')
       respond_to do |format|
         format.html { redirect_back_or_to(data_fix_sessions_path, flash: { warning: message }, status: :see_other) }
+        # (a card saved in place, phase 12: the refusal is a toast, the card stays as it was)
+        format.turbo_stream { render_flash_stream(warning: message, status: :conflict) }
         format.any { render(json: { error: message }, status: :conflict) }
       end
+    end
+
+    # Turbo stream replacing the toasts of #flash-messages-container with the given (non-sticky) messages.
+    def render_flash_stream(status: :ok, **messages)
+      messages.each { |key, text| flash.now[key] = text }
+      render(turbo_stream: turbo_stream.update('flash-messages-container', partial: 'goggles/flash_messages'), status:)
     end
 
     # Per-phase verdicts + stage of the current source, for the stepper (nil when no source is resolved).
@@ -194,12 +234,14 @@ module DataFix
 
     # Shared filter + pagination block for the phase 2/3 review pages.
     # Sets @filter_state, @q, @page, @per_page, @total_count, @total_pages,
-    # @row_range, @items; persists them into the per-file review-state cookie.
+    # @row_range, @items and @filtered_collection (all pages); persists them into the per-file review-state cookie.
     # The block receives (collection, @filter_state) and must return the
     # phase-specific filtered collection (the 'review'/'diff_key' predicates
     # differ per phase); without a block only the text-query filter applies.
-    def apply_review_filters(collection:, prefix:, cookie_scope:, default_per_page:, text_fields:)
-      @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: cookie_scope).to_s
+    # +default_filter_state+: the state without a param nor a cookie (phase 12: 'review', "needs you only", for
+    # Steps 2-3; an explicit filter_state=none wins and is remembered).
+    def apply_review_filters(collection:, prefix:, cookie_scope:, default_per_page:, text_fields:, default_filter_state: 'none')
+      @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: cookie_scope).to_s.presence || default_filter_state
       @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
       @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: cookie_scope).to_s.strip
 
@@ -212,6 +254,7 @@ module DataFix
       end
 
       collection = yield(collection, @filter_state) if block_given?
+      @filtered_collection = collection
 
       page_key = :"#{prefix}_page"
       per_page_key = :"#{prefix}_per_page"
@@ -272,8 +315,11 @@ module DataFix
     end
 
     # (after_action) Records the operator edit of the phase changed by a successful mutating action
-    # (a redirect without warning/error/alert flash, or a successful JSON answer).
+    # (a redirect without warning/error/alert flash, or a successful JSON answer). A Turbo-stream save marks the phase
+    # itself before rendering (#mark_phase_edited_now!), so that the replaced stepper already shows the edit.
     def mark_phase_edited!
+      return if @phase_edit_marked
+
       phase = EDIT_ACTIONS[action_name]
       source_path = @edited_source_path.presence || @source_path
       return if phase.nil? || source_path.blank? || !edit_succeeded?
@@ -282,6 +328,21 @@ module DataFix
                        .mark_edited!(phase, action: action_name)
     rescue StandardError => e
       Rails.logger.warn("[DataFix] edit marker not written for #{action_name}: #{e.class}: #{e.message}")
+    end
+
+    # Marks the edit of the current action right away (Turbo-stream saves), then forgets the memoized pipeline reads.
+    def mark_phase_edited_now!
+      phase = EDIT_ACTIONS[action_name]
+      return if phase.nil? || @source_path.blank?
+
+      DataFix::Pipeline.for(@source_path, progress: Import::Progress::Null.new, user_id: current_user&.id)
+                       .mark_edited!(phase, action: action_name)
+      @phase_edit_marked = true
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix] edit marker not written for #{action_name}: #{e.class}: #{e.message}")
+    ensure
+      @pipeline&.reload!
+      @pipeline_summary = nil
     end
 
     def edit_succeeded?

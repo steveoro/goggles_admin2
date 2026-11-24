@@ -1,0 +1,11 @@
+-#
+  "Needs you only" switch of Steps 1 and 4 (issues_only=1|0; on by default when a card needs the operator).
+  Locals: active (Boolean), hidden_count (cards hidden by it), available (any card with an issue),
+  path_for (callable: '1' / '0' => the page URL).
+- if active || available
+  = link_to(path_for.call(active ? '0' : '1'), class: "btn btn-sm #{active ? 'btn-warning' : 'btn-outline-secondary'}",
+                                               id: 'btn-data-fix-issues-only', aria: { pressed: active.to_s }) do
+    %i.fa-solid.fa-filter{ 'aria-hidden': 'true' }
+    = t('data_fix.wizard.issues_only')
+  - if active && hidden_count.to_i.positive?
+    %small.text-body-secondary#data-fix-hidden-count= t('data_fix.wizard.show_all', count: hidden_count)

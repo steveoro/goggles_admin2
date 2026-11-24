@@ -28,6 +28,12 @@ module DataFix
       # them before committing anything.
       @source_warnings = Array(source_resolver.parsed_source_json(source_path).dig('_meta', 'warnings'))
 
+      # (phase 12) cards needing the operator (verdict issues + field errors), issue navigation, "needs you only"
+      @issue_markers = DataFix::IssueMarkers.phase1(data: @phase1_data, structure_report: @structure_report,
+                                                    verdict: pipeline_summary&.[](1))
+      @issues_only = issues_only_switch(@issue_markers[:sessions].any?)
+      @issue_nav = DataFix::IssueNav.single_page((@issue_markers[:meeting].any? ? 1 : 0) + @issue_markers[:sessions].size)
+
       # Fetch existing meeting sessions if meeting_id is present
       meeting_id = @phase1_data['id']
       @existing_meeting_sessions = []
@@ -104,6 +110,37 @@ module DataFix
       redirect_to(send(step_paths.fetch(phases.min, :review_sessions_path), file_path: @source_path),
                   notice: I18n.t('data_fix.pipeline.edits_discarded', phases: phases.join(', ')))
     end
+
+    # POST data_fix/rebuild_phase?file_path=&phase=N[&force=1] ("Rebuild" of the stale banner, phase 12): rebuilds
+    # one phase from the source and its upstream phases (DataFix::Pipeline#build_phase!, progress modal through
+    # the Cable sink), then reopens its review page. An edited phase is refused unless +force+ (the banner asks for
+    # a confirmation naming the edits first).
+    def rebuild_phase
+      phase = params[:phase].to_i
+      unless DataFix::Pipeline::PHASES.include?(phase)
+        return redirect_to(review_sessions_path(file_path: @source_path, phase_v2: 1), flash: { warning: I18n.t('data_fix.rebuild.invalid_phase') })
+      end
+
+      review_path = REVIEW_PATHS.fetch(phase)
+      pipeline.build_phase!(phase, force: params[:force].to_s == '1', strict_upstream: false)
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  notice: pipeline.last_build_result[:notice].presence || I18n.t('data_import.messages.phase_rebuilt', phase:))
+    rescue DataFix::Pipeline::EditedPhaseError
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { warning: I18n.t('data_fix.rebuild.refused_edited', number: phase) })
+    rescue DataFix::Pipeline::LeaseBusyError
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { warning: I18n.t('data_fix.pipeline.lease_busy') })
+    rescue StandardError => e
+      Rails.logger.error("[DataFix] rebuild of phase #{phase} failed for #{@source_path}: #{e.class}: #{e.message}")
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { error: I18n.t('data_fix.rebuild.failed', number: phase, error: e.message.truncate(200)) })
+    end
+
+    REVIEW_PATHS = { 1 => :review_sessions_path, 2 => :review_teams_path, 3 => :review_swimmers_path,
+                     4 => :review_events_path, 5 => :review_results_path }.freeze
+    REVIEW_FLAGS = { 1 => :phase_v2, 2 => :phase2_v2, 3 => :phase3_v2, 4 => :phase4_v2, 5 => :phase5_v2 }.freeze
+    private_constant :REVIEW_PATHS, :REVIEW_FLAGS
 
     # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
     def update_phase1_meeting

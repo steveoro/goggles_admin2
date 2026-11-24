@@ -28,15 +28,14 @@ RSpec.describe 'Bootstrap 4 leftovers' do
              app/views/remote_writes app/views/dashboard app/components/dashboard app/components/inbox app/components/kpi
              app/views/health app/components/health app/views/outbox app/components/outbox
              app/views/db_sync app/components/drift app/views/automation
-             app/views/operations app/views/maintenance app/components/maintenance app/views/db_restore].freeze
+             app/views/operations app/views/maintenance app/components/maintenance app/views/db_restore
+             app/views/data_fix app/components/data_fix].freeze
 
   # Current number of tokens per folder (see #folder_key for the grouping):
   BASELINE = {
-    'app/views/data_fix' => 292,
     'app/views/pull' => 34,
-    'app/javascript/controllers' => 17,
+    'app/javascript/controllers' => 5,
     'app/views/file_list' => 12,
-    'app/components/data_fix' => 11,
     'app/views/pdf' => 11,
     'app/components' => 2
   }.freeze
@@ -46,8 +45,8 @@ RSpec.describe 'Bootstrap 4 leftovers' do
   #   `btn-text-left`, no `form-group` inside `form-group-lg`... (BS5 `me-*`/`ms-*`, `text-start/end` never match).
   # - spacing: m/p + l/r, optional breakpoint infix, size 0-5 or auto (margins only, but `pl-auto` doesn't exist anyway).
   # - data-*: only the BS4 names. `data-bs-*` and Stimulus `data-<name>-target` don't match because the name must
-  #   directly follow `data-`. The intentional app-level `data-target` of `.verify-team-btn` is counted on purpose:
-  #   it is part of the copy-never-move contract and goes away with phase 12.
+  #   directly follow `data-`. (Phase 12 replaced the app-level `data-target` of `.verify-team-btn` with the
+  #   verify-team Stimulus controller.)
   # - HAML/Ruby hash keys `toggle:`, `dismiss:`, `placement:` (as in `data: { toggle: 'tooltip' }`); `target:` is
   #   NOT scanned as a key because it's too common as a Stimulus/Rails option.
   CLASS_BOUNDARY_START = '(?<![\w-])'

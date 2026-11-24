@@ -1,14 +1,4 @@
 // = Data-Fix review pages (app/views/data_fix) =
-.result-detail-card {
-  line-height: 0.9;
-}
-
-.lap-swimmers {
-  font-size: 0.6rem;
-}
-.lap-timings {
-  font-size: 0.6rem;
-}
 
 // Phase 4 add-event row: align TomSelect, session select, and submit button on one baseline
 #frm-add-event .add-event-controls-row {
@@ -26,5 +16,64 @@
     height: calc(1.5em + 0.75rem + 2px);
     line-height: 1.5;
     white-space: nowrap;
+  }
+}
+
+// = Phase 12: native review cards, stepper and issue navigation =
+
+// Card headers toggling their panel (Bootstrap 5 collapse): the whole header is the toggle
+.card-header[role='button'][data-bs-toggle='collapse'] {
+  cursor: pointer;
+  user-select: none;
+}
+
+// Next/previous issue target: clear of the sticky top bar, outlined while current
+[data-issue] {
+  scroll-margin-top: calc(var(--ga-topbar-height, 3.5rem) + 0.75rem);
+}
+
+.issue-nav-current {
+  outline: 3px solid var(--bs-warning);
+  outline-offset: 2px;
+}
+
+.data-fix-issue-badge {
+  white-space: nowrap;
+}
+
+// Laps toggle of the result rows: the chevron turns with the collapse state
+.data-fix-laps-toggle {
+  color: var(--bs-body-color);
+  line-height: 1;
+
+  .fa {
+    transition: transform 0.15s ease-in-out;
+  }
+
+  &:not(.collapsed) .fa {
+    transform: rotate(90deg);
+  }
+}
+
+// Relay result rows with missing swimmer data
+.data-fix-relay-issue {
+  border-left: 4px solid var(--bs-danger) !important;
+}
+
+// Stepper: one line, scrolling sideways on narrow screens (the step menu is positioned 'fixed' by Popper, so the
+// scrolling list doesn't clip it); below md the inactive steps show only their number
+.data-fix-stepper {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+
+  .nav-link {
+    white-space: nowrap;
+  }
+
+  .data-fix-step-menu {
+    color: inherit;
+    line-height: 1;
   }
 }

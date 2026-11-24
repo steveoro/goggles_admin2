@@ -7,8 +7,8 @@
   - @hidden_params.each do |key, value|
     = hidden_field_tag key, value
 
-  .form-group.mr-2
-    %label.mr-1{ for: "#{@dom_id_prefix}-q" } #{@filter_label}
+  .d-flex.align-items-center.gap-1
+    %label.form-label.mb-0{ for: "#{@dom_id_prefix}-q" }= @filter_label
     .input-group.input-group-sm
       = text_field_tag :q,
                        @q,
@@ -17,46 +17,29 @@
                        placeholder: @q_placeholder,
                        data: { action: 'input->data-fix-filter-state#handleQInput',
                                'data-fix-filter-state-target': 'q' }
-      %button.btn.btn-outline-secondary{ type: 'submit', title: 'Search', 'aria-label': 'Search' }
+      %button.btn.btn-outline-secondary{ type: 'submit', title: t('data_fix.filter.search'), 'aria-label': 'Search' }
         %i.fa.fa-search
 
-  .form-group.mr-2
-    %label.mr-1{ for: "#{@dom_id_prefix}-per-page" } Per page
+  .d-flex.align-items-center.gap-1
+    %label.form-label.mb-0.text-nowrap{ for: "#{@dom_id_prefix}-per-page" }= t('data_fix.filter.per_page')
     = select_tag @per_page_param_name,
                  options_for_select(@per_page_options, @per_page_value),
                  id: "#{@dom_id_prefix}-per-page",
-                 class: 'form-control form-control-sm',
+                 class: 'form-select form-select-sm',
                  data: { action: 'change->data-fix-filter-state#handlePerPageChange',
                          'data-fix-filter-state-target': 'perPage' }
 
-  .form-group.mr-2
-    .btn-group.btn-group-toggle
-      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('none')) }
-        = radio_button_tag :filter_state,
-                           'none',
-                           checked_filter_state?('none'),
-                           id: "#{@dom_id_prefix}-none",
-                           data: { action: 'change->data-fix-filter-state#handleStateChange',
-                                   'data-fix-filter-state-target': 'state' }
-        Unfiltered
-
-      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('review')) }
-        = radio_button_tag :filter_state,
-                           'review',
-                           checked_filter_state?('review'),
-                           id: "#{@dom_id_prefix}-review",
-                           data: { action: 'change->data-fix-filter-state#handleStateChange',
-                                   'data-fix-filter-state-target': 'state' }
-        Review
-
-      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('diff_key')) }
-        = radio_button_tag :filter_state,
-                           'diff_key',
-                           checked_filter_state?('diff_key'),
-                           id: "#{@dom_id_prefix}-diff-key",
-                           data: { action: 'change->data-fix-filter-state#handleStateChange',
-                                   'data-fix-filter-state-target': 'state' }
-        Diff. Key
+  .btn-group.btn-group-sm{ role: 'group', aria: { label: @filter_label } }
+    - filter_states.each do |value, suffix, label|
+      = radio_button_tag :filter_state,
+                         value,
+                         checked_filter_state?(value),
+                         id: "#{@dom_id_prefix}-#{suffix}",
+                         class: 'btn-check',
+                         autocomplete: 'off',
+                         data: { action: 'change->data-fix-filter-state#handleStateChange',
+                                 'data-fix-filter-state-target': 'state' }
+      %label.btn.btn-outline-secondary{ for: "#{@dom_id_prefix}-#{suffix}" }= label
 
   - if @review_help_text.present?
-    %small.text-muted.ml-1= @review_help_text
+    %small.text-body-secondary= @review_help_text

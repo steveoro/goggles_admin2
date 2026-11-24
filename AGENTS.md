@@ -13,8 +13,8 @@
 
 ## Phase 1 DataFix pool/city rehydration
 
-- JS helpers `rehydrateSessionPoolAndCity` and `rehydrateSessionCityFromId` live in `app/javascript/data_fix_helpers.js`.
-- `_session_form_card.html.haml` wires the existing-pool dropdown and city hidden-id `onchange` to trigger refresh.
+- The rehydration lives in the `session-card` Stimulus controller (`app/javascript/controllers/session_card_controller.js`, phase 12; the former `data_fix_helpers.js` / `window.DataFix` are gone): `selectPool` (change on the "existing pools in this city" select) and `populateFromExisting` re-fetch the pool and its city through the API, `cityIdChanged` (change on the city hidden id) re-fetches the city; shared DOM helpers in `app/javascript/lib/form_fields.js`.
+- `_session_form_card.html.haml` wires them with `data-action` attributes (no inline handler is allowed under `app/views/data_fix`: `spec/data_fix_inline_handlers_spec.rb`).
 - `Phase1SessionUpdater` detects `swimming_pool.id` changes and overwrites pool/city fields from the DB pool/city, clearing city fields when the selected pool has no city.
 - Request specs for rehydrate, city-clear, and stale-city overwrite are in `spec/requests/data_fix_controller_phase1_spec.rb`.
 

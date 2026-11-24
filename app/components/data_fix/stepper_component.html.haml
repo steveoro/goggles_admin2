@@ -1,37 +1,67 @@
-%ul.nav.nav-tabs.data-fix-stepper{ data: { data_fix_stepper: summary&.stage } }
-  - steps.each do |step|
-    %li.nav-item
-      - if step[:number] == active_step
-        .nav-link.active.d-flex.align-items-center.gap-2{ aria: { current: 'page' } }
-          %span= label_for(step)
-          = verdict_badge(verdict_for(step))
-          = link_to(step_path(step, rescan: 1), class: 'btn btn-link btn-sm p-0 ms-1', title: t('data_fix.stepper.rescan'),
-                                                data: { turbo_confirm: rescan_confirm(step) }) do
-            %i.fa-solid.fa-rotate.text-warning{ 'aria-hidden': 'true' }
-            %span.visually-hidden= t('data_fix.stepper.rescan')
-      - else
-        = link_to(step_path(step), class: 'nav-link d-flex align-items-center gap-2') do
-          %span= label_for(step)
-          = verdict_badge(verdict_for(step))
+.data-fix-stepper-wrap.mb-3{ id: DOM_ID }
+  %nav{ aria: { label: t('data_fix.stepper.nav_label') } }
+    %ul.nav.nav-tabs.data-fix-stepper{ data: { data_fix_stepper: (being_prepared? ? 'preparing' : summary&.stage) } }
+      - STEPS.each do |step|
+        - verdict = verdict_for(step)
+        %li.nav-item
+          - if step[:number] == active_step
+            .nav-link.active.d-flex.align-items-center.gap-2{ aria: { current: 'step' } }
+              %span.data-fix-step-label= label_for(step)
+              = verdict_badge(verdict)
+              - if being_prepared?
+                %i.fa-solid.fa-spin.fa-rotate.text-info{ title: t('data_fix.stepper.being_prepared'), 'aria-hidden': 'true' }
+              .dropdown
+                %button.btn.btn-link.btn-sm.p-0.dropdown-toggle.data-fix-step-menu{ step_menu_attributes(step) }
+                  %span.visually-hidden= t('data_fix.stepper.actions')
+                %ul.dropdown-menu{ aria: { labelledby: "data-fix-step-menu-#{step[:number]}" } }
+                  %li
+                    = link_to(step_path(step, rescan: 1), class: 'dropdown-item', id: 'data-fix-step-rescan',
+                                                          data: { turbo_confirm: rescan_confirm(step) }) do
+                      %i.fa-solid.fa-rotate.text-warning.me-1{ 'aria-hidden': 'true' }
+                      = t('data_fix.stepper.rescan')
+          - else
+            = link_to(step_path(step), class: 'nav-link d-flex align-items-center gap-2', title: label_for(step)) do
+              %span.data-fix-step-label.d-none.d-md-inline= label_for(step)
+              %span.data-fix-step-short.d-md-none= step[:number]
+              = verdict_badge(verdict)
 
-- if source_changed?
-  .alert.alert-danger.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-0#data-fix-source-changed{ role: 'alert' }
-    %i.fa-solid.fa-triangle-exclamation{ 'aria-hidden': 'true' }
-    %span.flex-grow-1= t('data_fix.stepper.source_changed', phases: source_changed_phases)
-    = button_to(t('data_fix.stepper.discard_edits'), data_fix_discard_phase_edits_path,
-                method: :post, params: { file_path: }, class: 'btn btn-sm btn-danger', form_class: 'd-inline',
-                data: { turbo_confirm: t('data_fix.stepper.discard_edits_confirm', phases: source_changed_phases) })
-- elsif active_verdict&.stale?
-  .alert.alert-info.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-0#data-fix-step-stale{ role: 'status' }
-    %i.fa-solid.fa-clock-rotate-left{ 'aria-hidden': 'true' }
-    %span.flex-grow-1= stale_text(active_verdict)
-    = link_to(t('data_fix.stepper.rebuild'), step_path(active_step_entry, rescan: 1), class: 'btn btn-sm btn-outline-primary',
-                                                                                      data: { turbo_confirm: rescan_confirm(active_step_entry) })
-- elsif active_verdict&.adopted
-  .small.text-body-secondary.mt-1#data-fix-step-adopted
-    %i.fa-solid.fa-lock{ 'aria-hidden': 'true' }
-    = t('data_fix.stepper.adopted')
-- elsif active_verdict&.edited
-  .small.text-body-secondary.mt-1#data-fix-step-edited
-    %i.fa-solid.fa-pen{ 'aria-hidden': 'true' }
-    = t('data_fix.stepper.edited')
+  - if being_prepared?
+    .alert.alert-info.py-2.mt-2.mb-0#data-fix-being-prepared{ role: 'status' }
+      .d-flex.flex-wrap.align-items-center.gap-2
+        %i.fa-solid.fa-spin.fa-rotate{ 'aria-hidden': 'true' }
+        %span.flex-grow-1= t('pipeline_automation.review.being_prepared')
+        - if prepare_progress_text
+          %small.text-body-secondary#data-fix-being-prepared-progress= prepare_progress_text
+      - if prepare_percent
+        %progress.data-fix-prepare-progress.w-100.mt-2{ value: prepare_percent, max: 100, aria: { label: t('data_fix.stepper.being_prepared') } }
+  - if retry_needed
+    .alert.alert-danger.py-2.mt-2.mb-0#data-fix-retry-needed{ role: 'alert' }
+      %i.fa-solid.fa-triangle-exclamation.me-1{ 'aria-hidden': 'true' }
+      = t('data_import.data_fix.msg.warning_retry_needed')
+
+  - if source_changed?
+    .alert.alert-danger.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-0#data-fix-source-changed{ role: 'alert' }
+      %i.fa-solid.fa-triangle-exclamation{ 'aria-hidden': 'true' }
+      %span.flex-grow-1= t('data_fix.stepper.source_changed', phases: source_changed_phases)
+      = button_to(t('data_fix.stepper.discard_edits'), data_fix_discard_phase_edits_path,
+                  method: :post, params: { file_path: }, class: 'btn btn-sm btn-danger', form_class: 'd-inline',
+                  data: { turbo_confirm: t('data_fix.stepper.discard_edits_confirm', phases: source_changed_phases) })
+  - elsif active_verdict&.stale?
+    .alert.alert-info.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-0#data-fix-step-stale{ role: 'status' }
+      %i.fa-solid.fa-clock-rotate-left{ 'aria-hidden': 'true' }
+      %span.flex-grow-1= stale_text(active_verdict)
+      = button_to(data_fix_rebuild_phase_path, method: :post, params: rebuild_params, form_class: 'd-inline',
+                                               class: 'btn btn-sm btn-outline-primary', id: 'btn-data-fix-rebuild-phase',
+                                               data: { turbo_confirm: rebuild_confirm }.compact) do
+        %i.fa-solid.fa-rotate{ 'aria-hidden': 'true' }
+        = t('data_fix.stepper.rebuild')
+  - elsif active_verdict&.adopted
+    .small.text-body-secondary.mt-1#data-fix-step-adopted
+      %i.fa-solid.fa-lock{ 'aria-hidden': 'true' }
+      = t('data_fix.stepper.adopted')
+  - elsif active_verdict&.edited
+    .small.text-body-secondary.mt-1#data-fix-step-edited
+      %i.fa-solid.fa-pen{ 'aria-hidden': 'true' }
+      = t('data_fix.stepper.edited')
+      - if edits_summary
+        %span.ms-1 (#{edits_summary})

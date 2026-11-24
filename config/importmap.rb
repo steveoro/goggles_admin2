@@ -15,12 +15,11 @@ pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js'
 pin '@rails/actioncable', to: 'actioncable.esm.js'
 pin_all_from 'app/javascript/controllers', under: 'controllers'
 pin_all_from 'app/javascript/channels', under: 'channels'
+# Shared modules of the Stimulus controllers (e.g. lib/form_fields, the DOM helpers of the Data-Fix card controllers)
+pin_all_from 'app/javascript/lib', under: 'lib'
 
 # Bootstrap 4 → 5 compatibility shim (copies BS4 data-* attributes to their BS5 names; imported first)
 pin 'bs4_compat', to: 'bs4_compat.js'
-
-# DataFix helpers (exposed as window.DataFix)
-pin 'data_fix_helpers', to: 'data_fix_helpers.js'
 
 # Bootstrap 5.3 (dist/js/bootstrap.esm.js; the download URL is in the vendored file header).
 pin 'bootstrap' # @5.3.9

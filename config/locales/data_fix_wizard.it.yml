@@ -1,0 +1,165 @@
+it:
+  data_fix:
+    # Fase 12: le pagine di revisione Data-Fix (cornice del wizard, card, navigazione tra i problemi, salvataggi sul posto, "Verifica tutti")
+    wizard:
+      title: 'Data-Fix • Step %{number}: %{name}'
+      back_to_files: Elenco file
+      proceed: 'Passo %{number}: %{name}'
+      page_info: 'Pagina %{page} / %{pages} • righe %{range} / %{count}'
+      metadata: 'Metadati fase %{number}'
+      issues_only: Solo da rivedere
+      show_all: 'Mostra tutto (%{count} senza problemi nascosti)'
+      card_issue: Da rivedere
+      badges:
+        new: NUOVO
+        id: 'ID: %{id}'
+        matched: Abbinato
+        unmatched: Nuovo/non abbinato
+        confirmed: Salvato
+        missing_data: DATI MANCANTI
+      sessions:
+        header: Sessioni (sessioni del meeting, piscine e città)
+        total: 'Sessioni totali: %{count}'
+        none: Nessuna sessione. Usa "Aggiungi sessione" qui sopra.
+        title: 'Sessione %{order}'
+        copy_hidden: '%{count} altre sessioni nascoste da "Solo da rivedere": non si possono copiare.'
+        copy_show_all: Mostra tutte
+        copied: 'Copiato.'
+        copy_missing: 'Niente da copiare: scegli una sessione visibile in questa pagina.'
+      teams:
+        none: Nessuna squadra trovata. Cambia i filtri o ricostruisci il file della fase 2.
+        review_help: '(da rivedere: non abbinate + abbinamenti gialli/rossi + suggerimenti della fase 3)'
+        search_placeholder: Cerca squadre...
+        quick_match: Selezione rapida (abbinamenti fuzzy)
+        quick_match_hint: Scegli un abbinamento dall'elenco per compilare i campi della squadra tramite l'autocompletamento.
+        verify_title: Verifica la squadra con i cartellini dei nuotatori della fase 3
+        verify_checking: Controllo dei cartellini in corso...
+        verify_failed: Verifica non riuscita
+        verify_empty: Nessun nuotatore abbinato a questa squadra nella fase 3.
+      swimmers:
+        none: Nessun nuotatore trovato. Cambia i filtri o ricostruisci il file della fase 3.
+        review_help: '(da rivedere: non abbinati + abbinamenti gialli/rossi + cartellini doppi + assegnazioni con squadra diversa)'
+        search_placeholder: Cerca nome...
+        quick_match: Selezione rapida (abbinamenti fuzzy)
+        quick_match_hint: Scegli un abbinamento dall'elenco per compilare i campi del nuotatore tramite l'autocompletamento.
+      events:
+        add_title: Aggiungi un nuovo evento
+        none: Nessun evento trovato. Ricostruisci il file della fase 4.
+        session: 'Sessione %{order}'
+        session_order: 'Ordine: %{order}'
+      results:
+        populate_hint: Nessun risultato caricato dal JSON della fase 5.
+        issues_found: '%{count} programmi con problemi'
+        issues_help: (genere del programma mancante, collegamenti obbligatori non risolti esclusi i programmi NUOVI del meeting, o incoerenze di nuotatore/squadra/cartellino/affiliazione)
+        all_valid: Tutti i risultati sono validi!
+        all_valid_hint: Nessun collegamento obbligatorio irrisolto.
+        new_results: '%{count} nuovi risultati verranno creati al commit'
+        unmatched_parents: '(%{count} righe principali non abbinate)'
+        filtered_issues: 'Filtro: problemi'
+        filtered_new: 'Filtro: solo nuovi'
+        filtered_unmatched: 'Filtro: solo righe (+)'
+        programs_info: 'Pagina %{page} / %{pages} • programmi %{shown} / %{count}'
+        individual_total: 'Programmi individuali: %{count} (%{results} risultati)'
+        relay_title: Risultati delle staffette
+        relay_total: 'Programmi staffetta: %{count} (%{results} risultati)'
+        deletion_candidates: '%{count} candidati alla cancellazione'
+      buttons:
+        save_meeting: Salva il meeting
+        save_session: Salva la sessione
+        save_swimmer: Salva il nuotatore
+        save_event: Salva l'evento
+        add_team: Aggiungi squadra
+        add_swimmer: Aggiungi nuotatore
+        add_event: Aggiungi evento
+        delete: Elimina
+        verify_team: Verifica con i nuotatori
+        collapse_all: Comprimi tutti i risultati
+        expand_all: Espandi tutti i risultati
+        populate: Popola le tabelle del DB
+        show_all_programs: Mostra tutti i programmi
+        show_only_issues: Mostra solo i problemi
+        show_all: Mostra tutto
+        show_new_only: Mostra solo i nuovi
+        show_unmatched_only: Mostra solo le righe (+)
+        apply: Applica
+        saving: Salvataggio…
+      confirm:
+        save_meeting: Salvare i dati del meeting?
+        save_session: Salvare i dati della sessione?
+        delete_session: Eliminare la sessione? Verranno cancellati anche tutti i dati a valle (eventi, risultati).
+        rescan_sessions: Rileggere le sessioni dal meeting selezionato? Sostituiranno le sessioni attuali.
+        delete_team: "Eliminare la squadra '%{key}'?"
+        add_team: Aggiungere una nuova squadra vuota?
+        delete_swimmer: 'Eliminare il nuotatore %{name}?'
+        add_swimmer: Aggiungere un nuovo nuotatore vuoto?
+        delete_event: "Eliminare l'evento '%{key}'?"
+        add_event: Aggiungere un nuovo evento?
+    issue_nav:
+      label: Navigazione tra i problemi
+      previous: Precedente
+      next: Successivo
+      previous_hint: Problema precedente (k)
+      next_hint: Problema successivo (j)
+      position: 'Problema %{current} / %{total}'
+      total: '%{total} da rivedere'
+      none: Niente da rivedere qui.
+      keys: problema successivo / precedente
+    filter:
+      label: Filtro
+      search: Cerca
+      search_placeholder: Cerca...
+      per_page: Per pagina
+      states:
+        none: Nessun filtro
+        review: Da rivedere
+        diff_key: Chiave diversa
+    stepper:
+      nav_label: Passi del Data-Fix
+      actions: Azioni del passo
+      being_prepared: In preparazione in background
+      prepare_phase: 'Fase %{number}'
+      rescan_confirm_edits: 'La fase %{number} contiene tue modifiche (%{edits}): ricostruirla dal sorgente le scarta. Continuare?'
+      edit_actions:
+        update_phase1_meeting: meeting salvato
+        update_phase1_session: sessione salvata
+        add_session: sessione aggiunta
+        delete_session: sessione eliminata
+        rescan_phase1_sessions: sessioni rilette
+        update_phase2_team: squadra salvata
+        add_team: squadra aggiunta
+        delete_team: squadra eliminata
+        update_phase3_swimmer: nuotatore salvato
+        add_swimmer: nuotatore aggiunto
+        delete_swimmer: nuotatore eliminato
+        merge_phase3_swimmers: nuotatori uniti
+        update_phase4_event: evento salvato
+        add_event: evento aggiunto
+        delete_event: evento eliminato
+        toggle_individual_result_overwrite: sovrascrittura attivata/disattivata
+        update_individual_result_overwrite_candidate: candidato alla sovrascrittura cambiato
+        update_individual_result_merge_candidate: candidato all'unione cambiato
+        bulk_update_individual_result_overwrite: selezione della sovrascrittura cambiata
+        confirm_result_duplicate: duplicato corretto
+    rebuild:
+      refused_edited: 'La fase %{number} contiene tue modifiche: la ricostruzione richiede una conferma (le scarta).'
+      invalid_phase: Fase sconosciuta.
+      failed: 'La ricostruzione della fase %{number} non è riuscita: %{error}'
+    flash:
+      team_cascaded: 'Squadra aggiornata. team_id propagato a %{count} record a valle.'
+      swimmer_cascaded: 'Nuotatore aggiornato. Collegamenti propagati a %{count} record a valle.'
+      team_hints_changed: 'Il salvataggio ha aggiornato i suggerimenti della fase 3 di %{count} altre squadre (%{teams}): ricarica la pagina per vederli.'
+      swimmer_added: Nuotatore aggiunto
+      cross_phase_review: 'Revisione tra fasi: %{summary}.'
+      conflicts_detected: '%{count} conflitti rilevati'
+      missing_links_detected: '%{count} collegamenti mancanti rilevati'
+      hints_added: '%{count} candidati suggeriti aggiunti'
+      duplicate_badges: '%{count} nuotatori hanno cartellini doppi nelle stagioni: %{seasons}'
+      populated: 'DB popolato: %{results} risultati, %{laps} vasche, %{relay_results} risultati staffetta, %{relay_swimmers} frazionisti, %{relay_laps} vasche staffetta, %{programs} programmi abbinati'
+    verify_all:
+      button: Verifica tutti
+      busy: Verifica in corso…
+      title: Abbina ogni nuovo risultato che ha esattamente un risultato identico nel DB (stesso evento, categoria, squadra e tempo). Non fa mai il commit.
+      confirm: Abbinare i nuovi risultati che hanno esattamente un risultato esistente identico? I possibili duplicati con tempo diverso restano da rivedere.
+      done: 'Verifica tutti: %{fixed} abbinati a un risultato esistente, %{partial} possibili duplicati da rivedere, %{none} senza corrispondenza (%{checked} controllati).'
+      failed: 'Verifica tutti interrotta: %{error}'
+      progress: Verifica dei risultati in staging

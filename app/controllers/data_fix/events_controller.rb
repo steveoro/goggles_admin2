@@ -93,6 +93,11 @@ module DataFix
           )
         end
       end
+
+      # (phase 12) events needing the operator (verdict issues naming them), issue navigation, "needs you only"
+      @event_issue_codes = DataFix::IssueMarkers.phase4(events: @all_events, verdict: pipeline_summary&.[](4))
+      @issues_only = issues_only_switch(@event_issue_codes.any?(&:present?))
+      @issue_nav = DataFix::IssueNav.single_page(@event_issue_codes.count(&:present?))
     end
 
     # Update a single Phase 4 event entry by session and event index

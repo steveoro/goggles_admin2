@@ -54,11 +54,14 @@ RSpec.describe DataFix::TurboFilterStateComponent, type: :component do
     expect(form.attr('data-data-fix-filter-state-q-min-length-value').value).to eq('3')
   end
 
-  it 'renders Bootstrap button group for filter states' do
-    expect(rendered_node.css('.btn-group.btn-group-toggle')).to be_present
-    expect(rendered_node.css('.btn-group.btn-group-toggle .btn.btn-outline-secondary').count).to eq(3)
-    # (the BS4 button plugin is gone: the class is just a CSS hook)
-    expect(rendered_node.css('[data-toggle="buttons"]')).to be_empty
+  it 'renders a native Bootstrap 5 toggle group (.btn-check radios + labels) for filter states' do
+    expect(rendered_node.css('.btn-group input.btn-check[type="radio"]').count).to eq(3)
+    expect(rendered_node.css('.btn-group label.btn.btn-outline-secondary').count).to eq(3)
+    rendered_node.css('.btn-group input.btn-check').each do |radio|
+      expect(rendered_node.css("label.btn[for='#{radio['id']}']")).to be_present
+    end
+    # (no BS4 button plugin markup left)
+    expect(rendered_node.css('.btn-group-toggle, [data-toggle="buttons"]')).to be_empty
   end
 
   it 'renders the 3-state radio group with current state selected' do

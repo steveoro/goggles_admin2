@@ -66,6 +66,8 @@ module DataFix
         filter_data = DataFix::IssueDetector.load_filter_data(source_path, staging)
         @programs_with_issues = DataFix::IssueDetector.detect_programs_with_issues(all_programs, filter_data, staging)
         @issue_count = @programs_with_issues.size
+        # (phase 12) issue markers of the program cards: next/previous issue navigation
+        @issue_program_keys = @programs_with_issues.to_set { |program| program_key_for(program) }
 
         # Server-side filtering: only show programs with issues if filter is active.
         # An explicit filter_issues param always wins; when absent, the filter
@@ -119,6 +121,7 @@ module DataFix
         # Apply pagination to prevent UI slowdown
         @current_page = [params[:page].to_i, 1].max
         @phase5_programs, @total_pages = Phase5::Paginator.paginate(all_programs, @current_page, staging)
+        @issue_nav = results_issue_nav(all_programs, staging)
       else
         @phase5_meta = {}
         @phase5_programs = []
@@ -133,15 +136,17 @@ module DataFix
         broadcast_progress('Populating DB from phase 5 data...', 0, 100)
         pipeline.build_phase!(5, force: true, strict_upstream: false)
         @populate_stats = pipeline.last_build_result[:stats]
-        flash.now[:info] =
-          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
-          "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
-          "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
+        flash.now[:info] = I18n.t('data_fix.flash.populated', results: @populate_stats[:mir_created], laps: @populate_stats[:laps_created],
+                                                              relay_results: @populate_stats[:relay_results_created],
+                                                              relay_swimmers: @populate_stats[:relay_swimmers_created],
+                                                              relay_laps: @populate_stats[:relay_laps_created],
+                                                              programs: @populate_stats[:programs_matched])
 
         # populate! rewrote the staging tables: reload before rendering
         staging = DataFix::StagingRows.load_staging_rows(source_path)
       end
 
+      @issue_program_keys ||= Set.new
       # Query data_import tables for display (loaded once, reused per program bucket)
       staging ||= DataFix::StagingRows.load_staging_rows(source_path)
       @mirs_by_program = staging[:mirs_by_program]
@@ -422,13 +427,22 @@ module DataFix
       render json: result
     end
 
-    # POST data_fix/verify_all_results?file_path=: matches every unmatched staged individual result having exactly
-    # one perfect duplicate in the DB (DataFix::ResultVerifier, also run after each Phase 5 populate).
-    # (The "Verify all" button itself ships with the Step 5 redesign.)
+    # POST data_fix/verify_all_results?file_path= ("Verify all" of Step 5, phase 12): matches every unmatched staged
+    # individual result having exactly one perfect duplicate in the DB (DataFix::ResultVerifier, also run after each
+    # Phase 5 populate; never touches a merge target, never commits), then reopens Step 5 with its filters and the
+    # counts (fixed, partial = possible duplicates left to review, none). The program cards are rendered again.
     def verify_all_results
+      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 0, 1)
       outcome = DataFix::ResultVerifier.new(source_path: @source_path, season_id: pipeline.season&.id).verify_all!
-      redirect_to(review_results_path(file_path: @source_path, phase5_v2: 1),
-                  notice: I18n.t('data_fix.pipeline.verify_all_done', checked: outcome['checked'].to_i, verified: outcome['verified'].to_i))
+      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 1, 1)
+      kept = params.slice(:filter_issues, :filter_new, :filter_unmatched, :page).permit!.to_h
+      back = review_results_path(kept.merge(file_path: @source_path, phase5_v2: 1))
+      return redirect_to(back, flash: { error: I18n.t('data_fix.verify_all.failed', error: outcome['error']) }) if outcome['error'].present?
+
+      checked = outcome['checked'].to_i
+      fixed = outcome['verified'].to_i
+      partial = Array(outcome['partial']).size
+      redirect_to(back, notice: I18n.t('data_fix.verify_all.done', checked:, fixed:, partial:, none: [checked - fixed - partial, 0].max))
     end
 
     # Fix a result duplicate: set the existing DB row's ID on the DataImport* record.
@@ -530,6 +544,25 @@ module DataFix
     end
 
     private
+
+    def program_key_for(program)
+      "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
+    end
+
+    # Next/previous issue across the Phase 5 pages (Phase5::Paginator splits them by row count): the issue programs
+    # per page, then the nearest page holding one, opened on its first / last issue card.
+    def results_issue_nav(all_programs, staging)
+      counts = if @total_pages.to_i > 1
+                 (1..@total_pages).map do |page|
+                   Phase5::Paginator.paginate(all_programs, page, staging).first.count { |program| @issue_program_keys.include?(program_key_for(program)) }
+                 end
+               else
+                 [@phase5_programs.count { |program| @issue_program_keys.include?(program_key_for(program)) }]
+               end
+      DataFix::IssueNav.for_pages(counts, page: @current_page) do |page, edge|
+        review_results_path(request.query_parameters.merge(file_path: @file_path, phase5_v2: 1, page:, anchor: "issue-#{edge}"))
+      end
+    end
 
     # Source path of a Phase 5 file (for the edit marker of the JSON overwrite endpoints).
     def edited_source_for(phase5_path)

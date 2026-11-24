@@ -12,6 +12,8 @@
   # - relay_swimmers_by_parent_key: Hash of DataImportMeetingRelaySwimmer arrays
   # - relay_laps_by_parent_key: Hash of DataImportRelayLap arrays
   # - card_index: Integer, for unique IDs
+  # - issue: Boolean, the program is in the issue list (DataFix::IssueDetector): next/previous issue marker
+  issue = local_assigns[:issue] == true
   parts = program_key.split('-')
   session_order = parts[0]
   event_code = parts[1]
@@ -52,35 +54,39 @@
                  end
   border_width = 'border-2'
 
-.card.mb-2{ class: "#{border_color} #{border_width}", id: "relay-program-card-#{card_index}", data: { has_issues: has_issues } }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: "relay-program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#relay-program-panel-#{card_index}" } }
-    .d-flex.align-items-center
-      %span.mr-2
+.card.mb-2.data-fix-card{ class: "#{border_color} #{border_width}", id: "relay-program-card-#{card_index}",
+                          data: { has_issues: has_issues, issue: ('result_issues' if issue) } }
+  .card-header.d-flex.justify-content-between.align-items-center.gap-2{ id: "relay-program-header-#{card_index}", role: 'button',
+                                                                        aria: { expanded: has_issues.to_s, controls: "relay-program-panel-#{card_index}" },
+                                                                        data: { bs_toggle: 'collapse', bs_target: "#relay-program-panel-#{card_index}" } }
+    .d-flex.flex-wrap.align-items-center.gap-2
+      %span.me-2
         - if has_match
           %i.fa.fa-check-circle.text-success{ title: 'Matched MeetingProgram' }
         - else
           %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
-      %i.fa.fa-users.mr-2
+      %i.fa.fa-users.me-2
       %strong
         = "#{event_code} • #{category} • #{gender_display}"
       &nbsp;
-      %small.ml-2.text-muted
+      %small.ms-2.text-body-secondary
         Session #{session_order}
       - if has_match
-        %small.ml-2.badge.badge-success
+        %small.ms-2.badge.text-bg-success
           ID: #{program_id}
       - else
-        %small.ml-2.badge.badge-primary
+        %small.ms-2.badge.text-bg-primary
           NEW
     .d-flex.align-items-center
-      %span.badge.badge-info
+      %span.badge.text-bg-info
         = "#{sorted_results.size} relay results"
       - if has_issues
-        %span.badge.badge-danger.ml-2
+        %span.badge.text-bg-danger.ms-2
           %i.fa.fa-exclamation-triangle
           = "#{total_issue_count} missing data"
 
-  .collapse{ class: (has_issues ? 'show' : ''), id: "relay-program-panel-#{card_index}", 'aria-labelledby' => "relay-program-header-#{card_index}" }
+  .collapse{ class: ('show' if has_issues), id: "relay-program-panel-#{card_index}", 'aria-labelledby': "relay-program-header-#{card_index}",
+             data: { issue_panel: true } }
     .card-body.p-0
       - sorted_results.each_with_index do |mrr, idx|
         :ruby
@@ -93,7 +99,7 @@
           relay_laps = relay_laps_by_parent_key[mrr.import_key] || []
           has_laps = relay_laps.any?
           result_id = "relay-result-#{card_index}-#{idx}"
-          bg_color = is_matched ? 'bg-light' : 'bg-warning-subtle'
+          bg_color = is_matched ? 'bg-body-tertiary' : 'bg-warning-subtle'
           
           # Check if this result has missing swimmer data issues
           result_has_issues = relay_swimmers.any? do |rs|
@@ -106,66 +112,67 @@
             end
           end
         
-        .border-bottom{ class: bg_color, style: (result_has_issues ? 'border-left: 4px solid #dc3545 !important;' : '') }
+        .border-bottom{ class: [bg_color, ('data-fix-relay-issue' if result_has_issues)] }
           -# Main result row
           .p-3{ id: "#{result_id}-mrr", class: is_existing_result ? '' : 'bg-light-yellow' }
             .d-flex.justify-content-between.align-items-start
               .d-flex.align-items-center
                 - if mrr.disqualified?
-                  %span.mr-3.text-muted{ style: 'font-size: 1.2em;' } -
+                  %span.me-3.text-body-secondary{ style: 'font-size: 1.2em;' } -
                 - else
-                  %strong.mr-3{ style: 'font-size: 1.2em;' }
+                  %strong.me-3{ style: 'font-size: 1.2em;' }
                     #{mrr.rank}º
                 .d-flex.flex-column
                   %div
                     - if team
                       %strong= team.name
-                      %small.ml-2.badge.badge-success
+                      %small.ms-2.badge.text-bg-success
                         ID: #{team.id}
                     - elsif team_data
                       %strong= team_data['name']
                       - if team_data['team_id']
-                        %small.ml-2.text-muted= "(#{team_data['team_id']})"
-                      %small.ml-2.badge.badge-warning
+                        %small.ms-2.text-body-secondary= "(#{team_data['team_id']})"
+                      %small.ms-2.badge.text-bg-warning
                         Unmatched
                     - else
-                      %em.text-muted No team
+                      %em.text-body-secondary No team
                     - if is_existing_result
-                      %small.ml-2.badge.badge-success{ title: "Existing relay result (ID: #{mrr.meeting_relay_result_id})" }
+                      %small.ms-2.badge.text-bg-success{ title: "Existing relay result (ID: #{mrr.meeting_relay_result_id})" }
                         %i.fa.fa-check-circle
                         Existing
                     - elsif !mrr.disqualified?
-                      %small.ml-2.badge.badge-primary{ title: 'New relay result (will be created on commit)' }
+                      %small.ms-2.badge.text-bg-primary{ title: 'New relay result (will be created on commit)' }
                         NEW
                     -# Expand button for swimmers/laps
                     - if relay_swimmers.any? || relay_laps.any?
-                      %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', data: { toggle: 'collapse', target: "##{result_id}-details" } }
-                        %i.fa.fa-chevron-down.mr-1
+                      %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', aria: { expanded: result_has_issues.to_s, controls: "#{result_id}-details" },
+                                                                     data: { bs_toggle: 'collapse', bs_target: "##{result_id}-details" } }
+                        %i.fa.fa-chevron-down.me-1
                         #{relay_swimmers.size} s, #{relay_laps.size} laps
                   - if team&.city
-                    %small.text-muted= team.city.name
+                    %small.text-body-secondary= team.city.name
 
-              .text-right
+              .text-end
                 - if mrr.disqualified?
-                  %span.badge.badge-danger.ml-2{ style: 'font-size: 1.2em;' } DSQ
+                  %span.badge.text-bg-danger.ms-2{ style: 'font-size: 1.2em;' } DSQ
                 - else
                   %h5.mb-0
                     = mrr.to_timing.to_s
 
           -# Collapsible details section (auto-expand if issues detected)
-          .collapse{ class: (result_has_issues ? 'show' : ''), id: "#{result_id}-details" }
-            .p-3.bg-white
+          .collapse{ class: ('show' if result_has_issues), id: "#{result_id}-details" }
+            .p-3.bg-body
               -# Unified Relay Swimmers Table (merged with lap data)
               - if relay_swimmers.any? || relay_laps.any?
                 .table-responsive
                   %table.table.table-sm.table-bordered
-                    %thead.table-light
+                    %thead.table-body-tertiary
                       %tr
                         %th.text-center{ style: 'width: 60px;' } Order
                         %th.text-center{ style: 'width: 80px;' } Distance
                         %th Swimmer
-                        %th.text-right{ style: 'width: 90px;' } From Start
-                        %th.text-right{ style: 'width: 80px;' } Split
+                        %th.text-end{ style: 'width: 90px;' } From Start
+                        %th.text-end{ style: 'width: 80px;' } Split
                         %th.text-center{ style: 'width: 100px;' } Status
                     %tbody
                       - relay_laps.sort_by(&:length_in_meters).each_with_index do |lap, idx|
@@ -195,25 +202,25 @@
                             - if swimmer
                               = swimmer.complete_name
                               - if swimmer.id
-                                %small.ml-2.badge.badge-success
+                                %small.ms-2.badge.text-bg-success
                                   ID: #{swimmer.id}
                             - elsif mrs&.swimmer_id
-                              %em.text-muted Swimmer ##{mrs.swimmer_id}
+                              %em.text-body-secondary Swimmer ##{mrs.swimmer_id}
                             - elsif swimmer_name_from_source.present?
                               = swimmer_name_from_source
-                              %small.ml-2.badge.badge-warning Unmatched
+                              %small.ms-2.badge.text-bg-warning Unmatched
                             - elsif mrs&.swimmer_key.present?
                               -# Has swimmer_key but no swimmer_id - show key and explain
                               %span.text-secondary= mrs.swimmer_key
-                              %small.ml-2.badge.badge-warning{ title: 'Swimmer key present but not matched to DB' } Unmatched
+                              %small.ms-2.badge.text-bg-warning{ title: 'Swimmer key present but not matched to DB' } Unmatched
                             - else
                               -# Truly missing - no swimmer info at all
-                              %span.text-muted
+                              %span.text-body-secondary
                                 = lap&.data_import_meeting_relay_swimmer&.try(:swimmer_key) || 'N/A'
-                              %small.ml-2.badge.badge-danger{ title: 'No swimmer key found in source data' } NO SWIMMER KEY
-                          %td.text-right
+                              %small.ms-2.badge.text-bg-danger{ title: 'No swimmer key found in source data' } NO SWIMMER KEY
+                          %td.text-end
                             = from_start_timing.to_s
-                          %td.text-right
+                          %td.text-end
                             = delta_timing.to_s
                           %td.text-center
                             - if mrs_match_id
@@ -223,4 +230,4 @@
                               %small.text-secondary
                                 ID: #{lap_match_id}
                             - else
-                              %small.badge.badge-primary NEW
+                              %small.badge.text-bg-primary NEW

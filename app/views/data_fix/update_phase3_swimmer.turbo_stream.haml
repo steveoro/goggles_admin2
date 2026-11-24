@@ -1,0 +1,11 @@
+-#
+  A Step 3 swimmer saved in place (phase 12): replaces its card (key-based frame, same position N), the stepper
+  (recomputed verdicts) and the toasts.
+= turbo_stream.replace(data_fix_card_frame_id('swimmer', @swimmer_key)) do
+  = render(partial: 'data_fix/swimmer_card_frame', locals: { swimmer_hash: @swimmer_hash, swimmer_index: @card_index,
+                                                             swimmer_team_key: @swimmer_team_key,
+                                                             file_path: @file_path, api_url: @api_url })
+= turbo_stream.replace(DataFix::StepperComponent::DOM_ID) do
+  = render(data_fix_stepper(3))
+= turbo_stream.update('flash-messages-container') do
+  = render(partial: 'goggles/flash_messages')

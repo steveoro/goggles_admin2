@@ -124,6 +124,8 @@ Rails.application.routes.draw do
   # (phase 09) pipeline runner: discard edits after a source change, refresh matches, verify all, commit summary + job,
   # persistent commit report (with its polled status frame and its lazy health-runs frame)
   post 'data_fix/discard_phase_edits', to: 'data_fix/sessions#discard_phase_edits', as: 'data_fix_discard_phase_edits'
+  # (phase 12) "Rebuild" of the stale banner: one phase, refused for an edited phase without force
+  post 'data_fix/rebuild_phase', to: 'data_fix/sessions#rebuild_phase', as: 'data_fix_rebuild_phase'
   post 'data_fix/refresh_matches', to: 'data_fix/commits#refresh_matches', as: 'data_fix_refresh_matches'
   post 'data_fix/verify_all_results', to: 'data_fix/results#verify_all_results', as: 'data_fix_verify_all_results'
   get 'data_fix/commit_summary', to: 'data_fix/commits#summary', as: 'data_fix_commit_summary'
