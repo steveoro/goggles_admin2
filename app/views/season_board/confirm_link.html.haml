@@ -1,0 +1,18 @@
+-#
+  DB sync warning before a Season board calendar link (SeasonBoardController#link, Drift::Gate scope :board_write):
+  the verdict and its reasons, then the same link posted again with the operator's tick (drift_ack=1).
+  Locals (ivars): @gate, @row, @calendar_id.
+= render(Shell::PageHeaderComponent.new(title: t('db_sync.gate.board_title'), subtitle: "#{@row.name} (FIN #{@row.fin_event_id})"))
+.card.mb-3#season-board-confirm-link
+  .card-body
+    %p= t('db_sync.gate.board_intro')
+    = render(Drift::IndicatorComponent.new(fingerprint: @gate.verdict, details: true))
+    = form_with(url: season_board_link_path, method: :post, class: 'mt-3', id: 'frm-season-board-confirm-link', data: { turbo: false }) do
+      = hidden_field_tag(:fin_event_id, @row.fin_event_id, id: nil)
+      = hidden_field_tag(:calendar_id, @calendar_id, id: nil)
+      .form-check.mb-3
+        = check_box_tag(:drift_ack, '1', false, class: 'form-check-input', required: true)
+        = label_tag(:drift_ack, t('db_sync.gate.board_ack'), class: 'form-check-label')
+      .d-flex.flex-wrap.gap-2
+        = button_tag(t('db_sync.gate.board_submit'), type: 'submit', class: 'btn btn-warning', id: 'btn-season-board-confirm-link')
+        = link_to(t('db_sync.gate.cancel'), season_board_path, class: 'btn btn-outline-secondary')

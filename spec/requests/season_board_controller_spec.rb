@@ -98,6 +98,10 @@ RSpec.describe SeasonBoardController do
         expect(page.at_css('[data-controller="season-board"]')).to be_present
       end
 
+      it 'highlights the Season board in the sidebar' do
+        expect(page.css('.app-sidebar a.active').pluck('href')).to eq([season_board_path])
+      end
+
       it 'shows the header, the warnings and the activity strip' do
         expect(response.body).to include(season.description, 'Something to look at', 'Background activity')
         expect(response.body).to include('FIN calendar last checked')
@@ -115,10 +119,10 @@ RSpec.describe SeasonBoardController do
           )
         end
 
-        it 'shows their count in the header with a link to the Push page' do
+        it 'shows their count in the header with a link to the Outbox, focused on the first one' do
           notice = page.at_css('#season-board-sql-pending')
           expect(notice.text).to include('2 SQL scripts awaiting push')
-          expect(notice.at_css('a')['href']).to eq(push_index_path)
+          expect(notice.at_css('a')['href']).to eq(outbox_path(focus: '0001-calendar_link-1-2.sql'))
         end
       end
 
@@ -128,7 +132,7 @@ RSpec.describe SeasonBoardController do
         expect(page.at_css('#season-board-row-2 form[action="/season_board/extract"]')).to be_present
         expect(page.at_css('#season-board-row-3 a.btn')['href']).to eq(review_sessions_path(file_path: '/d/r.json', phase_v2: 1))
         expect(page.at_css('#season-board-row-4 a.btn')['href']).to eq(review_swimmers_path(file_path: '/d/p.json', phase3_v2: 1))
-        expect(page.at_css('#season-board-row-5 a.btn')['href']).to eq(push_index_path)
+        expect(page.at_css('#season-board-row-5 a.btn')['href']).to eq(outbox_path(focus: 's.sql'))
         expect(page.at_css('#season-board-row-6 form[action="/season_board/link"] option[value="321"]')).to be_present
         expect(page.at_css('#season-board-row-9 form, #season-board-row-9 a.btn')).to be_nil
       end
@@ -217,6 +221,68 @@ RSpec.describe SeasonBoardController do
       end
     end
 
+    describe 'GET /season_board?frame=1 (live refresh)' do
+      it 'renders only the rows frame, without the layout, keeping the filters' do
+        get(season_board_path(frame: 1, state: 'manifest_pending', locale: 'en'))
+        expect(response).to have_http_status(:success)
+        page = response.parsed_body
+        expect(page.at_css('turbo-frame#season-board-rows #season-board-table')).to be_present
+        expect(page.at_css('.app-sidebar, #season-board-sql-pending, [data-controller="season-board"]')).to be_nil
+        expect(response.body).not_to include('<html', 'FIN calendar last checked')
+        expect(response.body).to include('To extract')
+        expect(response.body).not_to include('To crawl')
+      end
+    end
+
+    describe 'board summary (SeasonBoard::Snapshot)' do
+      let(:stored_rows) do
+        [build_row(fin_event_id: '1', name: 'To crawl', state: :link_not_crawled, next_action: action(:crawl, '1', url: 'u1'),
+                   url: 'https://stored.example/1')]
+      end
+
+      def store_summary(rows_to_store)
+        stored = SeasonBoard::Builder::Result.new(season:, rows: rows_to_store, orphans: [], unmatched_sources: [],
+                                                  snapshot_checked_at: nil, warnings: [], active_activities: [])
+        SeasonBoard::Snapshot.store!(season, stored)
+      end
+
+      it 'is stored by the board GET' do
+        get(season_board_path, params: { locale: 'en' })
+        summary = SeasonBoard::Snapshot.read(season)
+        expect(summary).to be_stored
+        expect(summary.rows.map(&:fin_event_id)).to eq(rows.map(&:fin_event_id))
+        expect(summary.state_counts).to include(link_not_crawled: 1, manifest_pending: 1)
+      end
+
+      it 'is used by a POST with no board build when fresh (URL from the stored row)' do
+        store_summary(stored_rows)
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1', url: 'https://evil.example/' })
+        expect(SeasonBoard::Builder).not_to have_received(:new)
+        expect(response).to redirect_to(season_board_path)
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!)
+          .with(season_id: season.id, fin_event_id: '1', url: 'https://stored.example/1', origin: :manual)
+      end
+
+      it 'is rebuilt by a POST when its fingerprint is stale' do
+        store_summary(stored_rows)
+        record = Ops::Snapshot.read(SeasonBoard::Snapshot.key_for(season))
+        record.update!(payload: record.payload.merge('fingerprint' => 'stale'))
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(SeasonBoard::Builder).to have_received(:new).once
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(hash_including(url: 'https://fin.example/1'))
+      end
+
+      it 'is built live by a POST without the ops DB' do
+        allow(Ops).to receive(:available?).and_return(false)
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(SeasonBoard::Builder).to have_received(:new).once
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(hash_including(url: 'https://fin.example/1'))
+      end
+    end
+
     describe 'POST /season_board/crawl' do
       it 'queues the crawl with the URL taken from the board row' do
         allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
@@ -255,13 +321,13 @@ RSpec.describe SeasonBoardController do
         post(season_board_extract_path, params: { fin_event_id: '2' })
         expect(response).to redirect_to(season_board_path)
         expect(flash[:info]).to eq(I18n.t('season_board.flash.extract_queued', fin_event_id: '2'))
-        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(season_id: season.id, fin_event_id: '2', engine: nil)
+        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(hash_including(season_id: season.id, fin_event_id: '2', engine: nil, pdf_path: '/x.pdf'))
       end
 
       it 'passes an allowed engine' do
         allow(SeasonBoard::Scheduler).to receive(:extract!).and_return(true)
         post(season_board_extract_path, params: { fin_event_id: '2', engine: 'ollama' })
-        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(season_id: season.id, fin_event_id: '2', engine: 'ollama')
+        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(hash_including(season_id: season.id, fin_event_id: '2', engine: 'ollama'))
       end
 
       it 'refuses an unsupported engine' do
@@ -294,6 +360,10 @@ RSpec.describe SeasonBoardController do
 
     describe 'POST /season_board/link' do
       let(:linker) { instance_double(SeasonBoard::CalendarLinker) }
+      let(:green_check) { FactoryBot.create(:ops_db_fingerprint, api_base_url: Shell::APITarget.configured_url) }
+
+      # (the DB sync gate, scope :board_write, passes on a fresh green check)
+      before(:each) { green_check }
 
       it 'links the calendar using the row URL and reports the SQL file name' do
         allow(SeasonBoard::CalendarLinker).to receive(:new).and_return(linker)
@@ -323,6 +393,126 @@ RSpec.describe SeasonBoardController do
         post(season_board_link_path, params: { fin_event_id: '6' })
         expect(flash[:warning]).to eq(I18n.t('season_board.flash.link_missing_params'))
         expect(SeasonBoard::CalendarLinker).not_to have_received(:new)
+      end
+
+      describe 'DB sync gate (scope :board_write, phase 08)' do
+        let(:green_check) { FactoryBot.create(:ops_db_fingerprint, :red, api_base_url: Shell::APITarget.configured_url) }
+
+        it 'asks for the tick on a warning (red included) before linking, re-posting the same link' do
+          allow(SeasonBoard::CalendarLinker).to receive(:new)
+          post(season_board_link_path, params: { fin_event_id: '6', calendar_id: '321' })
+          expect(response).to have_http_status(:unprocessable_content)
+          form = response.parsed_body.at_css('form#frm-season-board-confirm-link')
+          expect(form['action']).to eq(season_board_link_path)
+          expect(form.at_css('input[name="fin_event_id"]')['value']).to eq('6')
+          expect(form.at_css('input[name="calendar_id"]')['value']).to eq('321')
+          expect(form.at_css('input#drift_ack[required]')).to be_present
+          expect(response.parsed_body.at_css('#season-board-confirm-link #drift-indicator')['data-drift-verdict']).to eq('red')
+          expect(SeasonBoard::CalendarLinker).not_to have_received(:new)
+        end
+
+        it 'links with the tick' do
+          allow(SeasonBoard::CalendarLinker).to receive(:new).and_return(linker)
+          allow(linker).to receive(:call).and_return(SeasonBoard::CalendarLinker::Result.new(success: true, sql_path: '/x/y/0042-link.sql'))
+          post(season_board_link_path, params: { fin_event_id: '6', calendar_id: '321', drift_ack: '1' })
+          expect(response).to redirect_to(season_board_path)
+          expect(SeasonBoard::CalendarLinker).to have_received(:new)
+        end
+      end
+    end
+
+    describe 'pipeline automation (phase 10)' do
+      let(:rows) do
+        [
+          build_row(fin_event_id: '11', name: 'Failed prep', state: :prepare_failed, state_detail: { phase: 4, message: 'solver exploded' },
+                    next_action: action(:prepare, '11', file_path: '/d/262/f.json'), url: 'https://fin.example/11'),
+          build_row(fin_event_id: '12', name: 'Needs a look', state: :needs_review, state_detail: { step: 3, count: 4, blocked: false },
+                    next_action: action(:resume_review, '12', file_path: '/d/262/n.json', phase: 3, filter_state: 'review'),
+                    url: 'https://fin.example/12'),
+          build_row(fin_event_id: '13', name: 'All clean', state: :ready_to_commit, state_detail: { new_teams: 2, new_swimmers: 37 },
+                    next_action: action(:commit, '13', file_path: '/d/262/r.json'), url: 'https://fin.example/13'),
+          build_row(fin_event_id: '14', name: 'Held one', state: :results_ready, flags: [:prepare_held],
+                    next_action: action(:review_results, '14', file_path: '/d/262/h.json'), url: 'https://fin.example/14'),
+          build_row(fin_event_id: '15', name: 'To push', state: :sql_pending, next_action: action(:push, '15', sql_path: '/s.sql', sql_paths: ['/s.sql']),
+                    url: 'https://fin.example/15')
+        ]
+      end
+      let(:page) { response.parsed_body }
+
+      describe 'GET /season_board' do
+        before(:each) { get(season_board_path, params: { locale: 'en' }) }
+
+        it 'renders the three states with their details' do
+          expect(page.at_css('#season-board-row-11 .badge').text).to eq('Preparation failed at step 4: solver exploded')
+          expect(page.at_css('#season-board-row-12 .badge').text).to eq('Needs review at step 3 · 4 issues')
+          expect(page.at_css('#season-board-row-13 .badge').text).to eq('Ready to commit · +2 teams, +37 swimmers')
+        end
+
+        it 'pins the Retry form (POST season_board/prepare) and the Commit link (the commit summary, never a commit)' do
+          retry_form = page.at_css('#season-board-row-11 form[action="/season_board/prepare"]')
+          expect(retry_form.at_css('input[name=fin_event_id]')['value']).to eq('11')
+          expect(retry_form.at_css('button').text.strip).to eq('Retry')
+          expect(page.at_css('#season-board-row-13 a.btn')['href']).to eq(data_fix_commit_summary_path(file_path: '/d/262/r.json'))
+          expect(page.at_css('#season-board-row-12 a.btn')['href']).to eq(review_swimmers_path(file_path: '/d/262/n.json', phase3_v2: 1, filter_state: 'review'))
+        end
+
+        it 'offers Prepare as a secondary action, and the hold toggle on the rows with a source' do
+          expect(page.at_css('#season-board-row-12 [data-pipeline-action="prepare"]')).to be_present
+          expect(page.at_css('#season-board-row-13 [data-pipeline-action="prepare"]')).to be_nil
+          expect(page.at_css('#season-board-row-13 [data-pipeline-action="hold"]')).to be_present
+          held = page.at_css('#season-board-row-14 form[action="/season_board/hold"]')
+          expect(held.at_css('input[name=hold]')['value']).to eq('0')
+          expect(page.at_css('#season-board-row-14 [data-flag="prepare_held"]')).to be_present
+          expect(page.at_css('#season-board-row-15 .season-board-pipeline-actions')).to be_nil
+        end
+
+        it 'shows the automation switches and the Prepare all button in the header' do
+          expect(page.at_css('#season-board-automation #automation-switches-season_board [data-automation-switch="auto_prepare"]')).to be_present
+          expect(page.at_css('form[action="/season_board/prepare_all"] button')).to be_present
+        end
+      end
+
+      describe 'POST /season_board/prepare' do
+        it 'queues an operator prepare of the row source (never a commit)' do
+          allow(SeasonBoard::Scheduler).to receive(:prepare!).and_return(instance_double(Ops::PipelineRun))
+          post(season_board_prepare_path, params: { fin_event_id: '11', file_path: '/evil.json' })
+          expect(response).to redirect_to(season_board_path(anchor: 'season-board-row-11'))
+          expect(flash[:info]).to eq(I18n.t('pipeline_automation.flash.prepare_queued', fin_event_id: '11'))
+          expect(SeasonBoard::Scheduler).to have_received(:prepare!)
+            .with(season_id: season.id, source_path: '/d/262/f.json', origin: :operator, fin_event_id: '11')
+        end
+
+        it 'warns when the Scheduler refuses (busy) and when the row has no source' do
+          allow(SeasonBoard::Scheduler).to receive(:prepare!).and_return(false)
+          post(season_board_prepare_path, params: { fin_event_id: '11' })
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.prepare_busy', fin_event_id: '11'))
+          post(season_board_prepare_path, params: { fin_event_id: '15' })
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.no_source', fin_event_id: '15'))
+        end
+      end
+
+      describe 'POST /season_board/hold' do
+        it 'holds and releases the row source, recording an event' do
+          post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' })
+          source = Ops::PipelineSource.find_by(season_id: 262, base: 'r')
+          expect(source.auto_prepare).to be false
+          expect(Ops::Event.order(:id).last).to have_attributes(kind: 'automation.row_held', subject_key: '13')
+          post(season_board_hold_path, params: { fin_event_id: '13', hold: '0' })
+          expect(source.reload.auto_prepare).to be true
+        end
+      end
+
+      describe 'POST /season_board/prepare_all' do
+        it 'queues a planner pass' do
+          expect { post(season_board_prepare_all_path) }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'board')
+          expect(response).to redirect_to(season_board_path)
+        end
+
+        it 'refuses while the automation is paused' do
+          DataFix::Automation.store!(:auto_prepare, false)
+          expect { post(season_board_prepare_all_path) }.not_to have_enqueued_job(PipelinePlannerJob)
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.paused'))
+        end
       end
     end
   end

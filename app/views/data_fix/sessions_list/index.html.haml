@@ -1,0 +1,41 @@
+= render(Shell::PageHeaderComponent.new(title: t('data_fix_sessions.title'), count: @rows.size,
+                                        subtitle: t('data_fix_sessions.subtitle')))
+
+- if @rows.empty?
+  %p.text-body-secondary#data-fix-sessions-empty= t('data_fix_sessions.empty')
+- else
+  .table-responsive
+    %table.table.table-sm.table-hover.align-middle#data-fix-sessions
+      %thead
+        %tr
+          %th= t('data_fix_sessions.columns.source')
+          %th.text-center= t('data_fix_sessions.columns.phase')
+          %th= t('data_fix_sessions.columns.mtime')
+          %th.text-end= t('data_fix_sessions.columns.staging_rows')
+          %th.text-end= t('data_fix_sessions.columns.actions')
+      %tbody
+        - @rows.each do |row|
+          %tr{ id: "data-fix-session-#{row.name.parameterize}" }
+            %td
+              %code.small{ title: row.source_path }#{row.season_id}/#{row.name}
+              - unless row.source_exists?
+                %span.badge.text-bg-warning.ms-1= t('data_fix_sessions.source_missing')
+            %td.text-center= row.highest_phase.positive? ? row.highest_phase : '-'
+            %td
+              - if row.mtime
+                = l(row.mtime.in_time_zone, format: :short)
+                %span.small.text-body-secondary= t('data_fix_sessions.idle_days', count: row.idle_days)
+              - else
+                \-
+            %td.text-end= row.staging_rows
+            %td.text-end.text-nowrap
+              - if (resume_path = resume_path_for(row))
+                = link_to(resume_path, class: 'btn btn-sm btn-outline-primary') do
+                  %i.fa-solid.fa-play{ 'aria-hidden' => 'true' }
+                  = t('data_fix_sessions.resume')
+              - if row.staging?
+                - confirm = t('data_import.data_fix.confirm_discard_source', source: row.source_path)
+                - purge_opts = { method: :delete, class: 'btn btn-sm btn-outline-danger', form_class: 'd-inline', data: { turbo_confirm: confirm } }
+                = button_to(data_fix_sessions_purge_path(source_path: row.source_path), **purge_opts) do
+                  %i.fa-solid.fa-trash{ 'aria-hidden' => 'true' }
+                  = t('data_fix_sessions.purge')

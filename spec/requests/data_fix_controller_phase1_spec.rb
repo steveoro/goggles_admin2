@@ -66,11 +66,17 @@ RSpec.describe DataFixController do
       it 'wires the meeting fuzzy selector to the LegacyAutoComplete ID field' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
-        selector = response.parsed_body.css('#meeting_search')
-        onchange = selector.attr('onchange').value
-        expect(onchange).to include("document.getElementById('meeting_meeting_id').value = selected")
-        expect(onchange).to include("document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true }))")
-        expect(onchange).not_to include("$('#meeting').trigger('change')")
+        # (phase 12) a Stimulus action instead of the former inline onchange handler: meeting-card#selectMatch sets
+        # the chosen id on #meeting_meeting_id and dispatches 'change' (or restores the baseline param)
+        selector = response.parsed_body.at_css('#meeting_search')
+        expect(selector['onchange']).to be_nil
+        expect(selector['data-action']).to eq('change->meeting-card#selectMatch')
+        expect(JSON.parse(selector['data-meeting-card-baseline-param'])).to include('name', 'season_id', 'dateYear1')
+        expect(selector.ancestors("[data-controller~='meeting-card']")).to be_present
+        expect(response.parsed_body.at_css('#meeting_meeting_id')).to be_present
+        rescan_form = response.parsed_body.at_css("form[action='#{rescan_phase1_sessions_path}']")
+        expect(rescan_form['data-action']).to eq('submit->meeting-card#copyMeetingId')
+        expect(rescan_form.at_css('#rescan_meeting_id')['data-meeting-card-target']).to eq('rescanId')
       end
 
       it 'renders the LegacyAutoCompleteComponent with correct field target ID' do
@@ -127,7 +133,7 @@ RSpec.describe DataFixController do
 
       it 'displays empty sessions message when no sessions exist' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
-        expect(response.body).to include('No sessions yet')
+        expect(response.body).to include(I18n.t('data_fix.wizard.sessions.none').split('"').first)
       end
 
       context 'when two or more sessions exist' do
@@ -152,7 +158,8 @@ RSpec.describe DataFixController do
           expect(response).to be_successful
           expect(response.body).to include('copy_from_session_0')
           expect(response.body).to include('copy_from_session_1')
-          expect(response.body).to include('copySessionPoolAndCity')
+          # (phase 12: session-card#copyFromSibling, the former window.DataFix.copySessionPoolAndCity)
+          expect(response.parsed_body.css("button[data-action='session-card#copyFromSibling']").size).to eq(2)
         end
       end
 
@@ -197,6 +204,24 @@ RSpec.describe DataFixController do
 
         expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
         expect(PhaseFileManager.new(phase1_file).meta['retry_needed']).to be true
+      end
+
+      describe 'Phase 1 without the phase_v2 flag' do
+        it 'renders the v2 review page (the phase_v2 flag is optional)' do
+          get review_sessions_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(response.body).to include('Test Meeting')
+        end
+
+        it 'resolves the canonical source path like the flagged request' do
+          allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+          get review_sessions_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
+        end
       end
     end
 
@@ -727,7 +752,7 @@ RSpec.describe DataFixController do
 
       it 'requires file_path parameter' do
         post data_fix_add_session_path, params: { file_path: '' }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -779,22 +804,6 @@ RSpec.describe DataFixController do
         expect(sessions[1]['description']).to eq('Session 3')
       end
 
-      it 'clears downstream phase data' do
-        delete data_fix_delete_session_path, params: {
-          file_path: source_file,
-          session_index: 0
-        }
-
-        pfm = PhaseFileManager.new(phase1_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_program']).to eq([])
-        expect(data['meeting_individual_result']).to eq([])
-        expect(data['lap']).to eq([])
-        expect(data['relay_lap']).to eq([])
-        expect(data['meeting_relay_swimmer']).to eq([])
-      end
-
       it 'rejects negative session_index' do
         delete data_fix_delete_session_path, params: {
           file_path: source_file,
@@ -826,7 +835,7 @@ RSpec.describe DataFixController do
           file_path: '',
           session_index: 0
         }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -1082,7 +1091,7 @@ RSpec.describe DataFixController do
           file_path: '',
           meeting_id: meeting.id
         }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -1152,25 +1161,6 @@ RSpec.describe DataFixController do
 
         get review_sessions_path(file_path: source_file, phase_v2: 1)
         expect(response.body).not_to include(I18n.t('data_import.data_fix.matched_by_fin_event_id', id: fin_id))
-      end
-    end
-
-    describe 'Phase 1 redirect to legacy' do
-      it 'redirects to legacy controller when phase_v2 param is absent' do
-        get review_sessions_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_sessions')
-      end
-
-      it 'redirects without resolving the source path (no category normalization side effects)' do
-        allow(DataFix::SourceResolver).to receive(:new).and_call_original
-
-        get review_sessions_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_sessions')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

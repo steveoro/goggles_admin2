@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Collapse } from "bootstrap"
 
 /**
  * Verify Result Controller
@@ -40,7 +41,8 @@ export default class extends Controller {
     const panel = document.querySelector(targetSelector)
     if (!panel) return
 
-    panel.classList.add('show')
+    // (through Bootstrap, so that the panel triggers stay in sync)
+    Collapse.getOrCreateInstance(panel, { toggle: false }).show()
 
     const self = this
     const url = '/data_fix/verify_result?import_key=' + encodeURIComponent(importKey) + '&result_type=' + encodeURIComponent(resultType)
@@ -176,13 +178,13 @@ export default class extends Controller {
       if (!multiplePartials && !data.auto_fixed && !data.merge_target) {
         html += '<table class="table table-sm table-bordered mb-1"><tbody>'
         html += '<tr class="table-info"><td><strong>Import row</strong> (this timing)</td>'
-        html += '<td class="text-right">'
+        html += '<td class="text-end">'
         html += '<button class="btn btn-sm btn-outline-primary fix-with-this-btn" ' +
                 'data-import-key="' + importKey + '" ' +
                 'data-existing-id="' + data.partial_matches[0].id + '" ' +
                 'data-result-type="' + resultType + '" data-mode="keep_timing">' +
                 '<i class="fa fa-wrench"></i> Fix with this</button>'
-        html += ' <small class="text-muted ml-1">→ UPDATE existing row with import timing</small>'
+        html += ' <small class="text-body-secondary ms-1">→ UPDATE existing row with import timing</small>'
         html += '</td></tr></tbody></table>'
       }
 
@@ -206,7 +208,7 @@ export default class extends Controller {
         html += '<td>' + (tm.disqualified ? 'DSQ' : tm.rank) + '</td>'
         html += '<td>' + tm.timing + '</td>'
         html += '<td>' + (tm.team_name || 'N/A') + ' (ID: ' + tm.team_id + ')</td>'
-        html += '<td><span class="badge badge-danger">TEAM MISMATCH</span></td></tr>'
+        html += '<td><span class="badge text-bg-danger">TEAM MISMATCH</span></td></tr>'
       })
       html += '</tbody></table>'
     }
@@ -226,7 +228,7 @@ export default class extends Controller {
         html += '<td>' + (oe.disqualified ? 'DSQ' : oe.rank) + '</td>'
         html += '<td>' + oe.timing + '</td>'
         html += '<td class="' + teamCls + '">' + (oe.team_name || 'N/A') + ' (ID: ' + oe.team_id + ')'
-        if (oe.team_mismatch) html += ' <span class="badge badge-danger">TEAM MISMATCH</span>'
+        if (oe.team_mismatch) html += ' <span class="badge text-bg-danger">TEAM MISMATCH</span>'
         html += '</td></tr>'
       })
       html += '</tbody></table>'
@@ -258,7 +260,7 @@ export default class extends Controller {
         if (i > 0) html += ', '
         html += b.team_name + ' (team ID: ' + b.team_id + ', badge ID: ' + b.badge_id + ')'
       })
-      if (data.swimmer_badges.length > 1) html += ' <span class="badge badge-danger">MULTIPLE BADGES</span>'
+      if (data.swimmer_badges.length > 1) html += ' <span class="badge text-bg-danger">MULTIPLE BADGES</span>'
       html += '</small></div>'
     }
 
@@ -298,7 +300,7 @@ export default class extends Controller {
                   'data-import-key="' + importKey + '" data-existing-id="' + m.id + '" ' +
                   'data-result-type="' + resultType + '" data-mode="' + mode + '">' +
                   label + '</button>'
-          html += ' <small class="text-muted ml-1">' + hint + '</small>'
+          html += ' <small class="text-body-secondary ms-1">' + hint + '</small>'
         }
         html += '</td>'
       }

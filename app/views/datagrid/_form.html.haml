@@ -1,14 +1,16 @@
 .collapse#filter-panel
-  .card.card-body
+  .card.card-body.mb-3
     = form_with(model: grid, html: { class: 'datagrid-form' }, scope: grid.param_name,
                 method: :get, **options) do |f|
       - grid.filters.each do |filter|
-        .datagrid-filter.form-group.row{ data: { filter: filter.name, type: filter.type } }
+        -# (checkbox for :boolean, select for :enum & :xboolean filters, text input otherwise)
+        - input_type = filter.default_input_options.merge(filter.input_options)[:type]&.to_sym
+        - input_class = { checkbox: 'form-check-input', select: 'form-select' }.fetch(input_type, 'form-control')
+        .datagrid-filter.row.mb-2{ data: { filter: filter.name, type: filter.type } }
           = f.datagrid_label(filter, class: 'col-sm-3 col-form-label')
-          .col-sm-9
-            = f.datagrid_filter(filter, class: 'form-control')
-      .datagrid-actions.form-group.row.d-flex.justify-content-center
+          .col-sm-9{ class: input_type == :checkbox ? 'd-flex align-items-center' : nil }
+            = f.datagrid_filter(filter, class: input_class)
+      .datagrid-actions.d-flex.justify-content-center.gap-2
         = f.submit(I18n.t('datagrid.form.search'), class: 'datagrid-submit btn btn-sm btn-secondary')
-        &nbsp;
         = link_to(I18n.t('datagrid.form.reset'), url_for(grid.to_param => {}),
                   class: 'datagrid-reset btn btn-sm btn-outline-secondary')

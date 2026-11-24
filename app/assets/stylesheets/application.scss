@@ -1,37 +1,33 @@
 // Main dartsass entrypoint for goggles_admin2.
-// CDN-loaded: Bootstrap 5, Font Awesome 6, tom-select bootstrap5 theme.
-// Local partials below:
+// Bootstrap 5.3, Font Awesome 6 (+ v4 shims) and the tom-select bootstrap5 theme are vendored
+// under vendor/assets/stylesheets and linked by the layout before this file (not @use'd here).
+//
+// Local partials, by folder:
+// - base/:       design tokens (CSS custom properties), web fonts, links, generic helpers & animations;
+// - compat/:     the Bootstrap 4 classes of the goggles_db engine partials, scoped to `.goggles-db-partial`;
+// - shell/:      app shell (sidebar, top bar, page header, command palette);
+// - components/: widgets shared by several pages (table tints, tom-select, datagrid, switches, ...);
+// - pages/:      page-specific rules.
 
-@use 'custom_fonts';
-@use 'custom_styles';
-@use 'tom_select_customizations';
-@use 'legacy_auto_complete_component';
-@use 'settings';
-@use 'datagrid_customizations';
-@use 'devise_customizations';
-@use 'flashing_animation';
-@use 'full_bleed_layout';
-@use 'rotating_switch_component';
-@use 'slider_switch_component';
-@use 'home';
-@use 'dashboard';
-@use 'data_fix';
-@use 'best50m_results';
-@use 'pull';
-@use 'push';
-@use 'pdf';
-@use 'api_badges';
-@use 'api_categories';
-@use 'api_import_queues';
-@use 'api_issues';
-@use 'api_meeting_reservations';
-@use 'api_meetings';
-@use 'api_seasons';
-@use 'api_swimmers';
-@use 'api_swimming_pools';
-@use 'api_team_affiliations';
-@use 'api_team_managers';
-@use 'api_teams';
-@use 'api_user_workshops';
-@use 'api_users';
-@use 'stats';
+@use 'base/tokens';
+@use 'base/fonts';
+@use 'base/links';
+@use 'base/helpers';
+@use 'base/animations';
+
+@use 'compat/goggles_db_partials';
+
+@use 'shell/layout';
+@use 'shell/palette';
+
+@use 'components/tables';
+@use 'components/tom_select';
+@use 'components/legacy_auto_complete';
+@use 'components/datagrid';
+@use 'components/slider_switch';
+
+@use 'pages/dashboard';
+@use 'pages/goggles_cup';
+@use 'pages/data_fix';
+@use 'pages/outbox';
+@use 'pages/sources';

@@ -1,0 +1,47 @@
+-#
+  Commit summary (native Bootstrap 5, phase 09): what the commit will do, a fresh preflight and one Commit button
+  (same POST data_fix/commit_phase6 as the Step 5 button).
+:ruby
+  exact_name_codes = %w[existing_team_name existing_swimmer_name]
+  needs_create_anyway = params[:create_anyway].to_s == '1' || @preflight.errors.any? { |row| exact_name_codes.include?(row[:code]) }
+  other_errors = @preflight.errors.reject { |row| exact_name_codes.include?(row[:code]) }
+  commit_disabled = !@ops_available || @guard_blocked || other_errors.any?
+  stage_label = t("data_fix.commit_summary.stages.#{@summary.stage}", default: @summary.stage.humanize)
+  stage_text = @summary.ready? ? t('data_fix.commit_summary.ready') : t('data_fix.commit_summary.not_ready', stage: stage_label)
+.container-fluid#data-fix-commit-summary
+  = render(Shell::PageHeaderComponent.new(title: t('data_fix.commit_summary.title'), subtitle: File.basename(@source_path.to_s))) do |header|
+    - header.with_actions do
+      = link_to(review_results_path(file_path: @file_path, phase5_v2: 1), class: 'btn btn-sm btn-outline-secondary') do
+        %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
+        = t('data_fix.commit_summary.back_to_step5')
+
+  .mb-3
+    = render(DataFix::StepperComponent.new(summary: @summary, active_step: nil, file_path: @file_path))
+
+  .alert.py-2#commit-summary-stage{ class: @summary.ready? ? 'alert-success' : 'alert-warning' }= stage_text
+  - unless @ops_available
+    .alert.alert-danger#commit-summary-ops-missing= t('data_fix.commit_summary.ops_missing')
+  - if @guard_blocked
+    .alert.alert-danger.d-flex.flex-wrap.gap-2.align-items-center#commit-summary-guard-blocked
+      %span.flex-grow-1= t('data_fix.commit.refused_guard', reason: @guards.message.presence || '-')
+      = link_to(t('data_fix.commit.refused_guard_link'), db_sync_path, class: 'btn btn-sm btn-outline-danger') if respond_to?(:db_sync_path)
+
+  = render(partial: 'data_fix/commit_summary/overview', locals: { commit_summary: @commit_summary })
+  = render(partial: 'data_fix/commit_summary/preflight', locals: { preflight: @preflight, needs_create_anyway:, file_path: @file_path })
+
+  = form_with(url: commit_phase6_path(file_path: @file_path), method: :post, id: 'commit-summary-form', class: 'card mt-3',
+              data: { turbo_confirm: t('data_fix.commit_summary.commit_confirm') }) do |form|
+    .card-body.d-flex.flex-wrap.align-items-center.gap-3
+      = hidden_field_tag(:confirm_overwrite, '1')
+      - if @guards.warn?
+        .form-check
+          = check_box_tag(:drift_ack, '1', params[:drift_ack].to_s == '1', class: 'form-check-input', id: 'commit-drift-ack')
+          = label_tag('commit-drift-ack', t('data_fix.commit_summary.drift_ack'), class: 'form-check-label')
+          .small.text-body-secondary= @guards.message
+      - if needs_create_anyway
+        .form-check
+          = check_box_tag(:create_anyway, '1', params[:create_anyway].to_s == '1', class: 'form-check-input', id: 'commit-create-anyway')
+          = label_tag('commit-create-anyway', t('data_fix.commit_summary.create_anyway'), class: 'form-check-label')
+      = form.button(type: :submit, class: 'btn btn-success ms-auto', disabled: commit_disabled, id: 'btn-commit-summary') do
+        %i.fa-solid.fa-database{ 'aria-hidden': 'true' }
+        = t('data_fix.commit_summary.commit')

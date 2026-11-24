@@ -1,33 +1,10 @@
-%meta
-.wrapper-body
-  .spacer-left
-
-  .main-content
-    = render(DashboardTitleComponent.new(title: t('dashboard.team_managers.title'), row_count: @domain_count))
-    = render(Grid::EditModalComponent.new(controller_name: controller_name,
-             asset_row: GogglesDb::ManagedAffiliation.new, jwt: current_user.jwt))
-    = render(Grid::SqlCreateModalComponent.new(controller_name: controller_name,
-             jwt: current_user.jwt))
-
-    %section.my-4#data-grid
-      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::ManagedAffiliation.new,
-               controller_name: controller_name, request_params: @grid_filter_params)) do
-        .btn-group.mx-1.my-0#sql-create-btn
-          = link_to('#sql-create-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
-                    data: { toggle: 'modal', tooltip: '', title: t('datagrid.sql_create.btn_tooltip') }) do
-            %i.fa.fa-plus
-            = t('datagrid.sql_create.btn_label')
-      = datagrid_form_with(model: @grid, method: :get,
-                          url: url_for(controller: controller_name, action: :index, params: @index_params))
-      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
-
-      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-               page: @domain_page, per_page: @domain_per_page))
-      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-               page: @domain_page, per_page: @domain_per_page))
-
-    %section.text-center.fixed-bottom#footer
-      &nbsp;
-
-  .spacer-right
+= render(Grid::PageComponent.new(title: t('dashboard.team_managers.title'), model: GogglesDb::ManagedAffiliation,
+                                 grid: @grid, domain: api_grid_domain)) do |page|
+  - page.with_toolbar_extra do
+    .btn-group#sql-create-btn
+      -# (a modal toggle can't also be a Bootstrap tooltip: the plain title gives the native hint)
+      = link_to('#sql-create-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
+                title: t('datagrid.sql_create.btn_tooltip'), data: { bs_toggle: 'modal' }) do
+        %i.fa.fa-plus
+        = t('datagrid.sql_create.btn_label')
+= render(Grid::SqlCreateModalComponent.new(controller_name: controller_name, jwt: current_user.jwt))

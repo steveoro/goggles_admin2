@@ -15,7 +15,9 @@
   # - card_index: Integer, for unique IDs
   # - deletion_candidates: Array<Hash>, existing MIRs absent from the imported set
   # - program_card_index_by_key: Hash, program key => card index for merge target links
+  # - issue: Boolean, the program is in the issue list (DataFix::IssueDetector): next/previous issue marker
   deletion_candidates ||= []
+  issue = local_assigns[:issue] == true
   program_card_index_by_key ||= {}
   parts = program_key.split('-')
   session_order = parts[0]
@@ -53,10 +55,13 @@
                    'border-warning'
                  end
 
-.card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}", data: { has_issues: has_issues, controller: 'verify-result' } }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
-    .d-flex.align-items-center
-      %span.mr-2
+.card.mb-2.data-fix-card{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}",
+                          data: { has_issues: has_issues, controller: 'verify-result', issue: ('result_issues' if issue) } }
+  .card-header.d-flex.justify-content-between.align-items-center.gap-2{ id: "program-header-#{card_index}", role: 'button',
+                                                                        aria: { expanded: 'true', controls: "program-panel-#{card_index}" },
+                                                                        data: { bs_toggle: 'collapse', bs_target: "#program-panel-#{card_index}" } }
+    .d-flex.flex-wrap.align-items-center.gap-2
+      %span
         - if deletion_candidates.present?
           %i.fa.fa-trash.text-danger{ title: 'Existing results marked for deletion' }
         - elsif has_match
@@ -66,30 +71,30 @@
       %strong
         = "#{event_code} • #{category} • #{gender_display}"
       &nbsp;
-      %small.ml-2.text-muted
+      %small.ms-2.text-body-secondary
         Session #{session_order}
       - if has_match
-        %small.ml-2.badge.badge-success
+        %small.ms-2.badge.text-bg-success
           ID: #{program_id}
       - else
-        %small.ml-2.badge.badge-primary
+        %small.ms-2.badge.text-bg-primary
           NEW
     .d-flex.align-items-center
-      %span.badge.badge-info
+      %span.badge.text-bg-info
         = "#{sorted_results.size} results"
       - if deletion_candidates.present?
-        %span.badge.badge-danger.ml-1= "#{deletion_candidates.size} to delete"
+        %span.badge.text-bg-danger.ms-1= "#{deletion_candidates.size} to delete"
 
-  .collapse.show{ id: "program-panel-#{card_index}", 'aria-labelledby' => "program-header-#{card_index}" }
-    .card-body.p-0
+  .collapse.show{ id: "program-panel-#{card_index}", 'aria-labelledby': "program-header-#{card_index}", data: { issue_panel: true } }
+    .card-body.p-0.table-responsive
       %table.table.table-sm.table-hover.mb-0
-        %thead.thead-light
+        %thead.table-body-tertiary
           %tr
             %th.text-center{ style: 'width: 40px;' }
             %th.text-center{ style: 'width: 50px;' } Rank
             %th Swimmer
             %th Team
-            %th.text-right Timing
+            %th.text-end Timing
             %th.text-center Status
         %tbody
           - sorted_results.each_with_index do |mir, idx|
@@ -114,65 +119,70 @@
             %tr{ id: "#{result_id}-row", class: is_existing_result ? '' : 'bg-light-yellow' }
               %td.text-center
                 - if has_laps
-                  %i.fa.fa-chevron-right{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{result_id}-laps" }, onclick: 'this.classList.toggle("fa-chevron-right"); this.classList.toggle("fa-chevron-down");' }
+                  -# (the chevron turns with the collapse state: .data-fix-laps-toggle in pages/_data_fix.scss)
+                  %button.btn.btn-link.btn-sm.p-0.data-fix-laps-toggle.collapsed{ type: 'button', title: 'Laps',
+                                                                                  aria: { expanded: 'false', controls: "#{result_id}-laps" },
+                                                                                  data: { bs_toggle: 'collapse', bs_target: "##{result_id}-laps" } }
+                    %i.fa.fa-chevron-right{ 'aria-hidden': 'true' }
+                    %span.visually-hidden Laps
               %td.text-center
                 - if mir.disqualified?
-                  %span.text-muted -
+                  %span.text-body-secondary -
                 - else
                   = mir.rank
               %td
                 - if swimmer
                   = swimmer.complete_name
-                  %small.text-muted= "(#{swimmer.year_of_birth})"
+                  %small.text-body-secondary= "(#{swimmer.year_of_birth})"
                   - if swimmer.id
                     %small.text-success= swimmer.id
                 - else
-                  %code.text-muted= mir.import_key.split('/')[1]
+                  %code.text-body-secondary= mir.import_key.split('/')[1]
               %td
                 - if team
                   = team.editable_name
-                  %small.text-muted= "(#{team.id})"
+                  %small.text-body-secondary= "(#{team.id})"
                 - elsif team_data
                   = team_data['editable_name'] || team_data['name']
                   - if team_data['team_id']
-                    %small.text-muted= "(#{team_data['team_id']})"
+                    %small.text-body-secondary= "(#{team_data['team_id']})"
                 - else
-                  %span.text-muted N/A
-              %td.text-right
+                  %span.text-body-secondary N/A
+              %td.text-end
                 - if mir.disqualified?
-                  %span.text-muted —
+                  %span.text-body-secondary —
                 - else
                   %strong= mir.to_timing.to_s
               %td.text-center
                 - if mir.disqualified?
-                  %span.badge.badge-danger DSQ
+                  %span.badge.text-bg-danger DSQ
                 - elsif is_existing_result
                   %i.fa.fa-check-circle.text-success{ title: "Existing result (ID: #{mir.meeting_individual_result_id})" }
                 - elsif is_fully_matched
                   %i.fa.fa-plus-circle.text-warning{ title: 'New result (will be created on commit)' }
                   - if mir.swimmer_id.to_i.positive? && mir.meeting_program_id.to_i.positive?
-                    %button.btn.btn-outline-secondary.btn-sm.ml-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_target_panel_param: "##{result_id}-verify" } }
-                      %i.fa.fa-search.mr-1
+                    %button.btn.btn-outline-secondary.btn-sm.ms-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_target_panel_param: "##{result_id}-verify" } }
+                      %i.fa.fa-search.me-1
                       Verify
                 - else
                   %i.fa.fa-exclamation-circle.text-warning{ title: 'New result with unmatched swimmer or team' }
             -# Verification panel (expanded via AJAX)
             %tr.collapse{ id: "#{result_id}-verify" }
               %td{ colspan: 6 }
-                .bg-light.border.border-info.p-2
-                  .text-center.text-muted
+                .bg-body-tertiary.border.border-info.p-2
+                  .text-center.text-body-secondary
                     %i.fa.fa-spinner.fa-spin
                     Checking for duplicates...
             - if has_laps
               %tr.collapse{ id: "#{result_id}-laps" }
                 %td{ colspan: 6 }
-                  .bg-light.p-2
+                  .bg-body-tertiary.p-2
                     %table.table.table-sm.mb-0
                       %thead
                         %tr
                           %th.text-center Distance
-                          %th.text-right Delta
-                          %th.text-right From Start
+                          %th.text-end Delta
+                          %th.text-end From Start
                           %th.text-center Status
                       %tbody
                         - laps.each do |lap|
@@ -194,25 +204,25 @@
                           %tr
                             %td.text-center
                               %strong= "#{lap.length_in_meters}m"
-                            %td.text-right
+                            %td.text-end
                               = delta_timing.to_s
-                            %td.text-right.text-muted
+                            %td.text-end.text-body-secondary
                               = from_start_timing.to_s
                             %td.text-center
                               - if lap_match_id
                                 %small.text-secondary
                                   ID: #{lap_match_id}
                               - else
-                                %small.badge.badge-primary NEW
+                                %small.badge.text-bg-primary NEW
           - deletion_candidates.each do |candidate|
             :ruby
               selected = candidate['selected'] == true
               merge = selected && candidate['merge'] == true
               merge_available = candidate['merge_available'] == true
               merge_ambiguous = candidate['merge_ambiguous'] == true
-              candidate_row_class = selected ? (merge ? 'bg-info text-white' : 'bg-danger text-white') : 'bg-light text-muted'
+              candidate_row_class = selected ? (merge ? 'bg-info text-white' : 'bg-danger text-white') : 'bg-body-tertiary text-body-secondary'
             %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
-              %td.text-right.align-middle
+              %td.text-end.align-middle
                 .d-flex.flex-column.align-items-end.gap-1
                   %input.form-check-input{ type: 'checkbox', checked: selected, aria: { label: "Select MIR #{candidate['id']} for deletion" }, title: t('data_import.data_fix.individual_result_overwrite_zero_timing_help'), data: { action: 'change->data-fix-overwrite#toggle', data_fix_overwrite_target: 'candidate', candidate_id: candidate['id'], minutes: candidate['minutes'], seconds: candidate['seconds'], hundredths: candidate['hundredths'] } }
                   - if merge_available
@@ -224,21 +234,21 @@
                   = candidate['rank']
               %td
                 %strong= candidate['swimmer_name'].presence || "Swimmer #{candidate['swimmer_id']}"
-                %small.ml-1= "(#{candidate['swimmer_year_of_birth']})" if candidate['swimmer_year_of_birth']
-                %small.ml-1= "ID: #{candidate['swimmer_id']}"
+                %small.ms-1= "(#{candidate['swimmer_year_of_birth']})" if candidate['swimmer_year_of_birth']
+                %small.ms-1= "ID: #{candidate['swimmer_id']}"
               %td
                 = candidate['team_name'].presence || "Team #{candidate['team_id']}"
-                %small.ml-1= "(ID: #{candidate['team_id']})"
-              %td.text-right
+                %small.ms-1= "(ID: #{candidate['team_id']})"
+              %td.text-end
                 %strong= candidate['timing']
                 %small.d-block= "#{candidate['lap_count']} lap(s)"
               %td.text-center
                 - if merge_available && merge
-                  %span.badge.badge-light.text-info{ data: { data_fix_overwrite_status: 'merge' } }= t('data_import.data_fix.individual_result_overwrite_merged')
+                  %span.badge.text-bg-light.text-info{ data: { data_fix_overwrite_status: 'merge' } }= t('data_import.data_fix.individual_result_overwrite_merged')
                 - elsif selected
-                  %span.badge.badge-light.text-danger{ data: { data_fix_overwrite_status: 'selected' } }= t('data_import.data_fix.individual_result_overwrite_selected')
+                  %span.badge.text-bg-light.text-danger{ data: { data_fix_overwrite_status: 'selected' } }= t('data_import.data_fix.individual_result_overwrite_selected')
                 - else
-                  %span.badge.badge-secondary{ data: { data_fix_overwrite_status: 'ignored' } }= t('data_import.data_fix.individual_result_overwrite_ignored')
+                  %span.badge.text-bg-secondary{ data: { data_fix_overwrite_status: 'ignored' } }= t('data_import.data_fix.individual_result_overwrite_ignored')
                 %small.d-block= t('data_import.data_fix.individual_result_overwrite_reason')
                 - if merge_ambiguous
                   %small.d-block.text-warning= t('data_import.data_fix.individual_result_overwrite_merge_ambiguous')
@@ -246,19 +256,19 @@
                   %small.d-block.text-info{ data: { data_fix_overwrite_target: 'mergeTarget' } }
                     = t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key'])
                 - elsif selected
-                  %small.d-block.text-muted= t('data_import.data_fix.individual_result_overwrite_no_merge_target')
+                  %small.d-block.text-body-secondary= t('data_import.data_fix.individual_result_overwrite_no_merge_target')
             - if candidate['merge_target_import_key'].present?
               - target_parts = candidate['merge_target_program_key'].to_s.split('-')
               - target_card_index = program_card_index_by_key[candidate['merge_target_program_key']]
-              - link_text_color = candidate_row_class.include?('text-white') ? 'text-white' : 'text-dark'
+              - link_text_color = candidate_row_class.include?('text-white') ? 'text-white' : 'text-body'
               %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
                 %td
                 %td
                 %td{ colspan: 2 }
-                  %span.badge.badge-light
+                  %span.badge.text-bg-light
                     = t('data_import.data_fix.merge_target_line_badge', mir_id: candidate['id'])
                   - if target_card_index
-                    %a.ml-1{ href: "#program-card-#{target_card_index}",
+                    %a.ms-1{ href: "#program-card-#{target_card_index}",
                              title: t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key']),
                              class: "#{link_text_color} text-decoration-underline" }
                       = t('data_import.data_fix.merge_target_line_arrow',
@@ -266,7 +276,7 @@
                           category_code: target_parts[2] || 'N/A',
                           gender_code: target_parts[3] || 'N/A')
                   - else
-                    %span.ml-1
+                    %span.ms-1
                       = t('data_import.data_fix.merge_target_line_arrow',
                           event_code: target_parts[1] || 'N/A',
                           category_code: target_parts[2] || 'N/A',

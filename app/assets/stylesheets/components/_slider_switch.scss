@@ -1,0 +1,114 @@
+/**
+      === Slider switch ===
+
+  - Structure for '.slider' switch:
+
+      %label.switch
+        %input{ type: 'checkbox' }
+          %span.slider.round.collapsed{ id: <id>, 'data-bs-toggle' => 'collapse', ... }/
+
+  Slider supports:
+  - rounded borders: use '.round'; default: squared
+  - red background: use '.red'; default: green
+*/
+
+/* 'switch': wrapper for .slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 2em;
+  height: 1em;
+}
+/* Bootstrap 5-like rounded variant: wider track, taller, bigger knob */
+.switch.round {
+  width: 2.5em;
+  height: 1.25em;
+}
+
+/* Hide the default checkbox: */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/**
+      === Slider switch: ===
+ */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  padding: 0.5rem;
+  top: 0px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--ga-switch-off-bg);
+  -webkit-transition: 0.25s;
+  transition: 0.25s;
+}
+.slider.xor {
+  background-color: #80bdff;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 0.70em;
+  width: 0.70em;
+  left: 0.25em;
+  bottom: 0.15em;
+  background-color: white;
+  -webkit-transition: 0.25s;
+  transition: 0.25s;
+}
+
+/* Default background color: */
+input:checked + .slider {
+  background-color: #28a745;
+}
+input:focus + .slider {
+  box-shadow: 0 0 1px #28a745;
+}
+
+/* Alternative background color: */
+input:checked + .slider.red {
+  background-color: #dc3545;
+}
+input:focus + .slider.red {
+  box-shadow: 0 0 1px #dc3545;
+}
+
+/* "Xor" background color: */
+input:checked + .slider.xor {
+  background-color: #80bdff;
+}
+input:focus + .slider.xor {
+  box-shadow: 0 0 1px #80bdff;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(0.85em);
+  -ms-transform: translateX(0.85em);
+  transform: translateX(0.85em);
+}
+
+/* Rounded sliders (default is squared) */
+.slider.round {
+  border-radius: 1.25em;
+}
+.slider.round:before {
+  border-radius: 50%;
+  height: 0.95em;
+  width: 0.95em;
+  left: 0.15em;
+  bottom: 0.15em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Wider translate for .round variant (track is 2.5em, knob is 0.95em) */
+input:checked + .slider.round:before {
+  -webkit-transform: translateX(1.25em);
+  -ms-transform: translateX(1.25em);
+  transform: translateX(1.25em);
+}

@@ -42,6 +42,74 @@ RSpec.describe SettingsController do
         get(settings_path)
         expect(response).to have_http_status(:success)
       end
+
+      it 'highlights Settings in the sidebar' do
+        get(settings_path)
+        expect(response.parsed_body.css('.app-sidebar a.active').pluck('href')).to eq([settings_path])
+      end
+
+      it 'stores the ping outcome as the api.status snapshot read by the top bar' do
+        get(settings_path)
+        snapshot = SystemStatus::APISnapshot.read(APIProxy.configured_base_url)
+        expect(snapshot.source).to eq('settings')
+        expect(snapshot.payload).to include('reachable' => true, 'version' => Version::FULL)
+      end
+
+      it 'renders the API target label form' do
+        get(settings_path)
+        form = response.parsed_body.at_css('form#api-target-label-form')
+        expect(form['action']).to eq(settings_api_target_label_path)
+        expect(form.at_css('input#api-target-label[name="label"]')).to be_present
+      end
+    end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  describe 'POST settings/api_target_label' do
+    include AdminSignInHelpers
+
+    let(:url) { APIProxy.configured_base_url.delete_suffix('/') }
+
+    after(:each) { Ops::Database.reset_state! }
+
+    context 'with an unlogged user' do
+      it 'is a redirect to the login path' do
+        post(settings_api_target_label_path, params: { label: 'X' })
+        expect(response).to redirect_to(new_user_session_path)
+        expect(Shell::APITarget.labels).to eq({})
+      end
+    end
+
+    context 'with a logged-in user' do
+      before(:each) { sign_in_admin(prepare_admin_user) }
+
+      it 'stores the label for the current API URL, then removes it when blank' do
+        post(settings_api_target_label_path, params: { label: 'Local copy' })
+        expect(response).to redirect_to(settings_path)
+        expect(flash[:info]).to eq(I18n.t('shell.api_label_form.saved', url:))
+        expect(Shell::APITarget.labels).to eq(url => 'Local copy')
+
+        post(settings_api_target_label_path, params: { label: ' ' })
+        expect(flash[:info]).to eq(I18n.t('shell.api_label_form.cleared', url:))
+        expect(Shell::APITarget.labels).to eq({})
+      end
+
+      it 'reports an error when the ops DB is not available' do
+        allow(Ops::Database).to receive(:state).and_return(:missing)
+        post(settings_api_target_label_path, params: { label: 'X' })
+        expect(flash[:error]).to eq(I18n.t('shell.api_label_form.failed'))
+      end
+    end
+
+    context 'with an API-offline session' do
+      before(:each) { sign_in_api_offline(prepare_admin_user) }
+
+      it 'is allowed' do
+        post(settings_api_target_label_path, params: { label: 'Broken API' })
+        expect(response).to redirect_to(settings_path)
+        expect(Shell::APITarget.labels).to eq(url => 'Broken API')
+      end
     end
   end
   #-- -------------------------------------------------------------------------

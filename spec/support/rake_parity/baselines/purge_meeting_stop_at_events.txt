@@ -1,0 +1,73 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: purge:meeting ***
+
+Purging Meeting 18222 - 6° Trofeo Fanatik Team
+
+- simulate.........: true
+- stop_at_events...: true
+- dest. folder.....: <DATA_ROOT>/results.new
+
+============================================================
+Purge Meeting Report
+Meeting: 18222 - 6° Trofeo Fanatik Team
+Stop at events: YES
+============================================================
+  laps                                : 0 rows
+  relay_laps                          : 0 rows
+  individual_records                  : 0 rows
+  meeting_relay_swimmers              : 0 rows
+  meeting_individual_results          : 8 rows
+  meeting_relay_results               : 0 rows
+  meeting_entries                     : 0 rows
+  meeting_programs                    : 8 rows
+
+  TOTAL                               : 16 rows
+============================================================
+
+Proceed with generating purge script? [y/N] 
+File '<DATA_ROOT>/results.new/misc/NNNN-purge_meeting-18222.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-purge_meeting-18222.sql
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Purge Meeting 18222: 6° Trofeo Fanatik Team
+-- Generated: <TIME>
+-- Mode: STOP AT EVENTS (meeting_programs)
+
+-- Step: laps (0 rows)
+DELETE l FROM laps l INNER JOIN meeting_individual_results mir ON l.meeting_individual_result_id = mir.id INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: relay_laps (0 rows)
+DELETE rl FROM relay_laps rl INNER JOIN meeting_relay_swimmers mrs ON rl.meeting_relay_swimmer_id = mrs.id INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: individual_records (0 rows)
+DELETE ir FROM individual_records ir INNER JOIN meeting_individual_results mir ON ir.meeting_individual_result_id = mir.id INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: meeting_relay_swimmers (0 rows)
+DELETE mrs FROM meeting_relay_swimmers mrs INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: meeting_individual_results (8 rows)
+DELETE mir FROM meeting_individual_results mir INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: meeting_relay_results (0 rows)
+DELETE mrr FROM meeting_relay_results mrr INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: meeting_entries (0 rows)
+DELETE me FROM meeting_entries me INNER JOIN meeting_programs mp ON me.meeting_program_id = mp.id INNER JOIN meeting_events mev ON mp.meeting_event_id = mev.id INNER JOIN meeting_sessions ms ON mev.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+-- Step: meeting_programs (8 rows)
+DELETE mp FROM meeting_programs mp INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id WHERE ms.meeting_id = 18222;
+
+
+-- --------------------------------------------------------------------------
+
+COMMIT;

@@ -1,0 +1,35 @@
+-#
+  Data health of one season (Health::SeasonsController#show): the per-group run summary frame, then one collapsible
+  section per check of the season groups (lazy frames). Every frame is reloaded on the 'health-ping' broadcast.
+:ruby
+  crumbs = [[t('shell.groups.data_quality'), nil], [t('health.title'), health_path], [t('health.season.crumb', id: @season.id), nil]]
+  status_key = @entry&.no_data? ? 'no_data' : @entry&.status
+  subtitle = [status_key && t("health.season_statuses.#{status_key}"),
+              t('health.season.dates', begin_date: @season.begin_date, end_date: @season.end_date), t('health.local_mirror')].compact.join(' · ')
+= render(Shell::PageHeaderComponent.new(title: t('health.season.title', id: @season.id, description: @season.description),
+                                        subtitle:, crumbs:)) do |header|
+  - header.with_actions do
+    - if ops_available? && @groups.any?
+      = button_to(health_runs_path, params: { season_id: @season.id, return_to: health_season_path(@season.id) },
+                                    class: 'btn btn-sm btn-primary', form_class: 'd-inline', id: 'btn-health-rerun-season') do
+        %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+        = t('health.season.rerun_all')
+
+- if !ops_available?
+  .alert.alert-warning#health-ops-unavailable{ role: 'alert' }= t('health.ops_unavailable')
+- elsif @groups.empty?
+  .alert.alert-info#health-season-no-data{ role: 'status' }= t('health.season.no_data')
+- else
+  #health-season{ data: { controller: 'live-frames', 'live-frames-interval-value': 20_000, 'live-frames-ping-ids-value': ['health-ping'].to_json } }
+    %section.card.mb-3
+      .card-body.py-2
+        = turbo_frame_tag('health-season-summary', src: health_season_summary_path(@season.id), target: '_top',
+                                                   data: { 'live-frames-target': 'frame' }) do
+          .small.text-body-secondary.py-2
+            %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+            = t('health.loading')
+    - @groups.each do |group|
+      %section.mb-3{ id: "health-group-#{group}" }
+        %h2.h5.mb-2= t("health.groups.#{group}")
+        - Health::Registry.for_group(group).each do |check|
+          = render(Health::SectionComponent.new(season: @season, check:, counts: @check_counts[check.key]))

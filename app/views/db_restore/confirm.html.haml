@@ -1,0 +1,61 @@
+-#
+  Guided local DB restore, step 5 (DbRestoreController#confirmation): what will be replaced, the API URL choice,
+  wizard or terminal load, and the typed database name. Posting it takes the lock: every other page then answers
+  "restore in progress" until the post-steps end.
+:ruby
+  inspection = @run.inspection.to_h
+  blocking = @preconditions.refused
+  cancel_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline',
+                     form: { data: { turbo_confirm: t('db_restore.actions.cancel_confirm') } } }
+  name_field = { class: 'form-control font-monospace', autocomplete: 'off', required: true, placeholder: @target.database, spellcheck: false }
+= render(Shell::PageHeaderComponent.new(title: t('db_restore.confirm.title'), subtitle: t('db_restore.confirm.subtitle', id: @run.id))) do |header|
+  - header.with_actions do
+    = button_to(t('db_restore.actions.cancel'), cancel_db_restore_path(@run), **cancel_options)
+
+.alert.alert-danger#db-restore-confirm-warning{ role: 'alert' }
+  = t('db_restore.confirm.warning', database: @target.database)
+
+.card.mb-3
+  .card-body
+    = render(partial: 'db_restore/run_facts', locals: { run: @run })
+    %dl.row.mb-0.mt-2
+      %dt.col-sm-3= t('db_restore.fields.taken_at')
+      %dd.col-sm-9= @run.dump_taken_at ? l(@run.dump_taken_at.localtime, format: :long) : '-'
+      %dt.col-sm-3= t('db_restore.fields.snapshot')
+      %dd.col-sm-9.font-monospace.small.text-break#db-restore-confirm-snapshot
+        = @run.snapshot_exists? ? @run.snapshot_path : t('db_restore.confirm.no_snapshot')
+
+- if blocking.any?
+  .alert.alert-danger#db-restore-confirm-blocked{ role: 'alert' }= t('db_restore.confirm.blocked')
+  = render(partial: 'db_restore/checks', locals: { result: @preconditions, id: 'db-restore-confirm-checks' })
+
+= form_with(url: confirm_db_restore_path(@run), method: :post, id: 'frm-db-restore-confirm', data: { turbo: false }) do
+  %fieldset.mb-3#db-restore-api-choice
+    %legend.h6= t('db_restore.confirm.api_title')
+    .form-check
+      = radio_button_tag(:api_url_choice, 'keep', true, class: 'form-check-input')
+      = label_tag(:api_url_choice_keep, class: 'form-check-label') do
+        = t('db_restore.confirm.api_keep')
+        %span.font-monospace.small.text-break= @api_url.presence || '-'
+    .form-check
+      = radio_button_tag(:api_url_choice, 'dump', false, class: 'form-check-input')
+      = label_tag(:api_url_choice_dump, class: 'form-check-label') do
+        = t('db_restore.confirm.api_dump')
+        %span.font-monospace.small.text-break= inspection['api_url'].presence || t('db_restore.confirm.api_dump_unknown')
+
+  %fieldset.mb-3#db-restore-load-mode
+    %legend.h6= t('db_restore.confirm.mode_title')
+    .form-check
+      = radio_button_tag(:load_mode, 'wizard', true, class: 'form-check-input')
+      = label_tag(:load_mode_wizard, t('db_restore.confirm.mode_wizard'), class: 'form-check-label')
+    .form-check
+      = radio_button_tag(:load_mode, 'terminal', false, class: 'form-check-input')
+      = label_tag(:load_mode_terminal, t('db_restore.confirm.mode_terminal'), class: 'form-check-label')
+      .form-text.font-monospace.text-break#db-restore-terminal-preview= DbRestore::TerminalCommand.rebuild(@run.dump_path)
+
+  .mb-3
+    = label_tag(:typed_name, t('db_restore.confirm.type_name', database: @target.database), class: 'form-label')
+    = text_field_tag(:typed_name, nil, **name_field)
+  = button_tag(type: 'submit', class: 'btn btn-danger', id: 'btn-db-restore-confirm', disabled: blocking.any?) do
+    %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+    = t('db_restore.confirm.submit', database: @target.database)

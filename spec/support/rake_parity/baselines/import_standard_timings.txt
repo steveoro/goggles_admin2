@@ -1,0 +1,35 @@
+## exit: nil
+## output
+
+*** Import StandardTimings from file ***
+
+Please make sure the source file has one of the supported formats:
+ - XLSX: sheets with header row "CATEG*|COD GARA|GARA|SESSO|VASCA|...|TEMPO PRINT"
+ - CSV:  1. "category_code;fin_event_code;event_label;gender;pool_type;hundredths;timing_mmsshh;timing"
+         2. "category_code;event_label;25_m;50_m;25_f;50_f"
+
+--> Season 262, 2026/2027
+--> Source file: <DATA_ROOT>/standard_timings_src/mst_tb_ind_parity.xlsx
+--> Sheet(s) used: VERIFICA
+--> Read 4 rows. Processing...
+
+....
+
+File '<DATA_ROOT>/results.new/262/NNNN-262-standard_timings.sql' saved (held in the Outbox: not applied locally).
+
+## script results.new/262/NNNN-262-standard_timings.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+INSERT INTO standard_timings (minutes,seconds,hundredths, season_id, gender_type_id, category_type_id, event_type_id, pool_type_id, created_at, updated_at)
+  VALUES (0, 28, 50, 262, 1, 200291, 2, 1, NOW(), NOW());
+INSERT INTO standard_timings (minutes,seconds,hundredths, season_id, gender_type_id, category_type_id, event_type_id, pool_type_id, created_at, updated_at)
+  VALUES (0, 32, 10, 262, 2, 200291, 2, 1, NOW(), NOW());
+INSERT INTO standard_timings (minutes,seconds,hundredths, season_id, gender_type_id, category_type_id, event_type_id, pool_type_id, created_at, updated_at)
+  VALUES (1, 4, 20, 262, 1, 200292, 3, 2, NOW(), NOW());
+INSERT INTO standard_timings (minutes,seconds,hundredths, season_id, gender_type_id, category_type_id, event_type_id, pool_type_id, created_at, updated_at)
+  VALUES (0, 38, 90, 262, 2, 200293, 15, 2, NOW(), NOW());
+
+COMMIT;

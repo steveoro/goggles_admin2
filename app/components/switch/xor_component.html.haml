@@ -8,6 +8,6 @@
     %input{ type: 'checkbox' }
     %span.slider.xor{ id: "xor-#{@target1}-#{@target2}", role: 'button', class: @css_classes,
                       data: { action: 'click->switch#toggleTargets' } }
-  %span.text-muted{ id: "#{@target2}-span-label" }
+  %span.text-body-secondary{ id: "#{@target2}-span-label" }
     &nbsp;
     = @label2

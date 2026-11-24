@@ -28,6 +28,50 @@ RSpec.describe APITeamsController do
         get(api_teams_path)
         expect(response).to have_http_status(:success)
       end
+
+      it 'highlights Teams in the sidebar' do
+        get(api_teams_path)
+        expect(response.parsed_body.css('.app-sidebar a.active').pluck('href')).to eq([api_teams_path])
+      end
+
+      it 'links each team to its badges, affiliations (team_id) and team managers (name) (phase 15 drill-down links)' do
+        team = GogglesDb::Team.first
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: [team].to_json))
+        get(api_teams_path)
+        cell = response.parsed_body.at_css('table.datagrid-table tbody tr td[data-column="drill"]')
+        expect(cell.at_css('a[data-drill="badges"]')['href']).to eq(api_badges_path(badges_grid: { team_id: team.id }))
+        expect(cell.at_css('a[data-drill="team_affiliations"]')['href'])
+          .to eq(api_team_affiliations_path(team_affiliations_grid: { team_id: team.id }))
+        expect(cell.at_css('a[data-drill="team_managers"]')['href'])
+          .to eq(api_team_managers_path(team_managers_grid: { team_name: team.name }))
+      end
+    end
+
+    it_behaves_like('an API grid index showing an API error in place', 'teams') do
+      let(:index_path) { api_teams_path }
+      let(:api_params) { { name: anything, page: anything, per_page: anything } }
+    end
+
+    context 'when exporting the CSV (phase 15, APIGridIndex)' do
+      include AdminSignInHelpers
+
+      let(:admin_user) { prepare_admin_user }
+
+      before(:each) { sign_in_admin(admin_user) }
+
+      it 'sends the rows with the English header row, whatever the locale' do
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: GogglesDb::Team.first(2).to_json))
+        get(api_teams_path(format: :csv, locale: 'it'))
+        expect(response.media_type).to eq('text/csv')
+        expect(response.body.lines.first).to eq("Id,Editable name\n")
+        expect(response.body.lines.size).to eq(3)
+      end
+
+      it 'redirects to the page (which shows the error box) after an API error' do
+        allow(APIProxy).to receive(:call).and_return(unreachable_api_result)
+        get(api_teams_path(format: :csv, teams_grid: { name: 'x' }))
+        expect(response).to redirect_to(api_teams_path(teams_grid: { name: 'x' }))
+      end
     end
   end
   #-- -------------------------------------------------------------------------

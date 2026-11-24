@@ -1,0 +1,9 @@
+%nav.app-breadcrumbs{ 'aria-label' => t('shell.breadcrumbs.label') }
+  %ol.breadcrumb.small.mb-1
+    - @crumbs.each_with_index do |(label, path), index|
+      - if last?(index)
+        %li.breadcrumb-item.active{ 'aria-current' => 'page' }= label
+      - elsif path.present?
+        %li.breadcrumb-item= link_to(label, path)
+      - else
+        %li.breadcrumb-item= label

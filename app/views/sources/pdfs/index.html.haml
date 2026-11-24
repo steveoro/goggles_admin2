@@ -1,0 +1,8 @@
+= render(partial: 'sources/header', locals: { tab: :pdfs, path: sources_pdfs_path, count: @rows.size })
+
+.card#sources-pdfs
+  .card-body
+    %p.small.text-body-secondary= t('sources.pdfs.intro')
+    = sources_file_table(rows: @rows, empty_text: t('sources.pdfs.empty', season: season_id),
+                         return_to: sources_pdfs_path(season_id:), focus: params[:focus],
+                         table_id: 'sources-pdfs-table')

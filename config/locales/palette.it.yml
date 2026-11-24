@@ -1,0 +1,23 @@
+it:
+  shell:
+    # (fase 15) Tavolozza comandi (Ctrl+K / Cmd+K): Shell::PaletteComponent, palette_controller.js, Shell::PaletteSearch
+    palette:
+      title: 'Tavolozza comandi'
+      trigger: 'Cerca'
+      trigger_title: 'Vai a una pagina, un meeting, una squadra, un nuotatore o una sessione Data-Fix (Ctrl+K)'
+      label: 'Vai a'
+      placeholder: 'Pagina, meeting, squadra, nuotatore o sessione Data-Fix...'
+      results: 'Risultati'
+      no_results: "Nessun risultato: prova un'altra parola, oppure un id."
+      searching: 'Ricerca nel DB locale...'
+      offline: 'Sessione API-offline: sono elencate solo le pagine raggiungibili offline.'
+      hint_move: 'per spostarti'
+      hint_open: 'per aprire'
+      hint_close: 'per chiudere'
+      meeting_detail: '%{date} · stagione %{season}'
+      session_detail: 'stagione %{season} · passo %{phase}'
+      kinds:
+        meeting: 'Meeting'
+        team: 'Squadra'
+        swimmer: 'Nuotatore'
+        data_fix_session: 'Sessione Data-Fix'

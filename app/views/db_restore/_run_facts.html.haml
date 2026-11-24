@@ -1,0 +1,16 @@
+-#
+  The chosen dump and the run's state (Ops::RestoreRun). Locals: run.
+%dl.row.mb-0#db-restore-run-facts
+  %dt.col-sm-3= t('db_restore.fields.run')
+  %dd.col-sm-9
+    = "##{run.id}"
+    %span.badge.ms-1{ class: run.terminal? ? 'text-bg-secondary' : 'text-bg-primary' }= t("db_restore.statuses.#{run.status}")
+  %dt.col-sm-3= t('db_restore.fields.dump')
+  %dd.col-sm-9.font-monospace.text-break= run.dump_path.presence || '-'
+  %dt.col-sm-3= t('db_restore.fields.size')
+  %dd.col-sm-9= run.dump_bytes ? number_to_human_size(run.dump_bytes) : '-'
+  %dt.col-sm-3= t('db_restore.fields.target')
+  %dd.col-sm-9.font-monospace= run.target_database.presence || '-'
+  - if run.dump_sha256.present?
+    %dt.col-sm-3= t('db_restore.fields.sha256')
+    %dd.col-sm-9.font-monospace.small.text-break= run.dump_sha256

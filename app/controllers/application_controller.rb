@@ -5,14 +5,26 @@ require 'version'
 # = ApplicationController
 #
 # Common parent controller
-class ApplicationController < ActionController::Base
+class ApplicationController < ActionController::Base # rubocop:disable Metrics/ClassLength
   protect_from_forgery with: :null_session
   include APISession
+  # (Phase 14: prepended callback, runs first: while a guided DB restore holds the lock every page answers from the
+  #  ops DB only, see DbRestoreGuard)
+  include DbRestoreGuard
 
   before_action :app_settings_row, :set_locale, :detect_device_variant,
-                :check_jwt_session, :authenticate_user!
+                :check_jwt_session, :authenticate_user!, :set_current_attributes
 
   protected
+
+  # Request attributes read by the remote-write log (see Current, Ops::RemoteWrite).
+  # Logging context only: it never fails a request (e.g. controller specs that bypass Warden).
+  def set_current_attributes
+    Current.source = "#{controller_path}##{action_name}"
+    Current.user_id = (current_user&.id if user_signed_in?)
+  rescue StandardError
+    Current.user_id = nil
+  end
 
   # Memoize base app settings
   def app_settings_row

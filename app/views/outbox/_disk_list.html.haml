@@ -1,0 +1,13 @@
+-# (ops DB missing) the SQL files waiting in results.new, from the disk only.
+%section#outbox-disk-list
+  %h2.h5= t('outbox.disk_list')
+  - if disk_scripts.empty?
+    %p.text-body-secondary= t('outbox.empty.needs_push')
+  - else
+    .table-responsive
+      %table.table.table-sm.align-middle
+        %tbody
+          - disk_scripts.each do |rel_path, size|
+            %tr
+              %td.font-monospace.text-break= rel_path
+              %td.small.text-end.text-nowrap= number_to_human_size(size)

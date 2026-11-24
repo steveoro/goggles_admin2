@@ -36,7 +36,9 @@ namespace :normalize do
 
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/normalize/<index>-normalize_coded_names.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-normalize_coded_names.sql'
+        (registered in the SQL Outbox: HELD until applied locally, unless simulate=0;
+        since phase 13 a batch without any change writes no file: 'coded_names.normalize')
 
     Options: [Rails.env=#{Rails.env}]
              [limit=N|<0>] [index=<auto>]
@@ -53,35 +55,8 @@ namespace :normalize do
 
   DESC
   task(coded_names: ['merge:check_needed_dirs']) do
-    puts '*** Task: normalize:coded_names ***'
-    limit_rows = ENV.include?('limit') ? ENV['limit'].to_i : 0
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir('normalize')
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-
-    puts("\r\n- limit..........: #{limit_rows.positive? ? limit_rows : '(all rows)'}")
-    puts("- simulate.......: #{simulate}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}/normalize\r\n")
-
-    normalizer = Normalize::CodedNames.new(limit: limit_rows)
-    normalizer.call
-
-    puts("\r\n*** Change log: ***\r\n")
-    puts(normalizer.change_log.join("\r\n"))
-    if normalizer.duplicate_pool_ids.present?
-      puts("\r\nWARNING: found already existing coded names in SwimmingPool IDs #{normalizer.duplicate_pool_ids.inspect}")
-      puts('(those rows were skipped in the script; a manual fix is required)')
-    end
-    puts("\r\n-- Stats: meetings scanned #{normalizer.stats[:meetings_scanned]}, updated #{normalizer.stats[:meetings_updated]}; " \
-         "pools scanned #{normalizer.stats[:pools_scanned]}, updated #{normalizer.stats[:pools_updated]}")
-
-    file_name = "#{format('%04d', file_index)}-normalize_coded_names"
-    process_sql_file(
-      file_name:,
-      sql_log_array: normalizer.single_transaction_sql_log,
-      subdir: 'normalize',
-      simulate:
-    )
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('normalize:coded_names', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

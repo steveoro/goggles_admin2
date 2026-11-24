@@ -1,0 +1,62 @@
+-# Files tab: one folder of crawler/data (every top-level folder reachable; read-only ones say so).
+:ruby
+  folder_path = sources_files_path(dir: @listing.relative_dir.presence)
+= render(partial: 'sources/header', locals: { tab: :files, path: sources_files_path })
+
+.card#sources-files
+  .card-header
+    %nav{ 'aria-label' => t('sources.files.path_label') }
+      %ol.breadcrumb.mb-0#sources-files-crumbs
+        - @listing.crumbs.each_with_index do |(label, dir), index|
+          - if index == @listing.crumbs.size - 1
+            %li.breadcrumb-item.active{ 'aria-current' => 'page' }= label
+          - else
+            %li.breadcrumb-item= link_to(label, sources_files_path(dir: dir.presence))
+  .card-body
+    - if @listing.read_only?
+      .alert.alert-secondary.py-2.small#sources-files-read-only= t('sources.files.read_only_folder')
+    - elsif @listing.root?
+      %p.small.text-body-secondary= t('sources.files.root_note')
+    - if @listing.entries.empty?
+      %p.text-body-secondary.mb-0#sources-files-empty= t('sources.files.empty')
+    - else
+      .table-responsive
+        %table.table.table-sm.table-hover.align-middle.mb-0#sources-files-table
+          %thead
+            %tr
+              %th{ scope: 'col' }= t('sources.table.name')
+              %th.text-end.d-none.d-md-table-cell{ scope: 'col' }= t('sources.table.size')
+              %th.d-none.d-lg-table-cell{ scope: 'col' }= t('sources.table.modified')
+              %th.text-end{ scope: 'col' }
+                %span.visually-hidden= t('sources.table.actions')
+          %tbody
+            - if @listing.parent_dir
+              %tr
+                %td{ colspan: 4 }
+                  = link_to(sources_files_path(dir: @listing.parent_dir.presence), id: 'sources-files-up') do
+                    %i.fa-solid.fa-turn-up{ 'aria-hidden' => 'true' }
+                    = t('sources.files.up')
+            - @listing.entries.each do |entry|
+              - focused = !entry.directory? && entry.name == params[:focus]
+              %tr{ class: focused ? 'table-active sources-file-focus' : nil, data: { sources_file: entry.name, sources_focus: focused.to_s } }
+                %td.text-break
+                  - if entry.directory?
+                    = link_to(sources_files_path(dir: entry.relative_path), class: 'fw-semibold') do
+                      %i.fa-solid.fa-folder{ 'aria-hidden' => 'true' }
+                      = entry.name
+                    %span.small.text-body-secondary= t('sources.files.entries', count: entry.count)
+                    - if sources_read_only_folder?(entry.relative_path)
+                      %span.badge.text-bg-secondary.fw-normal= t('sources.files.read_only')
+                  - elsif entry.outside_link?
+                    %i.fa-solid.fa-link-slash{ 'aria-hidden' => 'true' }
+                    = entry.name
+                    %span.badge.text-bg-warning.fw-normal= t('sources.files.outside_link')
+                  - else
+                    %i.fa-regular.fa-file{ 'aria-hidden' => 'true' }
+                    = entry.name
+                %td.text-end.text-nowrap.d-none.d-md-table-cell= entry.size ? number_to_human_size(entry.size) : ''
+                %td.text-nowrap.d-none.d-lg-table-cell= entry.mtime ? l(entry.mtime.localtime, format: :short) : ''
+                %td.text-end
+                  = render(partial: 'sources/files/actions', locals: { entry:, return_to: folder_path }) unless entry.directory? || entry.outside_link?
+      - if @listing.truncated?
+        %p.small.text-body-secondary.mt-2.mb-0= t('sources.files.truncated', count: sources_folder_max_entries)

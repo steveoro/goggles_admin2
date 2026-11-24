@@ -66,13 +66,13 @@ RSpec.describe DataFixController do
       it 'shows visual indicator for new swimmers (no DB ID)' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('bg-light-yellow') # New swimmer indicator
-        expect(response.body).to include('badge-primary') # NEW badge
+        expect(response.body).to include('text-bg-primary') # NEW badge
       end
 
       it 'shows visual indicator for matched swimmers (with DB ID)' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('bg-light') # Matched swimmer indicator
-        expect(response.body).to include('badge-success') # ID badge
+        expect(response.body).to include('text-bg-success') # ID badge
       end
 
       it 'displays empty swimmers message when no swimmers exist' do
@@ -80,7 +80,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: { 'swimmers' => [] }, meta: { 'generator' => 'test' })
 
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('No swimmers found')
+        expect(response.body).to include(I18n.t('data_fix.wizard.swimmers.none').split('.').first)
       end
 
       it 'paginates swimmers correctly (default 100 per page)' do
@@ -197,7 +197,7 @@ RSpec.describe DataFixController do
 
       it 'displays phase metadata' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Phase 3 Metadata') # Metadata header in collapsed card
+        expect(response.body).to include(I18n.t('data_fix.wizard.metadata', number: 3)) # Metadata header in collapsed card
       end
 
       it 'shows LegacyAutoComplete component for swimmer lookup' do
@@ -207,13 +207,13 @@ RSpec.describe DataFixController do
 
       it 'displays fuzzy matches dropdown when matches exist' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Quick match selection')
+        expect(response.body).to include(I18n.t('data_fix.wizard.swimmers.quick_match'))
         expect(response.body).to include('fuzzy_select')
       end
 
       it 'shows Add Swimmer button' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Add Swimmer')
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.add_swimmer'))
       end
 
       it 'displays delete button for each swimmer' do
@@ -284,7 +284,7 @@ RSpec.describe DataFixController do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('Cross-phase review:')
+        expect(response.body).to include(I18n.t('data_fix.flash.cross_phase_review', summary: '').split(':').first)
         expect(response.body).to include('flash-sticky')
 
         phase2_team = PhaseFileManager.new(phase2_file).data.fetch('teams').first
@@ -343,6 +343,24 @@ RSpec.describe DataFixController do
         expect(response).to be_successful
         expect(response.body).to include('Alpha John')
         expect(response.body).to include(CGI.escape(lt4_source))
+      end
+
+      describe 'Phase 3 without the phase3_v2 flag' do
+        it 'renders the v2 review page (the phase3_v2 flag is optional)' do
+          get review_swimmers_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(response.body).to include('Step 3: Swimmers')
+        end
+
+        it 'resolves the canonical source path like the flagged request' do
+          allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+          get review_swimmers_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
+        end
       end
     end
 
@@ -462,24 +480,6 @@ RSpec.describe DataFixController do
         expect(badge_row['badge_id']).to be_nil
       end
 
-      it 'clears downstream phase data when swimmer is updated' do
-        # Add downstream data
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        data['meeting_event'] = [{ 'some' => 'data' }]
-        data['meeting_program'] = [{ 'some' => 'data' }]
-        pfm.write!(data: data, meta: { 'generator' => 'test' })
-
-        patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
-                        swimmer: { complete_name: 'Updated Name' } }
-
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_program']).to eq([])
-      end
-
       it 'returns error for invalid swimmer key' do
         patch update_phase3_swimmer_path,
               params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999',
@@ -493,7 +493,7 @@ RSpec.describe DataFixController do
         patch update_phase3_swimmer_path,
               params: { swimmer_index: 0, swimmer: { complete_name: 'Test' } }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
@@ -655,7 +655,7 @@ RSpec.describe DataFixController do
         post data_fix_add_swimmer_path, params: { file_path: source_file }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:notice]).to eq('Swimmer added')
+        expect(flash[:notice]).to eq(I18n.t('data_fix.flash.swimmer_added'))
 
         # Verify swimmer was added
         pfm = PhaseFileManager.new(phase3_file)
@@ -693,7 +693,7 @@ RSpec.describe DataFixController do
       it 'returns error for missing file_path' do
         post data_fix_add_swimmer_path
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
@@ -736,22 +736,6 @@ RSpec.describe DataFixController do
         expect(data['swimmers'][0]['complete_name']).to eq('Beta Jane')
       end
 
-      it 'clears downstream phase data when swimmer is deleted' do
-        # Add downstream data
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        data['meeting_event'] = [{ 'some' => 'data' }]
-        data['meeting_individual_result'] = [{ 'some' => 'data' }]
-        pfm.write!(data: data, meta: { 'generator' => 'test' })
-
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'ALPHA|JOHN|1985' }
-
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_individual_result']).to eq([])
-      end
-
       it 'returns error for invalid swimmer key' do
         delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999' }
 
@@ -762,7 +746,7 @@ RSpec.describe DataFixController do
       it 'returns error for missing file_path' do
         delete data_fix_delete_swimmer_path, params: { swimmer_index: 0 }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
@@ -826,6 +810,25 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Alpha John')
         # Without auxiliary files, shows warning instead of button
         expect(response.body).to include(I18n.t('data_import.relay_enrichment.no_auxiliary_files'))
+      end
+
+      it 'passes the Phase 1 header date to the relay enrichment detector' do
+        File.write(source_file, JSON.pretty_generate(relay_payload))
+        PhaseFileManager.new(source_file.sub('.json', '-phase1.json')).write!(
+          data: { 'name' => 'Test meeting', 'header_date' => '2025-03-01' },
+          meta: { 'generator' => 'test' }
+        )
+        PhaseFileManager.new(phase3_file).write!(
+          data: { 'swimmers' => [incomplete_swimmer], 'badges' => [] },
+          meta: { 'generator' => 'test' }
+        )
+
+        expect(Phase3::RelayEnrichmentDetector).to receive(:new)
+          .with(hash_including(meeting_date: '2025-03-01')).and_call_original
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response).to be_successful
       end
 
       it 'does not render relay enrichment panel when no relay issues are found' do
@@ -997,7 +1000,7 @@ RSpec.describe DataFixController do
         # Request page 3 with per_page=100 (120 swimmers / 100 = 2 pages) — should clamp to page 2
         get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'none',
                                  swimmers_per_page: 100, swimmers_page: 3)
-        expect(response.body).not_to include('No swimmers found')
+        expect(response.body).not_to include(I18n.t('data_fix.wizard.swimmers.none').split('.').first)
         expect(response.body).to include('Swimmer101 Test')
       end
 
@@ -1009,23 +1012,6 @@ RSpec.describe DataFixController do
         expect(pagination_links).to be_present
         expect(pagination_links.first).to include('filter_state=review')
         expect(pagination_links.first).to include('swimmers_per_page=50')
-      end
-    end
-
-    describe 'Fallback to legacy controller' do
-      it 'redirects to legacy controller when phase3_v2 is not present' do
-        get review_swimmers_path(file_path: source_file)
-
-        expect(response).to redirect_to(review_swimmers_legacy_path(file_path: source_file))
-      end
-
-      it 'redirects without resolving the source path (no category normalization side effects)' do
-        allow(DataFix::SourceResolver).to receive(:new).and_call_original
-
-        get review_swimmers_path(file_path: source_file)
-
-        expect(response).to redirect_to(review_swimmers_legacy_path(file_path: source_file))
-        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

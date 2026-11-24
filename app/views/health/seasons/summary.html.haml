@@ -1,0 +1,49 @@
+-#
+  Run summary of a season (Health::SeasonsController#summary frame): per group, the latest run (status, time, duration,
+  trigger, error), the open counts, a stale-data mark and the group "Re-run" button.
+- busy = @cells.values.any?(&:pending?)
+= turbo_frame_tag('health-season-summary', target: '_top') do
+  .table-responsive{ data: { live_busy: busy.to_s } }
+    %table.table.table-sm.align-middle.mb-0#health-season-runs
+      %thead
+        %tr
+          %th{ scope: 'col' }= t('health.season.group')
+          %th{ scope: 'col' }= t('health.season.last_run')
+          %th.text-end{ scope: 'col' }= t('health.season.open')
+          %th{ scope: 'col' }
+            %span.visually-hidden= t('health.matrix.actions')
+      %tbody
+        - @groups.each do |group|
+          - cell = @cells[group]
+          - run = cell.run
+          %tr{ data: { health_group: group } }
+            %th{ scope: 'row' }= link_to(t("health.groups.#{group}"), "#health-group-#{group}", class: 'text-decoration-none')
+            %td.small
+              - if cell.pending?
+                = render(Health::BadgeComponent.new(kind: :run, value: cell.pending.status))
+                %i.fa-solid.fa-circle-notch.fa-spin.ms-1{ 'aria-hidden' => 'true' }
+              - if run
+                = render(Health::BadgeComponent.new(kind: :run, value: run.status))
+                %span.text-nowrap= l(run.finished_at.localtime, format: :short) if run.finished_at
+                - if run.duration_ms
+                  %span.text-body-secondary= t('health.season.duration', seconds: format('%.1f', run.duration_ms / 1000.0))
+                %span.text-body-secondary= t("health.triggers.#{run.trigger}")
+                - if cell.stale
+                  %span.badge.bg-warning-subtle.text-warning-emphasis{ title: t('health.season.stale_tooltip') }= t('health.season.stale')
+                - if run.failed? && run.error_message.present?
+                  .text-danger-emphasis.text-break.health-run-error= run.error_message.truncate(300)
+              - elsif !cell.pending?
+                %span.text-body-secondary= t('health.matrix.never_run')
+            %td.text-end.small.text-nowrap
+              - if cell.errors.positive?
+                %span.text-danger-emphasis #{cell.errors} !
+              - if cell.warnings.positive?
+                %span.text-warning-emphasis #{cell.warnings} ~
+              - if cell.open_count.zero?
+                %span.text-body-secondary= cell.acknowledged.positive? ? t('health.matrix.cell.ack', count: cell.acknowledged) : '0'
+            %td.text-end
+              = button_to(health_runs_path, params: { season_id: @season.id, group:, return_to: health_season_path(@season.id) },
+                                            class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline', disabled: cell.pending?,
+                                            data: { health_rerun: group }) do
+                %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+                = t('health.season.rerun')

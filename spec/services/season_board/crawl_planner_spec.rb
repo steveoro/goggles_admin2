@@ -5,6 +5,7 @@ require_relative 'board_rows'
 
 RSpec.describe SeasonBoard::CrawlPlanner do
   include SeasonBoardRows
+  include ActiveSupport::Testing::TimeHelpers
 
   let(:season) { FactoryBot.build_stubbed(:season, id: 262) }
   let(:activity_log) { SeasonBoard::ActivityLog.new }
@@ -47,6 +48,11 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(SeasonBoard::Scheduler).to have_received(:crawl!).once
   end
 
+  it 'stores its board build as the board summary' do
+    plan(change_for('1'))
+    expect(SeasonBoard::Snapshot.read(262).rows.map(&:fin_event_id)).to eq(%w[1 2 3 4])
+  end
+
   it 'considers the updated rows too' do
     expect(plan(change_for('4', key: 'updated'))).to eq(%w[4])
   end
@@ -80,5 +86,45 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(plan('added' => [{ 'url' => '' }])).to eq([])
     expect(described_class.new(season: nil, activity_log:, builder:).call(change_for('1'))).to eq([])
     expect(builder).not_to have_received(:call)
+  end
+
+  it 'queues nothing with the automation master switch off (phase 10)' do
+    DataFix::Automation.store!(:enabled, false)
+    expect(plan(change_for('1', '2'))).to eq([])
+    expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+  end
+
+  describe '#plan_recrawl (FIN now lists a structure-committed meeting with results)' do
+    def recrawl(change)
+      described_class.new(season:, activity_log:, builder:).plan_recrawl(change)
+    end
+
+    let(:with_results) { { 'with_results' => [{ 'url' => rows[2].url }, { 'url' => rows[0].url }] } }
+
+    it 're-crawls only the :structure_committed rows listed under with_results, ignoring the same-URL dedupe' do
+      activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+      activity_log.finish!('3', kind: :crawl, status: :done)
+      Ops::Snapshot.delete_all
+      travel_to(21.hours.from_now) do
+        expect(recrawl(with_results)).to eq(%w[3])
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(season_id: 262, fin_event_id: '3', url: rows[2].url, origin: :auto).once
+      end
+    end
+
+    it 'crawls a row at most once per 20 hours' do
+      activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+      activity_log.finish!('3', kind: :crawl, status: :done)
+      expect(recrawl(with_results)).to eq([])
+      expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    end
+
+    it 'skips busy rows and queues nothing with the automation off' do
+      rows[2] = board_row(fin_event_id: '3', state: :structure_committed, action: :check_results, busy: true)
+      expect(recrawl(with_results)).to eq([])
+      rows[2] = board_row(fin_event_id: '3', state: :structure_committed, action: :check_results)
+      allow(DataFix::Automation).to receive(:env_off?).and_return(true)
+      expect(recrawl(with_results)).to eq([])
+      expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    end
   end
 end

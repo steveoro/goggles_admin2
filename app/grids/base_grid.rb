@@ -13,12 +13,32 @@ class BaseGrid < Datagrid::Base
   # > MyGrid.data_domain = @model_instances_list
   class_attribute(:data_domain, default: [])
 
-  self.default_column_options = {
-    # Uncomment to disable the default order
-    # order: false,
-    # Uncomment to make all columns HTML by default
-    # html: true,
-  }
+  # (phase 15) Column and filter headers come from config/locales/grids.{en,it}.yml, read at render time in the current
+  # locale (an explicit +header:+ option still wins; see .column_header and .filter_header).
+  self.default_column_options = ->(column) { { header: -> { column.grid_class.column_header(column.name) } } }
+  self.default_filter_options = ->(filter) { { header: -> { filter.grid_class.filter_header(filter.name) } } }
+
+  # The grid's key in the 'grids.*' locale scope: the class name without 'Grid', underscored (TeamsGrid => 'teams').
+  def self.i18n_key
+    name.underscore.delete_suffix('_grid')
+  end
+
+  # Header of a column: 'grids.<grid>.<column>', then 'grids.defaults.<column>' (the BaseGrid helper columns:
+  # selected, actions, drill), else the humanized name.
+  def self.column_header(column_name)
+    I18n.t("grids.#{i18n_key}.#{column_name}", default: [:"grids.defaults.#{column_name}", column_name.to_s.humanize])
+  end
+
+  # Label of a filter: 'grids.<grid>.filters.<filter>', then the header of the column with the same name.
+  def self.filter_header(filter_name)
+    I18n.t("grids.#{i18n_key}.filters.#{filter_name}", default: column_header(filter_name))
+  end
+
+  # The i18n keys a column (or a filter, +filter: true+) header is read from, most specific first.
+  def self.header_keys(name, filter: false)
+    keys = ["grids.#{i18n_key}.#{name}", "grids.defaults.#{name}"]
+    filter ? keys.unshift("grids.#{i18n_key}.filters.#{name}") : keys
+  end
 
   # Enable forbidden attributes protection
   # self.forbidden_attributes_protection = true

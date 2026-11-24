@@ -24,10 +24,10 @@ RSpec.describe Grid::CsvExportButtonComponent, type: :component do
       expect(component.css('a').attr('href').value).to eq("/#{fixture_controller_name}.csv")
     end
     it 'includes a tooltip help' do
-      expect(component.css('a').attr('data-toggle')).to be_present
-      expect(component.css('a').attr('data-toggle').value).to eq('tooltip')
-      expect(component.css('a').attr('data-title')).to be_present
-      expect(component.css('a').attr('data-title').value).to eq(I18n.t('datagrid.csv_export.btn_tooltip'))
+      expect(component.css('a').attr('data-bs-toggle')).to be_present
+      expect(component.css('a').attr('data-bs-toggle').value).to eq('tooltip')
+      expect(component.css('a').attr('data-bs-title')).to be_present
+      expect(component.css('a').attr('data-bs-title').value).to eq(I18n.t('datagrid.csv_export.btn_tooltip'))
     end
   end
 end

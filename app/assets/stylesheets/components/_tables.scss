@@ -1,0 +1,27 @@
+// = Theme-aware table tints =
+//
+// Bootstrap's .table-light / .table-secondary variants keep their light colours in dark mode.
+// These follow the color mode, with the same look in light mode:
+// - .table-body-tertiary: header rows (as .table-light);
+// - .table-body-secondary: muted rows, e.g. cancelled ones (as .table-secondary + muted text).
+.table-body-tertiary {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: var(--bs-tertiary-bg);
+  --bs-table-border-color: var(--bs-border-color);
+  color: var(--bs-table-color);
+  border-color: var(--bs-table-border-color);
+}
+
+.table-body-secondary {
+  --bs-table-color: var(--bs-secondary-color);
+  --bs-table-bg: var(--bs-secondary-bg);
+  --bs-table-border-color: var(--bs-border-color);
+  color: var(--bs-table-color);
+  border-color: var(--bs-table-border-color);
+}
+
+// Row tints on table rows (`%tr.bg-light-blue`, `%tr.bg-body-tertiary`, ...): Bootstrap 5 paints every cell with
+// --bs-table-bg, which would hide the background of the row; the cells of a tinted row stay transparent.
+.table tr[class*='bg-'] > * {
+  --bs-table-bg: transparent;
+}

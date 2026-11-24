@@ -64,9 +64,15 @@ RSpec.describe APITrainingsController do
         get(api_trainings_path)
       end
 
-      it 'redirects to the dashboard with an error flash instead of raising' do
-        expect(response).to redirect_to(root_path)
-        expect(flash[:error]).to be_present
+      it 'shows the API error box in place of the rows (status 200, no redirect) instead of raising' do
+        expect(response).to have_http_status(:ok)
+        box = response.parsed_body.at_css("##{Grid::APIErrorComponent::DOM_ID}")
+        expect(box['data-api-error-code']).to eq('503')
+        expect(box.at_css('#grid-api-error-detail').text).to include('Service Unavailable')
+        expect(box.at_css('#grid-api-error-retry')['href']).to eq(api_trainings_path)
+        expect(response.parsed_body.at_css('#data-list table')).to be_nil
+        expect(response.parsed_body.at_css('#btn-new-training')).to be_present
+        expect(flash[:error]).to be_nil
       end
     end
   end

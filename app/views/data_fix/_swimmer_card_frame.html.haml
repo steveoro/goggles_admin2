@@ -1,0 +1,39 @@
+-#
+  A Step 3 swimmer card inside its key-based Turbo frame (data_fix_card_frame_id): rendered by review_swimmers and,
+  after a save in place, by update_phase3_swimmer.turbo_stream (the frame targets the page, so that delete and
+  links leave it). Locals: swimmer_hash, swimmer_index (position in the filtered list), swimmer_team_key, file_path,
+  api_url.
+:ruby
+  swimmer_key = swimmer_hash['key']
+  swimmer_id = swimmer_hash['swimmer_id']
+  has_match = swimmer_id.to_i.positive?
+  has_badge_duplicates = swimmer_hash['has_badge_duplicates'] == true
+  missing_name = swimmer_hash['first_name'].blank? && swimmer_hash['last_name'].blank?
+  missing_yob = swimmer_hash['year_of_birth'].to_i.zero?
+  missing_gender = swimmer_hash['gender_type_code'].blank?
+  has_missing_data = missing_name || missing_yob || missing_gender
+  # (has an ID but misses first or last name: optional editing)
+  needs_optional_edit = has_match && (swimmer_hash['first_name'].blank? || swimmer_hash['last_name'].blank?)
+  similar_on_team = swimmer_hash['similar_on_team'] == true
+  card_bg, border_color, icon_class, icon_title =
+    if has_badge_duplicates
+      ['bg-light-red', 'border-danger', 'fa-exclamation-circle text-danger', 'Duplicate badges found in recent seasons']
+    elsif has_match && !needs_optional_edit
+      ['bg-body-tertiary', 'border-secondary', 'fa-check-circle text-success', 'Matched']
+    elsif needs_optional_edit
+      ['bg-light-yellow', 'border-warning', 'fa-edit text-primary', 'Needs optional editing']
+    elsif has_missing_data
+      ['bg-light-red', 'border-danger', 'fa-exclamation-triangle text-danger', 'Missing required data']
+    elsif similar_on_team
+      ['bg-light-yellow', 'border-warning', 'fa-exclamation-triangle text-warning', 'Similar name on same team']
+    else
+      ['bg-light-yellow', 'border-warning', 'fa-plus-circle text-warning', 'New/Unmatched']
+    end
+= turbo_frame_tag(data_fix_card_frame_id('swimmer', swimmer_key), target: '_top') do
+  = render(partial: 'data_fix/swimmer_form_card',
+           locals: { file_path:, api_url:, swimmer_hash:, swimmer_index:, swimmer_key:, swimmer_team_key:, swimmer_id:,
+                     has_match:, has_missing_data:, needs_optional_edit:, missing_name:, missing_yob:, missing_gender:,
+                     gender_guessed: swimmer_hash['gender_guessed'] == true, similar_on_team:, has_badge_duplicates:,
+                     badge_duplicate_summary: swimmer_hash['badge_duplicate_summary'],
+                     card_bg:, border_color:, border_width: 'border-2', icon_class:, icon_title:,
+                     issue_codes: [DataFix::IssueMarkers.swimmer(swimmer_hash)].compact })

@@ -140,22 +140,21 @@ RSpec.describe DataFixController do
       expect(add_event_form.at_css('select#event_type_select.autocomplete-lookup__select')).to be_present
     end
 
-    describe 'Phase 4 redirect to legacy' do
-      it 'redirects to legacy controller when phase4_v2 param is absent' do
+    describe 'Phase 4 without the phase4_v2 flag' do
+      it 'renders the v2 review page (the phase4_v2 flag is optional)' do
         get review_events_path(file_path: source_file)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_events')
+        expect(response).to be_successful
+        expect(response.body).to include('Step 4: Events')
       end
 
-      it 'redirects without resolving the source path (no category normalization side effects)' do
+      it 'resolves the canonical source path like the flagged request' do
         allow(DataFix::SourceResolver).to receive(:new).and_call_original
 
         get review_events_path(file_path: source_file)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_events')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
+        expect(response).to be_successful
+        expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
       end
     end
   end

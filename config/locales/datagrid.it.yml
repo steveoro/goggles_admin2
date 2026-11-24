@@ -9,9 +9,11 @@ it:
     form:
       search: "Cerca"
       reset: "Reset"
+      toggle_filters: "Mostra/nascondi i filtri"
     no_results: "Nessun risultato"
     csv_export:
       btn_tooltip: "Scarica tutti i dati della pagina corrente come file CSV"
+      btn_localhost_0mirs_label: "CSV localhost 0-MIR"
       btn_localhost_0mirs_tooltip: "Scarica l'elenco dei Meeting su localhost che non hanno neanche un MIR, ottenendo un file CSV. Supporta il filtraggio tramite Season.\r\n(Il filtro deve essere applicato alla grid anche se i dati vengono prelevati da localhost.)"
     edit_modal:
       edit_title: "Modifica"
@@ -53,3 +55,22 @@ it:
       create_failed: "Creazione SQL fallita: %{error}"
       missing_entity: "%{entity} mancante o non valido (ID: %{id})"
       duplicate_error: "Esiste già un collegamento Team Manager per l'affiliazione %{ta_id} e l'utente %{user_id}"
+    # (fase 15) riquadro d'errore API delle pagine griglia api_* (Grid::APIErrorComponent)
+    api_error:
+      title: "L'API ha risposto con un errore (codice %{code}): nessuna riga da mostrare"
+      unreachable_title: "Il server API non è raggiungibile: nessuna riga da mostrare"
+      hint: "I filtri qui sopra funzionano ancora. Riprova, oppure cambia il filtro se l'errore dipende da quello."
+      unreachable_hint: "Controlla che il server API sia attivo e che il suo URL nelle Impostazioni sia corretto, poi riprova."
+      retry: "Riprova"
+      settings: "URL dell'API nelle Impostazioni"
+    # (fase 15) link di approfondimento delle righe di griglia (Grid::DrillLinkComponent)
+    drill:
+      season_board: "Nella Plancia stagione"
+      calendars: "Calendari della sua stagione"
+      badges: "Cartellini"
+      team_affiliations: "Affiliazioni della squadra"
+      team_managers: "Team manager della squadra"
+      team: "La squadra"
+      swimmers: "Nuotatori con questo cognome"
+      meetings: "Meeting con questo nome"
+      outbox_script: "Apri lo script nella SQL Outbox"

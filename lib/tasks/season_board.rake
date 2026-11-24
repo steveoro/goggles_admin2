@@ -12,6 +12,7 @@
 #-- ---------------------------------------------------------------------------
 #++
 
+# Since phase 13 the task body is a thin caller of the 'season_board.backfill' operation (Maintenance::RakeRunner).
 namespace :season_board do
   desc <<~DESC
       One-time backfill linking the existing calendars rows of a season to the FIN calendar
@@ -28,45 +29,31 @@ namespace :season_board do
     The generated UPDATEs are idempotent (rows already correct are skipped).
 
     In apply mode (simulate=0), the changes are run on the localhost DB inside a single
-    transaction and the SQL script is stored for the push dashboard as:
+    transaction (the 'season_board.backfill' operation, since phase 13) and the SQL script
+    is registered in the SQL Outbox as:
 
-      - 'crawler/data/results.new/<season_id>/<index>-season_board_backfill-<season_id>.sql'
+      - 'crawler/data/results.new/misc/<index>-season_board_backfill-<season_id>.sql'
+
+    In apply mode the DB sync gate runs first (Drift::Gate, scope :rake; see /db_sync):
+    a red verdict aborts the task unless force=1; any other warning is printed.
 
     Options: [Rails.env=#{Rails.env}]
              [season=<season#id>|<latest MASFIN season>]
              [simulate='0'|<'1'>]
+             [force='1'|<'0'>]
 
       - season: the Season ID to be processed (default: the latest FIN Masters season);
 
       - simulate: when set to '0' the changes are applied locally and the script is
-                  written (default: '1', just prints the report and the SQL).
+                  written (default: '1', just prints the report and the SQL);
+
+      - force: when set to '1' a red DB sync verdict doesn't stop the apply mode.
 
   DESC
   task backfill: :environment do
-    puts '*** Task: season_board:backfill ***'
-    season = if ENV['season'].present?
-               GogglesDb::Season.find_by(id: ENV['season'].to_i)
-             else
-               GogglesDb::Season.last_season_by_type(GogglesDb::SeasonType.mas_fin)
-             end
-    if season.nil?
-      puts("ABORTED: season #{ENV.fetch('season', nil).inspect} not found.")
-      next
-    end
-
-    simulate = ENV['simulate'] != '0' # Don't change anything unless explicitly requested
-    puts("\r\n- season.........: #{season.id}")
-    puts("- simulate.......: #{simulate}\r\n\r\n")
-
-    backfill = SeasonBoard::Backfill.new(season:, simulate:).call
-    puts(backfill.report.join("\r\n"))
-    if backfill.statements.empty?
-      puts("\r\nNothing to do: all rows are already up to date.")
-    elsif simulate
-      puts("\r\n*** SQL (not applied, not saved): ***\r\n")
-      puts(backfill.sql_log.join("\r\n"))
-    end
-    puts('Done.')
+    data_root = defined?(SCRIPT_OUTPUT_DIR) ? SCRIPT_OUTPUT_DIR.dirname : Outbox.data_root
+    status = Maintenance::RakeRunner.call('season_board:backfill', data_root:)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

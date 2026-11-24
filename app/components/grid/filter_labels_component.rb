@@ -26,9 +26,10 @@ module Grid
       @filter_params = filter_params
     end
 
-    # Skips rendering unless the required parameters are set
+    # Skips rendering unless the required parameters are set and at least one filter has a value
+    # (the ordering parameters alone are not shown)
     def render?
-      @filter_params.present?
+      @filter_params.present? && filter_labels.present?
     end
 
     protected

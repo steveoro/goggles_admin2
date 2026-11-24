@@ -1,18 +1,18 @@
-.row.btn-toolbar.d-flex.justify-content-left.ml-0.mb-2
+.btn-toolbar.align-items-center.gap-2.mb-2
   - if @filter
-    .btn-group.mx-1.my-0#filter-show-btn
+    .btn-group#filter-show-btn
       = render(Grid::FilterShowButtonComponent.new)
   - if @select
-    .btn-group.mx-1.my-0#sel-toggle-btn
+    .btn-group#sel-toggle-btn
       = render(Grid::SelectionToggleButtonComponent.new)
   - if @create
-    .btn-group.mx-1.my-0#new-btn
+    .btn-group#new-btn
       = render(Grid::CreateNewButtonComponent.new(asset_row: @asset_row,
                controller_name: @controller_name))
   - if @destroy
-    .btn-group.mx-1.my-0#delete-btn
+    .btn-group#delete-btn
       = render(Grid::DeleteSelectionButtonComponent.new(controller_name: @controller_name))
   - if @csv
-    .btn-group.mx-1.my-0#csv-btn
+    .btn-group#csv-btn
       = render(Grid::CsvExportButtonComponent.new(controller_name: @controller_name, request_params: @request_params))
   = content

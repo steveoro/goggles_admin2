@@ -5,6 +5,8 @@
 # Manage Meetings via API.
 #
 class APIMeetingsController < ApplicationController
+  include APIGridIndex
+
   # GET /api_meetings
   # Show the Meetings dashboard.
   #
@@ -12,7 +14,6 @@ class APIMeetingsController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable-next Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'meetings', jwt: current_user.jwt,
@@ -27,27 +28,8 @@ class APIMeetingsController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page] || 25
       }
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(MeetingsGrid, GogglesDb::Meeting, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = MeetingsGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv,
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-meetings-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
+    render_api_index(MeetingsGrid, GogglesDb::Meeting, result, csv_name: 'meetings') do |domain, _parsed_response|
+      MeetingsGrid.board_links = MeetingsGrid.board_links_for(domain)
     end
   end
   #-- -------------------------------------------------------------------------

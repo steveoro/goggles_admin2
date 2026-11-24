@@ -45,6 +45,25 @@ RSpec.describe SeasonBoard::CalendarLinker do
         .and include("WHERE `id`=#{calendar.id};").and include('COMMIT;')
     end
 
+    it 'registers the script in the Outbox (kind calendar_link, pending, same bytes as before)' do
+      script = Ops::SqlScript.find_by(filename: File.basename(result.sql_path.to_s))
+      expect(script).to have_attributes(kind: 'calendar_link', state: 'pending', folder: season.id.to_s, season_id: season.id)
+      expect(script.origin).to include('fin_event_id' => '150100', 'calendar_id' => calendar.id)
+      expect(File.binread(result.sql_path)).to start_with("-- Season board manual link: season_id=#{season.id}")
+        .and end_with("\r\n--\r\n\r\nCOMMIT;\r\n")
+    end
+
+    it 'leaves neither script nor Outbox row when the local transaction fails after the write' do
+      allow(Ops).to receive(:record_event!).and_call_original
+      allow_any_instance_of(described_class).to receive(:write_sql_file).and_wrap_original do |original, *args| # rubocop:disable RSpec/AnyInstance
+        original.call(*args)
+        raise ActiveRecord::StatementInvalid, 'lock wait timeout'
+      end
+      expect { expect(result).not_to be_success }.not_to change(Ops::SqlScript, :count)
+      expect(Dir.glob(File.join(data_root, '**', '*.sql'))).to be_empty
+      expect(calendar.reload.results_code).not_to eq('150100')
+    end
+
     it 'does not replace an existing FIN results_link with a non-FIN one' do
       calendar.update!(results_link: fin_url)
       link(results_link: 'https://nuoto.ficr.it/#/x')
@@ -108,6 +127,31 @@ RSpec.describe SeasonBoard::CalendarLinker do
       result = link
       expect(result).to be_success
       expect(result.sql_path).to be_nil
+    end
+  end
+
+  describe 'ops event log' do
+    it 'records one board.calendar_linked event when the calendar changes' do
+      result = nil
+      expect { result = link(results_link: fin_url) }.to change(Ops::Event, :count).by(1)
+      event = Ops::Event.last
+      expect(event).to have_attributes(kind: 'board.calendar_linked', level: 'success', actor: 'operator', season_id: season.id,
+                                       subject_type: 'fin_event', subject_key: '150100')
+      expect(event.data).to eq('calendar_id' => calendar.id, 'changes' => %w[results_code results_link],
+                               'sql_filename' => File.basename(result.sql_path.to_s))
+    end
+
+    it 'records nothing when nothing changes or the link fails' do
+      calendar.update!(results_code: '150100')
+      expect { link }.not_to change(Ops::Event, :count)
+      expect { described_class.new(season:, calendar_id: calendar.id, fin_event_id: 'abc', data_root:).call }
+        .not_to change(Ops::Event, :count)
+    end
+
+    it 'links all the same when the event write fails' do
+      allow(Ops::Event).to receive(:create!).and_raise(ArgumentError, 'kaboom')
+      expect(link).to be_success
+      expect(calendar.reload.results_code).to eq('150100')
     end
   end
 end

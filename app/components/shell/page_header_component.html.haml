@@ -1,0 +1,11 @@
+%header.app-page-header.d-flex.flex-wrap.align-items-end.justify-content-between.gap-2.mb-3
+  .app-page-heading
+    = render(Shell::BreadcrumbsComponent.new(crumbs: @crumbs))
+    %h1.h3.mb-0.d-flex.flex-wrap.align-items-center.gap-2
+      %span.app-page-title= @title
+      - unless @count.nil?
+        %span.badge.rounded-pill.text-bg-secondary.fw-normal.app-page-count= t('dashboard.n_total_rows', tot: @count)
+    - if @subtitle.present?
+      %p.text-body-secondary.mb-0.app-page-subtitle= @subtitle
+  - if actions?
+    .app-page-actions.d-flex.flex-wrap.align-items-center.gap-2= actions

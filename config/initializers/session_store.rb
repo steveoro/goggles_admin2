@@ -11,3 +11,8 @@ Rails.application.config.session_store(
   # secure: !(Rails.env.development? || Rails.env.test?),
   key: Rails.env.local? ? '_goggles_admin2_session' : '__Host-goggles_admin2_session'
 )
+
+# Phase 14: the session rows live in the local ops DB (table 'sessions'), so the operator stays signed in while a
+# guided restore drops and reloads the MySQL primary; MySQL stays the fallback while the ops DB isn't ready
+# (see Ops::SessionStoreSetup). Re-installed after each code reload (the Router is autoloaded).
+Rails.application.config.to_prepare { Ops::SessionStoreSetup.install! }

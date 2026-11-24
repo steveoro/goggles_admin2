@@ -1,0 +1,77 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: fix:team_in_badge ***
+
+Fixing team_id in 1 badge(s): [115303]
+New team: (1193) "Januaryton Swimming Club ASD"
+Mode: SURGICAL (CREATE MISSING AFFILIATIONS ONLY)
+
+- simulate........................................: true
+- nuke_team.......................................: false
+- destination folder..............................: <DATA_ROOT>/results.new
+
+============================================================
+Badge Team Fix Preview
+============================================================
+Seasons: 182 - Circuito italiano supermaster FIN 2018/2019
+New (correct) team: (1193) "Januaryton Swimming Club ASD"
+Mode: SURGICAL (CREATE MISSING AFFILIATIONS ONLY)
+  -> TeamAffiliations by season: 182:5682
+
+--- Badges to update (1) ---
+  Badge 115303: swimmer 15698 (MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD) | current team: 1292
+
+--- Affected results ---
+- MIRs: 5
+- Laps: 0
+- MRRs: 0
+- Relay laps: 0
+
+--- Rows to delete ---
+- Meeting entries: 0
+- Meeting reservations: 0
+- Meeting event reservations: 0
+- Meeting relay reservations: 0
+
+============================================================
+
+File '<DATA_ROOT>/results.new/misc/NNNN-fix_team_in_badge-115303.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-fix_team_in_badge-115303.sql
+-- Fix team_id in badges: [115303]
+-- New team: (1193) Januaryton Swimming Club ASD
+-- Seasons: 182 - Circuito italiano supermaster FIN 2018/2019
+-- Mode: nuke_team=0 (create missing TeamAffiliations)
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Step 1: Update badges with correct team_id and season-specific team_affiliation_id
+UPDATE badges SET team_id = 1193, team_affiliation_id = 5682, updated_at = NOW() WHERE id IN (115303);
+
+-- Step 2: Update MIRs with correct team_id and season-specific team_affiliation_id
+UPDATE meeting_individual_results SET team_id = 1193, team_affiliation_id = 5682, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 3: Update laps with correct team_id
+UPDATE laps l INNER JOIN meeting_individual_results mir ON l.meeting_individual_result_id = mir.id SET l.team_id = 1193 WHERE mir.badge_id IN (115303);
+
+-- Step 6: Delete meeting entries for affected badges
+DELETE FROM meeting_entries WHERE badge_id IN (115303);
+
+-- Step 7: Delete meeting event reservations for affected badges
+DELETE FROM meeting_event_reservations WHERE badge_id IN (115303);
+
+-- Step 8: Delete meeting relay reservations for affected badges
+DELETE FROM meeting_relay_reservations WHERE badge_id IN (115303);
+
+-- Step 9: Delete meeting reservations for affected badges
+DELETE FROM meeting_reservations WHERE badge_id IN (115303);
+
+COMMIT;

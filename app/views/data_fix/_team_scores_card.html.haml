@@ -1,0 +1,37 @@
+-#
+  Overall team ranking of Step 2 (PDF-derived sources only), committed in Phase 6 as MeetingTeamScore rows.
+  Replaced in place by update_phase2_team.turbo_stream (its "matched team" column follows the team saves).
+  Locals: team_scores (Array), teams (the phase 2 'teams').
+- teams_by_key = Array(teams).index_by { |team| team['key'] }
+.card.my-2#phase2-team-scores-card
+  .card-header.d-flex.align-items-center{ role: 'button', aria: { expanded: 'false', controls: 'phase2-team-scores-collapse' },
+                                          data: { bs_toggle: 'collapse', bs_target: '#phase2-team-scores-collapse' } }
+    %strong #{t('data_import.data_fix.team_scores.title')} (#{team_scores.size})
+    %i.fa.fa-chevron-down.ms-auto{ 'aria-hidden': 'true' }
+  .collapse#phase2-team-scores-collapse
+    .card-body.p-0
+      .table-responsive
+        %table.table.table-sm.table-striped.mb-0
+          %thead.table-body-tertiary
+            %tr
+              %th.text-center= t('data_import.data_fix.team_scores.rank')
+              %th= t('data_import.data_fix.team_scores.team')
+              %th= t('data_import.data_fix.team_scores.matched_team')
+              %th.text-end= t('data_import.data_fix.team_scores.ind_points')
+              %th.text-end= t('data_import.data_fix.team_scores.overall_points')
+          %tbody
+            - team_scores.each do |score|
+              - team_entry = teams_by_key[score['team_key']]
+              %tr
+                %td.text-center= score['rank']
+                %td
+                  = score['team_key']
+                  - if team_entry.nil? || team_entry['team_id'].blank?
+                    %span.badge.text-bg-warning.ms-1= t('data_import.data_fix.team_scores.missing_team')
+                %td
+                  - if team_entry && team_entry['team_id'].present?
+                    #{team_entry['editable_name'].presence || team_entry['name']} (ID: #{team_entry['team_id']})
+                  - else
+                    %span.text-body-secondary -
+                %td.text-end= format('%.2f', score['ind_score'].to_f)
+                %td.text-end= format('%.2f', score['overall_score'].to_f)

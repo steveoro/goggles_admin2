@@ -1,0 +1,27 @@
+-#
+  Data health matrix (HealthController#index): the page layout around the 'health-matrix' frame, reloaded on the
+  'health-ping' broadcast (Health::Notifier) or every 20 s while a run is queued or running.
+= render(Shell::PageHeaderComponent.new(title: t('health.title'), subtitle: t('health.subtitle'))) do |header|
+  - header.with_actions do
+    %span.badge.text-bg-light.border#health-local-mirror{ title: t('health.local_mirror_tooltip') }
+      %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+      = t('health.local_mirror')
+    - if ops_available?
+      %span.small.text-body-secondary#health-last-sweep
+        = @last_sweep_at ? t('health.last_sweep', time: l(@last_sweep_at.localtime, format: :short)) : t('health.no_sweep_yet')
+      = button_to(health_runs_path, params: { all: 1, return_to: health_path }, class: 'btn btn-sm btn-primary', form_class: 'd-inline',
+                                    id: 'btn-health-run-all', form: { data: { turbo_confirm: t('health.run_all_confirm') } }) do
+        %i.fa-solid.fa-play{ 'aria-hidden' => 'true' }
+        = t('health.run_all')
+
+- if ops_available?
+  #health-page{ data: { controller: 'live-frames', 'live-frames-interval-value': 20_000, 'live-frames-ping-ids-value': ['health-ping'].to_json } }
+    %section.card
+      .card-body.py-2
+        = turbo_frame_tag('health-matrix', src: health_matrix_path(no_data: (@include_no_data ? 1 : nil)), target: '_top',
+                                           data: { 'live-frames-target': 'frame' }) do
+          .small.text-body-secondary.py-2
+            %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+            = t('health.loading')
+- else
+  .alert.alert-warning#health-ops-unavailable{ role: 'alert' }= t('health.ops_unavailable')

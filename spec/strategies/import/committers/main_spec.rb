@@ -341,6 +341,74 @@ RSpec.describe Import::Committers::Main do
     end
   end
 
+  describe '#commit_team_scores' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+    let(:team_affiliation) { FactoryBot.create(:team_affiliation) }
+    let(:meeting) { FactoryBot.create(:meeting, season: team_affiliation.season) }
+    let(:score_hash) { { 'team_key' => 'Ranked Team', 'rank' => 1, 'ind_score' => 100.0, 'overall_score' => 150.0 } }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    # Binds the committer to +meeting+ (as Phase 1 would) with the given Phase 2 data.
+    def prepare_committer(phase2_data)
+      committer.instance_variable_set(:@meeting, meeting)
+      committer.instance_variable_set(:@season_id, meeting.season_id)
+      committer.instance_variable_set(:@phase2_data, { 'data' => phase2_data })
+    end
+
+    it 'runs after the overwrite merge and before the results_acquired flag inside commit_all' do
+      allow(committer).to receive(:commit_phase1_entities) { committer.instance_variable_set(:@meeting, meeting) }
+      allow(committer).to receive_messages(commit_phase2_entities: nil, commit_phase3_entities: nil,
+                                           commit_phase4_entities: nil, commit_phase5_entities: nil)
+      allow(committer).to receive(:merge_overwrite_candidates!).and_call_original
+      allow(committer).to receive(:commit_team_scores).and_call_original
+      allow(committer).to receive(:mark_results_acquired!).and_call_original
+
+      committer.commit_all
+
+      expect(committer).to have_received(:merge_overwrite_candidates!).ordered
+      expect(committer).to have_received(:commit_team_scores).ordered
+      expect(committer).to have_received(:mark_results_acquired!).ordered
+    end
+
+    it 'commits each score for the resolved team & affiliation', :aggregate_failures do
+      prepare_committer('teams' => [{ 'key' => 'Ranked Team', 'team_id' => team_affiliation.team_id }],
+                        'team_scores' => [score_hash])
+
+      committer.send(:commit_team_scores)
+
+      row = GogglesDb::MeetingTeamScore.find_by(meeting_id: meeting.id, team_id: team_affiliation.team_id)
+      expect(row).to have_attributes(rank: 1, team_affiliation_id: team_affiliation.id, season_id: meeting.season_id)
+      expect(row.sum_relay_points.to_f).to eq(50.0)
+      expect(committer.stats).to include(team_scores_created: 1, team_scores_skipped: 0)
+      expect(committer.sql_log.grep(/INSERT INTO `meeting_team_scores`/).size).to eq(1)
+    end
+
+    it 'skips, counts and logs a score whose team cannot be resolved, without adding errors', :aggregate_failures do
+      unresolved = score_hash.merge('team_key' => 'Removed Team QQZX 4711')
+      prepare_committer('teams' => [], 'team_scores' => [unresolved])
+
+      committer.send(:commit_team_scores)
+
+      expect(GogglesDb::MeetingTeamScore.where(meeting_id: meeting.id)).to be_empty
+      expect(committer.stats).to include(team_scores_created: 0, team_scores_skipped: 1)
+      expect(committer.stats[:errors]).to be_empty
+      expect(committer.logger.entries.last).to include(action: 'team_score_skipped')
+      expect(committer.logger.entries.last[:entity_key]).to include('Removed Team QQZX 4711')
+    end
+
+    it 'is a no-op when the Phase 2 data has no team_scores' do
+      prepare_committer('teams' => [{ 'key' => 'Ranked Team', 'team_id' => team_affiliation.team_id }])
+
+      committer.send(:commit_team_scores)
+
+      expect(committer.sql_log).to be_empty
+      expect(committer.stats).to include(team_scores_created: 0, team_scores_updated: 0, team_scores_skipped: 0)
+    end
+  end
+
   describe '#sql_log_content' do
     let(:tmp_dir) { Dir.mktmpdir }
     let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }

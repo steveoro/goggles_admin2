@@ -1,0 +1,19 @@
+.alert.alert-danger.d-flex.align-items-start.gap-3{ id: DOM_ID, role: 'alert', data: { api_error_code: @error.code } }
+  %i.fa-solid.fa-triangle-exclamation.fs-4.mt-1{ 'aria-hidden' => 'true' }
+  .flex-grow-1
+    %h2.h6.alert-heading.mb-1#grid-api-error-title
+      - if @error.unreachable?
+        = t('datagrid.api_error.unreachable_title')
+      - else
+        = t('datagrid.api_error.title', code: @error.code)
+    - if detail.present?
+      %p.small.font-monospace.text-break.mb-2#grid-api-error-detail= detail
+    %p.small.mb-2= @error.unreachable? ? t('datagrid.api_error.unreachable_hint') : t('datagrid.api_error.hint')
+    .d-flex.flex-wrap.gap-2
+      %a.btn.btn-sm.btn-danger#grid-api-error-retry{ href: retry_path }
+        %i.fa-solid.fa-rotate-right{ 'aria-hidden' => 'true' }
+        = t('datagrid.api_error.retry')
+      - if @error.unreachable?
+        %a.btn.btn-sm.btn-outline-danger#grid-api-error-settings{ href: settings_path }
+          %i.fa-solid.fa-gear{ 'aria-hidden' => 'true' }
+          = t('datagrid.api_error.settings')

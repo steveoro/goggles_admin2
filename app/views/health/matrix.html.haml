@@ -1,0 +1,2 @@
+= turbo_frame_tag('health-matrix', target: '_top') do
+  = render(Health::MatrixComponent.new(rows: @rows, include_no_data: @include_no_data, no_data_count: @no_data_count))

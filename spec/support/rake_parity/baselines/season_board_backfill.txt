@@ -1,0 +1,43 @@
+## exit: nil
+## output
+*** Task: season_board:backfill ***
+
+- season.........: 182
+- simulate.......: true
+
+Season 182 - SIMULATE (nothing written)
+Resolved: 2 calendar rows
+  calendar 827    meeting         FIN A21A     via existing+calendar_row        already up to date []
+  calendar 828    meeting         FIN A27A     via existing+calendar_row        already up to date []
+Unresolved: 0 calendar rows
+Meetings to flag as results_acquired: [18211, 18222, 18273, 18314, 18315]
+Statements: 5
+
+*** SQL (not applied, not saved): ***
+-- Season board backfill: season_id=182 (calendars.results_code/links & meetings.results_acquired)
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+--
+
+UPDATE `meetings`
+  SET `results_acquired`=TRUE, `updated_at`=NOW()
+  WHERE `id`=18211;
+UPDATE `meetings`
+  SET `results_acquired`=TRUE, `updated_at`=NOW()
+  WHERE `id`=18222;
+UPDATE `meetings`
+  SET `results_acquired`=TRUE, `updated_at`=NOW()
+  WHERE `id`=18273;
+UPDATE `meetings`
+  SET `results_acquired`=TRUE, `updated_at`=NOW()
+  WHERE `id`=18314;
+UPDATE `meetings`
+  SET `results_acquired`=TRUE, `updated_at`=NOW()
+  WHERE `id`=18315;
+
+--
+
+COMMIT;
+Done.

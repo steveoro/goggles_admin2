@@ -21,6 +21,20 @@ This directory contains real, reviewed phase files from a small event (200RA) **
 2. Cleared `fuzzy_matches` for unmatched entities (production IDs meaningless in test context)
 3. Updated `complete_name` for unmatched swimmers to match anonymized values
 
+### Team-ranking parity fixtures (PDF-derived LT2)
+
+- **pdf-teamrank-lt2.json** - trimmed copy of a PDF-derived LT2 result file (7° Trofeo Roma Nuoto Master 2024):
+  3 sections / 2 events (200 SL M25 & M30, 50 DO F M30), the "Overall Team Ranking" section (first 5 rows) and an
+  "Overall Stats" section (4 rows, borrowed from the Belluno 2024 PDF file, the only stats sample). Swimmer names are
+  fictional, team names are anonymized `goggles_test` teams affiliated in season 192 (so both the legacy and the v2
+  solvers match them exactly), dates and years of birth are shifted into season 192. Two ranking rows were edited
+  to cover the score mapping: rank 3 has 750 relay points (overall > individual), rank 5 has a `null` individual score.
+- **team_scores_legacy_expected.json** - the `meeting_team_scores` committed by the legacy Data-Fix wizard
+  (macro solver + macro committer) on the fixture above (frozen; `meeting_id` omitted).
+  Parity reference for `spec/strategies/import/committers/meeting_team_score_parity_spec.rb`. The legacy wizard and
+  its baseline spec were removed in 0.10.80, so this file can no longer be regenerated: edit it by hand only if the
+  fixture above changes in a way that does not affect the expected scores.
+
 ## ⚠️ Critical: Database Synchronization
 
 These fixtures **MUST** be synchronized with the test database before use.

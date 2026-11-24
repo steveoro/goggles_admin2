@@ -13,6 +13,8 @@ require 'fileutils'
 #
 #-- ---------------------------------------------------------------------------
 #++
+# Since phase 13 the task body is a thin caller of the 'meeting.purge' operation (Maintenance::RakeRunner, see
+# lib/tasks/merge.rake): the prompt is kept, the script goes to results.new/misc/ with the next Outbox number.
 namespace :purge do
   desc <<~DESC
       Generates a replayable SQL script that purges all data associated
@@ -28,7 +30,7 @@ namespace :purge do
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-purge_meeting-<meeting_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-purge_meeting-<meeting_id>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              meeting=<meeting_id>
@@ -44,38 +46,8 @@ namespace :purge do
 
   DESC
   task(meeting: ['merge:check_needed_dirs']) do
-    puts '*** Task: purge:meeting ***'
-    meeting = GogglesDb::Meeting.find_by(id: ENV['meeting'].to_i)
-    if meeting.nil?
-      puts("You need a valid 'meeting' ID to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    stop_at_events = ENV['stop_at_events'] == '1'
-
-    puts("\r\nPurging Meeting #{meeting.id} - #{meeting.description}")
-    puts("\r\n- simulate.........: #{simulate}")
-    puts("- stop_at_events...: #{stop_at_events}")
-    puts("- dest. folder.....: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    purger = Purge::Meeting.new(meeting:, stop_at_events:)
-    purger.display_report
-
-    # Ask for confirmation before generating the file
-    print "\r\nProceed with generating purge script? [y/N] "
-    response = $stdin.gets&.chomp&.downcase
-    unless response == 'y'
-      puts('Aborted.')
-      exit
-    end
-
-    purger.prepare
-
-    file_name = "#{format('%04d', file_index)}-purge_meeting-#{meeting.id}"
-    process_sql_file(file_name:, sql_log_array: purger.single_transaction_sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('purge:meeting', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

@@ -1,0 +1,13 @@
+-# One data health finding (Health::FindingsController#show).
+- section_path = health_season_path(@finding.season_id, anchor: Health::SectionComponent.dom_id_for(@finding.check_key))
+- crumbs = [[t('shell.groups.data_quality'), nil], [t('health.title'), health_path],
+            [t('health.season.crumb', id: @finding.season_id), health_season_path(@finding.season_id)],
+            [@finding.check&.title || @finding.check_key, section_path]]
+= render(Shell::PageHeaderComponent.new(title: @finding.display_title, crumbs:,
+                                        subtitle: [@finding.check&.title, @season&.description, t('health.local_mirror')].compact.join(' · '))) do |header|
+  - header.with_actions do
+    = render(Health::BadgeComponent.new(kind: :severity, value: @finding.severity))
+    = render(Health::BadgeComponent.new(kind: :status, value: @finding.status))
+
+= render(Health::FindingDetailComponent.new(finding: @finding, board_season_id: @board_season_id, stale: @stale,
+                                            null_swimmers_first: @null_swimmers_first))

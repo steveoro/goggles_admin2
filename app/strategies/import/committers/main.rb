@@ -30,8 +30,9 @@ module Import
                   :sql_log, :stats, :logger, :categories_cache
 
       def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil,
-                     categories_cache: nil)
+                     categories_cache: nil, progress: Import::Progress.default)
         @phase1_path = phase1_path
+        @progress = progress || Import::Progress::Null.new
         @phase2_path = phase2_path
         @phase3_path = phase3_path
         @phase4_path = phase4_path
@@ -56,6 +57,7 @@ module Import
           mrrs_created: 0, mrrs_updated: 0,
           mrss_created: 0, mrss_updated: 0,
           relay_laps_created: 0, relay_laps_updated: 0,
+          team_scores_created: 0, team_scores_updated: 0, team_scores_skipped: 0,
           team_links_auto_fixed: 0,
           affiliation_links_auto_fixed: 0,
           errors: []
@@ -87,7 +89,13 @@ module Import
       # -----------------------------------------------------------------------
 
       # Main entry point: commits all entities in dependency order within a transaction
-      def commit_all
+      #
+      # == Params:
+      # - before_commit: optional callable invoked INSIDE the transaction, after the error check, with the final
+      #   SQL text (the log plus its closing 'COMMIT;', i.e. #sql_log_content after a successful run). The Phase 6
+      #   controller registers the SQL script there (Outbox::Writer): when it raises, the local commit is rolled
+      #   back, so no committed change exists without its script.
+      def commit_all(before_commit: nil)
         load_phase_files!
         broadcast_progress('Loading phase files', 0, 6)
 
@@ -126,6 +134,7 @@ module Import
 
             broadcast_progress('Merging overwrite candidates', 5, 6)
             merge_overwrite_candidates! # Move laps from wrong source MIRs to imported targets
+            commit_team_scores # Overall team ranking from Phase 2 (no-op without 'team_scores')
             mark_results_acquired! # Flag the meeting as having results (no-op for result-free commits)
 
             # CRITICAL: Check for any errors collected during commit phases.
@@ -139,6 +148,8 @@ module Import
               error_summary += " (and #{@stats[:errors].size - 5} more)" if @stats[:errors].size > 5
               raise "Commit halted due to #{@stats[:errors].size} error(s): #{error_summary}"
             end
+
+            before_commit&.call((@sql_log + ["\r\n--\r\n", 'COMMIT;']).join("\n"))
           end
 
           # Close SQL transaction with COMMIT
@@ -170,6 +181,16 @@ module Import
       # Returns the SQL log as a formatted string
       def sql_log_content
         sql_log.join("\n")
+      end
+
+      # ID of the committed (or being committed) Meeting, once Phase 1 ran; nil before.
+      def meeting_id
+        @meeting&.id
+      end
+
+      # True once #commit_all committed its local transaction (even when something failed afterwards).
+      def committed?
+        !@transaction_rolled_back && @sql_log.last == 'COMMIT;'
       end
       # -----------------------------------------------------------------------
 
@@ -392,6 +413,42 @@ module Import
             broadcast_progress("Committing Events for session #{sess_idx + 1}", evt_idx + 1, session_total)
           end
           broadcast_progress("Committing Events for session #{sess_idx + 1} done.", session_total, session_total)
+        end
+      end
+      # -----------------------------------------------------------------------
+
+      # Overall team ranking: commits the Phase 2 'team_scores' (PDF-derived sources only) as
+      # MeetingTeamScore rows for the committed meeting, last as in the legacy flow.
+      # A score whose team (or affiliation) can't be resolved is skipped, counted and logged:
+      # it never halts the commit.
+      def commit_team_scores
+        scores = Array(phase2_data&.dig('data', 'team_scores'))
+        return if scores.empty? || @meeting.nil?
+
+        Rails.logger.info("[Main] Committing #{scores.size} team scores")
+        teams_by_key = Array(phase2_data.dig('data', 'teams')).index_by { |team| team['key'] }
+        scores.each_with_index do |score_hash, idx|
+          team_key = score_hash['team_key']
+          team_hash = teams_by_key[team_key]
+          # No Phase 2 entry (team removed in review) => orphan score: never resolve it through the
+          # loose full-text fallback of the Team committer, which could pick an unrelated team.
+          team_id = team_hash ? resolve_team_id(team_hash['team_id'], team_key) : nil
+          team_affiliation_id = nil
+          team_affiliation_id = resolve_team_affiliation_id_for_result(team_id:, team_key:, create_missing: true) if team_id.to_i.positive?
+
+          if team_id.to_i.positive? && team_affiliation_id.to_i.positive?
+            meeting_team_score_committer.commit(score_hash, meeting_id: @meeting.id, season_id: @season_id,
+                                                            team_id:, team_affiliation_id:)
+          else
+            @stats[:team_scores_skipped] += 1
+            @logger.log_operation(
+              action: 'team_score_skipped',
+              details: "rank #{score_hash['rank']}, team '#{team_key}': " \
+                       "unresolved #{team_id.to_i.positive? ? 'team affiliation' : 'team'}"
+            )
+            Rails.logger.warn("[Main] Team score skipped (rank #{score_hash['rank']}, team_key=#{team_key}): unresolved team/affiliation")
+          end
+          broadcast_progress('Committing Team Scores...', idx + 1, scores.size)
         end
       end
       # -----------------------------------------------------------------------
@@ -1319,6 +1376,15 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      def meeting_team_score_committer
+        @meeting_team_score_committer ||= Import::Committers::MeetingTeamScore.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
       def relay_lap_committer
         @relay_lap_committer ||= Import::Committers::RelayLap.new(
           stats: @stats,
@@ -1748,14 +1814,9 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      # Broadcasts progress updates via ActionCable for real-time UI feedback
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        Rails.logger.warn("[Main] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
       # -----------------------------------------------------------------------
 

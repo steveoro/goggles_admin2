@@ -33,6 +33,34 @@ RSpec.describe APIMeetingsController do
       it 'returns http success' do
         expect(response).to have_http_status(:success)
       end
+
+      it 'links a board-season meeting to its Season board row and each meeting to its season calendars (drill-down)' do
+        board_meeting = FactoryBot.create(:meeting, season: SeasonDefaults.default_season)
+        FactoryBot.create(:calendar, meeting: board_meeting, results_code: '987654')
+        other_meeting = FactoryBot.create(:meeting)
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: [board_meeting, other_meeting].to_json))
+        get(api_meetings_path)
+
+        cells = response.parsed_body.css('table.datagrid-table tbody tr td[data-column="drill"]')
+        expect(cells.size).to eq(2)
+        expect(cells.first.at_css('a[data-drill="season_board"]')['href']).to eq(SeasonBoard::ActionPaths.board_row_path('987654'))
+        expect(cells.last.at_css('a[data-drill="season_board"]')).to be_nil
+        expect(cells.last.at_css('a[data-drill="calendars"]')['href'])
+          .to eq(api_calendars_path(calendars_grid: { season_id: other_meeting.season_id }))
+      end
+
+      it 'links a board-season meeting without a FIN event id to the Season board itself' do
+        board_meeting = FactoryBot.create(:meeting, season: SeasonDefaults.default_season)
+        expect(MeetingsGrid.board_links_for([board_meeting])).to eq(board_meeting.id => season_board_path)
+      end
+    end
+
+    it_behaves_like('an API grid index showing an API error in place', 'meetings') do
+      let(:index_path) { api_meetings_path }
+      let(:api_params) do
+        { name: anything, description: anything, header_date: anything, header_year: anything,
+          season_id: anything, page: anything, per_page: anything }
+      end
     end
   end
   #-- -------------------------------------------------------------------------

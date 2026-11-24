@@ -1,0 +1,42 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: normalize:coded_names ***
+
+- limit..........: 25
+- simulate.......: true
+- dest. folder...: <DATA_ROOT>/results.new/misc
+
+*** Change log: ***
+
+
+-- Stats: meetings scanned 25, updated 0; pools scanned 25, updated 0
+
+File '<DATA_ROOT>/results.new/misc/NNNN-normalize_coded_names.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-normalize_coded_names.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+--
+-- *** normalize:coded_names -- coded names normalization batch ***
+--
+
+-- Meetings scanned.: 25, updated: 0
+-- Pools scanned....: 25, updated: 0
+--
+
+-- === Meetings ===
+
+
+-- === Swimming pools ===
+
+
+COMMIT;

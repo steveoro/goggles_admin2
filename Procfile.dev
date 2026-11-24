@@ -1,2 +1,7 @@
 web: env -u DATABASE_URL RAILS_ENV=development bin/rails server -p 3000
 css: RAILS_ENV=development bin/rails dartsass:watch
+# Optional (phase 10, see docs/season_board.md "Worker mode"): run the Solid Queue workers in their own process, so
+# that CPU-heavy Data-Fix prepares never slow the web UI. To use it, uncomment the 'jobs' line AND add
+# SOLID_QUEUE_IN_PUMA=false to the 'web' line (otherwise two supervisors would run):
+#   web: env -u DATABASE_URL RAILS_ENV=development SOLID_QUEUE_IN_PUMA=false bin/rails server -p 3000
+# jobs: env -u DATABASE_URL RAILS_ENV=development SOLID_QUEUE_IN_PUMA=false bin/jobs

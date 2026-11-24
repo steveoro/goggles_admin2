@@ -87,7 +87,8 @@ RSpec.describe Grid::SqlCreateModalComponent, type: :component do
     end
 
     it 'renders the cancel & generate buttons' do
-      expect(result.css('.modal-footer button[data-dismiss="modal"]')).to be_present
+      expect(result.css('.modal-footer button[data-bs-dismiss="modal"]')).to be_present
+      expect(result.css('.modal-header button.btn-close[type="button"][data-bs-dismiss="modal"]')).to be_present
       expect(result.css('.modal-footer button#btn-sql-create-submit-generate[type="submit"]')).to be_present
     end
   end

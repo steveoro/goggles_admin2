@@ -1,0 +1,50 @@
+-#
+  The season-start checklist of one season (Maintenance::SeasonStartController#show, Maintenance::SeasonStart::Checklist):
+  the eight ordered steps. A step whose prerequisites are not met renders disabled (and its POST is refused by the
+  controller); the steps read from the data re-derive their state on every view.
+:ruby
+  steps = @checklist.steps
+  season = @checklist.season
+  status_css = { 'done' => 'text-bg-success', 'skipped' => 'text-bg-secondary', 'pending' => 'text-bg-primary',
+                 'blocked' => 'bg-body-secondary text-body-secondary' }
+  subtitle = t('maintenance.season_start.subtitle', id: @checklist.season_id)
+= render(Shell::PageHeaderComponent.new(title: t('maintenance.season_start.title'), subtitle:)) do |header|
+  - header.with_actions do
+    = link_to(t('maintenance.season_start.index_title'), season_start_index_path, class: 'btn btn-sm btn-outline-secondary')
+    = link_to(t('maintenance.season_start.back'), operations_path, class: 'btn btn-sm btn-outline-primary')
+
+- unless @ops_available
+  .alert.alert-warning#season-start-ops-unavailable{ role: 'alert' }= t('maintenance.ops_unavailable')
+
+.d-flex.align-items-center.gap-2.mb-3#season-start-progress
+  %span.badge.text-bg-light.border= t('maintenance.season_start.progress', done: @checklist.done_count, total: steps.size)
+  - if season
+    %span.small.text-body-secondary= season.description
+  %span.small.text-body-secondary.ms-auto
+    = t('maintenance.season_start.howto')
+    %code= Maintenance::SeasonStart::Checklist::HOWTO_PATH
+
+%ol.list-unstyled.d-flex.flex-column.gap-3.mb-0#season-start-steps
+  - steps.each do |step|
+    %li{ id: "season-start-#{step.key}", data: { step_key: step.key, step_status: step.status } }
+      %section.card{ class: ('opacity-75' if step.status == 'blocked') }
+        .card-header.d-flex.flex-wrap.align-items-center.gap-2
+          %span.badge.rounded-pill.text-bg-dark= step.number
+          %h2.h6.mb-0= step.title
+          %span.badge.ms-auto{ class: status_css.fetch(step.status) }= t("maintenance.season_start.statuses.#{step.status}")
+          %span.small.text-body-secondary= t(step.from_data? ? 'maintenance.season_start.from_data' : 'maintenance.season_start.by_operator')
+        .card-body.small
+          %p.mb-2= step.body
+          - if step.facts.any?
+            %ul.mb-2
+              - step.facts.each do |fact|
+                %li.text-break= fact
+          - if step.item && !step.item.pending? && step.item.done_at
+            %p.text-body-secondary.mb-2
+              = t('maintenance.season_start.done_by', who: GogglesDb::User.find_by(id: step.item.done_by)&.name || '-',
+                                                      when: l(step.item.done_at.localtime, format: :short))
+              - if step.item.note.present? && step.kind == :operator
+                %span.d-block #{t('maintenance.season_start.note')}: #{step.item.note}
+          - if step.last_run
+            %p.mb-2= link_to(t('maintenance.season_start.actions.open_run', id: step.last_run.id), maintenance_run_path(step.last_run))
+          = render(partial: 'maintenance/season_start/step_actions', locals: { checklist: @checklist, step: })

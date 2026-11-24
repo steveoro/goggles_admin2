@@ -7,10 +7,10 @@
           = link_to(clear_ranking_goggles_cup_preview_path(goggle_cup_id: goggle_cup.id),
                     class: 'btn btn-sm btn-outline-warning mx-2', id: 'btn-edit-swimmers',
                     data: { turbo_method: :post, turbo_confirm: t('goggles_cup.confirm_clear_ranking'),
-                            toggle: 'tooltip', placement: 'left', title: t('goggles_cup.edit_selection_tooltip') }) do
+                            bs_toggle: 'tooltip', bs_placement: 'left', bs_title: t('goggles_cup.edit_selection_tooltip') }) do
             %i.fa.fa-pencil
             = t('goggles_cup.edit_selection')
-        %button.btn.btn-sm.btn-outline-primary{ type: 'button', data: { toggle: 'collapse', target: '#swimmer-list-body' }, 'aria-expanded' => 'true', 'aria-controls' => 'swimmer-list-body' }
+        %button.btn.btn-sm.btn-outline-primary{ type: 'button', data: { bs_toggle: 'collapse', bs_target: '#swimmer-list-body' }, 'aria-expanded' => 'true', 'aria-controls' => 'swimmer-list-body' }
           %i.fa.fa-list
           = t('goggles_cup.select_swimmers')
     #swimmer-list-body.collapse.show{ 'aria-labelledby' => 'swimmer-list-header', data: { 'goggles-cup-target': 'swimmerPanel' } }
@@ -25,7 +25,7 @@
               = render(ComboBox::AutocompleteTeamComponent.new(default_row: secondary_team, label: t('goggles_cup.secondary_team'),
                                                              required: false, base_name: 'secondary_team', jwt: jwt))
             .col-md-6.d-flex.align-items-end
-              %small.text-muted= t('goggles_cup.secondary_team_explanation')
+              %small.text-body-secondary= t('goggles_cup.secondary_team_explanation')
           .row.mb-3
             .col-12
               %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#selectAll' } }
@@ -35,7 +35,7 @@
 
         .row.mb-2
           .col-12.text-end
-            %span.text-muted.font-weight-bold{ data: { 'goggles-cup-target': 'selectionCounter' } }
+            %span.text-body-secondary.fw-bold{ data: { 'goggles-cup-target': 'selectionCounter' } }
               (0 / 0)
 
         .row
@@ -64,7 +64,7 @@
         - if external_swimmers.present?
           .row.mt-4
             .col-12
-              %h6.text-muted= t('goggles_cup.external_swimmers')
+              %h6.text-body-secondary= t('goggles_cup.external_swimmers')
               .table-responsive{ data: { 'goggles-cup-target': 'externalSwimmersContainer' } }
                 %table.table.table-sm.table-bordered
                   %thead

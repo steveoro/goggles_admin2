@@ -1,0 +1,98 @@
+.row.g-3#health-finding-detail{ data: { finding_id: finding.id, check_key: finding.check_key } }
+  .col-12.col-xl-7.d-flex.flex-column.gap-3
+    %section.card#health-finding-howto
+      .card-header.d-flex.align-items-center.gap-2
+        %i.fa-solid.fa-stethoscope{ 'aria-hidden' => 'true' }
+        %h2.h6.mb-0= t('health.finding.what_to_do')
+      .card-body
+        - if stale
+          .alert.alert-warning.py-2.small{ role: 'status' }= t('health.finding.stale')
+        - if null_swimmers_first
+          .alert.alert-warning.py-2.small#health-null-swimmers-first{ role: 'status' }= t('health.checks.results.duplicates.null_swimmers_first')
+        %p.mb-2= check&.howto
+        - if rake_command
+          %label.form-label.small.mb-1{ for: "health-rake-#{finding.id}" }= t('health.finding.rake_command')
+          %pre.user-select-all.bg-body-tertiary.border.rounded.p-2.mb-2{ id: "health-rake-#{finding.id}", tabindex: '0' }
+            %code= rake_command
+          %p.small.text-body-secondary.mb-2= t('health.finding.rake_hint')
+        - if doc
+          %p.small.mb-0
+            = t('health.finding.doc')
+            %code.user-select-all= doc
+
+    %section.card#health-finding-actions
+      .card-header.d-flex.align-items-center.gap-2
+        %i.fa-solid.fa-wand-magic{ 'aria-hidden' => 'true' }
+        %h2.h6.mb-0= t('health.finding.actions')
+      .card-body.d-flex.flex-column.gap-3
+        = render(Health::FindingActionsComponent.new(finding:, board_season_id:))
+        - unless finding.resolved?
+          = form_with(url: helpers.health_findings_bulk_path, method: :patch, id: bulk_form_id, class: 'row g-2 align-items-end') do |f|
+            = hidden_field_tag('ids[]', finding.id, id: nil)
+            = hidden_field_tag(:return_to, helpers.health_finding_path(finding), id: nil)
+            .col-12.col-md
+              = f.label(:note, t('health.bulk.note'), class: 'form-label small mb-0', for: "#{bulk_form_id}-note")
+              = f.text_field(:note, value: finding.note, class: 'form-control form-control-sm', id: "#{bulk_form_id}-note",
+                                    maxlength: 500, placeholder: t('health.bulk.note_placeholder'))
+            .col-auto.d-flex.flex-wrap.gap-1
+              - if finding.open?
+                = f.button(name: 'operation', value: 'acknowledge', class: 'btn btn-sm btn-outline-secondary') do
+                  %i.fa-solid.fa-check{ 'aria-hidden' => 'true' }
+                  = t('health.bulk.acknowledge')
+              - if finding.open? || finding.acknowledged?
+                = f.button(name: 'operation', value: 'ignore', class: 'btn btn-sm btn-outline-secondary') do
+                  %i.fa-solid.fa-eye-slash{ 'aria-hidden' => 'true' }
+                  = t('health.bulk.ignore')
+              - if finding.acknowledged? || finding.ignored?
+                = f.button(name: 'operation', value: 'reopen', class: 'btn btn-sm btn-outline-secondary') do
+                  %i.fa-solid.fa-rotate-left{ 'aria-hidden' => 'true' }
+                  = t('health.bulk.reopen')
+
+    %section.card#health-finding-evidence
+      .card-header.d-flex.align-items-center.gap-2
+        %i.fa-solid.fa-file-code{ 'aria-hidden' => 'true' }
+        %h2.h6.mb-0= t('health.finding.evidence')
+      .card-body
+        - if scalar_evidence.any?
+          %dl.row.small.mb-2
+            - scalar_evidence.each do |key, value|
+              %dt.col-sm-4.text-body-secondary= evidence_label(key)
+              %dd.col-sm-8.text-break.mb-1= evidence_value(value)
+        - nested_evidence.each do |key, value|
+          %details.mb-2
+            %summary.small.fw-semibold= evidence_label(key)
+            %pre.small.bg-body-tertiary.border.rounded.p-2.mb-0.health-evidence-json= json(value)
+
+  .col-12.col-xl-5.d-flex.flex-column.gap-3
+    %section.card#health-finding-subject
+      .card-header.d-flex.align-items-center.gap-2
+        %i.fa-solid.fa-link{ 'aria-hidden' => 'true' }
+        %h2.h6.mb-0= t('health.finding.subject')
+      .card-body
+        %p.small.mb-2
+          %span.font-monospace= subject_label
+        - if entity_links.any?
+          %ul.list-unstyled.mb-1
+            - entity_links.each do |link|
+              %li= link_to(link.label, link.path, data: { health_entity: link.kind })
+          %p.small.text-body-secondary.mb-0= t('health.finding.entity_links_hint')
+
+    %section.card#health-finding-history
+      .card-header.d-flex.align-items-center.gap-2
+        %i.fa-solid.fa-clock-rotate-left{ 'aria-hidden' => 'true' }
+        %h2.h6.mb-0= t('health.finding.history')
+      .card-body
+        %dl.row.small.mb-0
+          %dt.col-sm-5.text-body-secondary= t('health.finding.first_seen')
+          %dd.col-sm-7.mb-1= time(finding.first_seen_at)
+          %dt.col-sm-5.text-body-secondary= t('health.finding.last_seen')
+          %dd.col-sm-7.mb-1= time(finding.last_seen_at)
+          - if finding.status_changed_at
+            %dt.col-sm-5.text-body-secondary= t('health.finding.status_changed')
+            %dd.col-sm-7.mb-1= t('health.finding.changed_by', time: time(finding.status_changed_at), user: status_changed_by)
+          - if finding.resolved_at
+            %dt.col-sm-5.text-body-secondary= t('health.finding.resolved_at')
+            %dd.col-sm-7.mb-1= time(finding.resolved_at)
+          - if finding.note.present?
+            %dt.col-sm-5.text-body-secondary= t('health.finding.note')
+            %dd.col-sm-7.mb-1.text-break#health-finding-note= finding.note

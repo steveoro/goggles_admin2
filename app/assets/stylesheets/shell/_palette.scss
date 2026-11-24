@@ -1,0 +1,22 @@
+// == Command palette (phase 15, Shell::PaletteComponent + palette_controller.js) ==
+
+// The muted texts of the selected result (detail, kind) stay readable on the active (primary) background:
+.app-palette .list-group-item.active .text-body-secondary {
+  color: inherit !important;
+  opacity: 0.8;
+}
+
+.app-palette .modal-footer kbd {
+  font-size: 0.75em;
+}
+
+// Top bar trigger (Shell::PaletteTriggerComponent): icon only under 1600px, like the status pill labels.
+.app-palette-trigger-extra {
+  display: none;
+}
+
+@media (min-width: 1600px) {
+  .app-palette-trigger-extra {
+    display: inline;
+  }
+}

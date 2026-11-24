@@ -17,15 +17,18 @@ module Import
     #   "data": {
     #     "season_id": <int>,
     #     "teams": [ { "key": "Team Name", "name": "Team Name", "team_id": 123 } ],
-    #     "team_affiliations": [ { "team_key": "Team Name", "season_id": 242, "team_id": 123, "team_affiliation_id": 456 } ]
+    #     "team_affiliations": [ { "team_key": "Team Name", "season_id": 242, "team_id": 123, "team_affiliation_id": 456 } ],
+    #     "team_scores": [ { "team_key": "Team Name", "rank": 1, "ind_score": 35209.93, "overall_score": 35209.93 } ]
     #   }
     # }
     # NOTE: team_affiliation_id will be nil for new affiliations that don't exist in DB yet
+    # NOTE: "team_scores" (see Import::TeamScoreExtractor) is present only when the source carries an overall team ranking
     #
     class TeamSolver # rubocop:disable Metrics/ClassLength
-      def initialize(season:, logger: Rails.logger)
+      def initialize(season:, logger: Rails.logger, progress: Import::Progress.default)
         @season = season
         @logger = logger
+        @progress = progress || Import::Progress::Null.new
       end
 
       # Build and persist phase2 file
@@ -89,11 +92,27 @@ module Import
           @logger.info('[TeamSolver] No LT4 teams dict and no LT2 sections found')
         end
 
+        # Overall team ranking (PDF-derived sources only): every ranked team needs a team entry,
+        # even when it never shows up in the results (or in an older LT4 working copy).
+        team_scores = Import::TeamScoreExtractor.from_source(source_path, data_hash)
+        known_team_keys = teams.to_set { |h| h['key'] }
+        team_scores.each do |score|
+          team_key = score['team_key']
+          next if known_team_keys.include?(team_key)
+
+          known_team_keys << team_key
+          team_entry = build_team_entry(team_key, team_key)
+          teams << team_entry
+          ta << build_team_affiliation_entry(team_key, team_entry['team_id'])
+        end
+
         payload = {
           'season_id' => @season.id,
           'teams' => teams.uniq { |h| h['key'] }.sort_by { |h| h['key'] },
           'team_affiliations' => ta.uniq { |h| [h['team_key'], h['season_id']] }.sort_by { |h| h['team_key'] }
         }
+        # (Key added only when the source carries a ranking: Phase 2 files of other sources stay unchanged)
+        payload['team_scores'] = team_scores if team_scores.any?
 
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 2)
         pfm = PhaseFileManager.new(phase_path)
@@ -107,6 +126,16 @@ module Import
           'parent_checksum' => pfm.checksum(source_path)
         }
         pfm.write!(data: payload, meta: meta)
+      end
+
+      # Re-resolves ONE existing Phase 2 team entry against the current DB (DataFix::Pipeline#refresh_new_entities!,
+      # after other commits created teams): same matching as the build. Returns the fresh entry, or nil when the
+      # entry has no name to search.
+      def re_resolve_entry(team)
+        name = team['name'].presence || team['key']
+        return nil if name.blank?
+
+        build_team_entry(team['key'], name)
       end
 
       private
@@ -415,14 +444,9 @@ module Import
         []
       end
 
-      # Broadcast progress updates via ActionCable for real-time UI feedback
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        @logger&.warn("[TeamSolver] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
     end
   end

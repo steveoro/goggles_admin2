@@ -4,6 +4,6 @@
   - field_basename = base_field_id || @target_id
   %input{ id: "#{field_basename}-chk", name: field_basename, type: 'checkbox' }
   %span.slider.collapsed{ id: "toggle-#{field_basename}",
-    'data-toggle' => 'collapse', href: "##{@target_id}",
+    'data-bs-toggle' => 'collapse', href: "##{@target_id}",
     role: 'button', class: @option_classes,
     'aria-expanded' => 'false', 'aria-controls' => "switch for #{field_basename}" }/

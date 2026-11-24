@@ -241,7 +241,12 @@ RSpec.describe DataFix::CommitsController, type: :controller do
     end
 
     context 'with LT4 results carrying season-invalid category codes' do
-      let(:season) { FactoryBot.create(:season) }
+      # Pinned to the 2022/2023 season of the source date: with the factory default (today - 3 months) a FIN
+      # Master season computes the 2002 swimmer's age on the end year (2027 today), giving M25 instead of U25.
+      let(:season) do
+        FactoryBot.create(:season, season_type_id: GogglesDb::SeasonType::MAS_FIN_ID,
+                                   begin_date: Date.new(2022, 10, 1), end_date: Date.new(2023, 9, 30))
+      end
       let(:season_dir) { File.join(temp_dir, season.id.to_s) }
       let(:lt4_path) { File.join(season_dir, 'meeting-lt4.json') }
       let(:file_path) { lt4_path }
@@ -400,30 +405,14 @@ RSpec.describe DataFix::CommitsController, type: :controller do
     end
   end
 
-  describe 'GET #commit_phase6_report post-commit checks rendering' do
+  # (phase 09) The commit report is an Ops::CommitReport row shown by DataFix::CommitReportsController (no session):
+  # an older report holding the legacy post-commit checks JSON still renders them; the report page itself never runs
+  # DataFix::PostCommitChecks (the season health runs replace them).
+  describe DataFix::CommitReportsController do
     render_views
 
-    let(:base_report_data) do
+    let(:checks_ok) do
       {
-        file_path: '/tmp/source.json',
-        log_path: '/tmp/source.log',
-        sql_filename: '0001-source.sql',
-        commit_success: true,
-        error_message: nil,
-        stats: { errors: [] },
-        season_id: 212,
-        done_dir: '/tmp/done',
-        first_error_step_label: nil
-      }
-    end
-
-    before(:each) do
-      allow(controller).to receive_messages(authenticate_user!: true, check_jwt_session: true, user_signed_in?: false)
-    end
-
-    it 'shows all-green message when both checks are ok' do
-      session[:commit_report] = base_report_data
-      check_payload = {
         season_id: 212,
         overall_status: 'ok',
         badge_season_check: {
@@ -443,9 +432,20 @@ RSpec.describe DataFix::CommitsController, type: :controller do
           meetings_with_findings: []
         }
       }
-      allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_return(check_payload)
+    end
 
-      get :commit_phase6_report
+    before(:each) do
+      allow(controller).to receive_messages(authenticate_user!: true, check_jwt_session: true, user_signed_in?: false)
+    end
+
+    def report_with(checks, status: 'committed')
+      FactoryBot.create(:ops_commit_report, status:, season_id: 212, source_path: '/tmp/source.json', log_rel_path: '/tmp/source.log',
+                                            sql_rel_path: '0001-source.sql', stats: { 'errors' => [] },
+                                            post_commit_checks: checks&.deep_stringify_keys)
+    end
+
+    it 'shows all-green message when both checks are ok' do
+      get :show, params: { id: report_with(checks_ok).id }
 
       expect(response).to be_successful
       expect(response.body).to include('Post-Commit Integrity Checks')
@@ -454,11 +454,7 @@ RSpec.describe DataFix::CommitsController, type: :controller do
     end
 
     it 'shows warning and error details when findings exist' do
-      session[:commit_report] = base_report_data
-      check_payload = sample_check_payload_with_findings
-      allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_return(check_payload)
-
-      get :commit_phase6_report
+      get :show, params: { id: report_with(sample_check_payload_with_findings).id }
 
       expect(response).to be_successful
       expect(response.body).to include('Sure Badge Merge Candidates (Errors)')
@@ -467,10 +463,9 @@ RSpec.describe DataFix::CommitsController, type: :controller do
     end
 
     it 'does not run post-commit checks when commit failed' do
-      session[:commit_report] = base_report_data.merge(commit_success: false)
       allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_call_original
 
-      get :commit_phase6_report
+      get :show, params: { id: report_with(nil, status: 'failed').id }
 
       expect(DataFix::PostCommitChecks).not_to have_received(:build_post_commit_checks_report)
 

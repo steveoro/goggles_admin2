@@ -6,6 +6,6 @@
   - per_page:      number of items to fetch per page
   - remote:        data-remote
 
-%span.next
-  = link_to_unless(current_page.last?, '&rsaquo;'.html_safe,
-                   url, rel: 'next', remote: remote, class: 'page-link')
+= link_to_unless(current_page.last?, '&rsaquo;'.html_safe,
+                 url, rel: 'next', remote: remote, class: 'page-link') do |label|
+  %span.page-link= label

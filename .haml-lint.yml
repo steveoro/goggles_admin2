@@ -12,6 +12,8 @@ linters:
   InlineStyles:
     exclude:
       - 'app/views/pull/_crawler_status_box.html.haml'
+      # (dynamic widths of the stacked progress bar segments)
+      - 'app/components/dashboard/season_progress_component.html.haml'
 
   RuboCop:
     exclude:

@@ -1,0 +1,62 @@
+-#
+  Meeting selection of one calendar CSV (CrawlerCalendar::Sheet rows; the same calendar_selection_controller.js as the
+  former Pull page). "Crawl selected" writes a '-sel-' subset of the CSV and queues a calendar CSV crawl (SourceCrawlJob).
+:ruby
+  relative = file_guard.relative(@file_path)
+  form_data = { controller: 'calendar-selection', turbo_confirm: t('data_import.selection.btn_crawl_selected_confirm') }
+  columns = %w[select date year name place url manifest source]
+  left_columns = %w[name place]
+  select_button = lambda do |action, key|
+    { type: 'button', data: { action: "calendar-selection##{action}", bs_toggle: 'tooltip', bs_title: t("data_import.selection.#{key}_tooltip") } }
+  end
+= render(partial: 'sources/header', locals: { tab: :calendars, path: sources_calendars_path })
+
+.card#meeting-selection
+  .card-header
+    %h2.h5.mb-1= t('data_import.selection.title')
+    .small.text-body-secondary.text-break
+      = @file_path.basename
+      ·
+      = t('data_import.selection.season_label', id: @calendar_season_id)
+      ·
+      = t('data_import.selection.rows_count', count: @rows_count)
+  .card-body
+    = form_with(url: sources_crawls_path, method: :post, id: 'frm-selected-meetings', data: form_data) do
+      = hidden_field_tag(:kind, 'calendar_results')
+      = hidden_field_tag(:season_id, @calendar_season_id)
+      = hidden_field_tag(:file_path, relative)
+      = hidden_field_tag(:rows_count, @rows_count)
+
+      .d-flex.flex-wrap.align-items-center.gap-3.mb-3
+        .btn-group.btn-group-sm{ role: 'group' }
+          %button.btn.btn-outline-secondary{ select_button.call('toggleAll', 'btn_all_none') }
+            = t('data_import.selection.btn_all_none')
+          %button.btn.btn-outline-secondary{ select_button.call('selectWithUrl', 'btn_with_url') }
+            = t('data_import.selection.btn_with_url')
+          %button.btn.btn-outline-secondary{ select_button.call('selectNewManifests', 'btn_new_manifests') }
+            = t('data_import.selection.btn_new_manifests')
+        .form-check.form-check-inline.mb-0
+          %input.form-check-input#hide-done{ type: 'checkbox', data: { action: 'calendar-selection#toggleDoneVisibility' } }
+          %label.form-check-label.small{ for: 'hide-done' }= t('data_import.selection.hide_done')
+        .form-check.form-check-inline.mb-0
+          %input.form-check-input#hide-uncrawlable{ type: 'checkbox', data: { action: 'calendar-selection#toggleUncrawlableVisibility' } }
+          %label.form-check-label.small{ for: 'hide-uncrawlable' }= t('data_import.selection.hide_uncrawlable')
+
+      .table-responsive
+        %table.table.table-sm.table-hover.align-middle#sources-calendar-meetings
+          %thead
+            %tr
+              - columns.each do |column|
+                %th{ scope: 'col', class: left_columns.include?(column) ? nil : 'text-center' }= t("data_import.selection.col_#{column}")
+          %tbody
+            = render(partial: 'sources/calendars/meeting_row', collection: @sheet.rows, as: :row)
+
+      .d-flex.flex-wrap.align-items-center.justify-content-center.gap-2.mt-3
+        %span.badge.text-bg-info#selected-counter{ data: { calendar_selection_target: 'counter' } } 0
+        = submit_tag(t('data_import.selection.btn_crawl_selected'), id: 'btn-crawl-selected', class: 'btn btn-sm btn-primary',
+                                                                    disabled: true, data: { calendar_selection_target: 'submit' })
+
+  .card-footer.small#sources-calendar-manifests
+    %i.fa-solid.fa-file-contract{ 'aria-hidden' => 'true' }
+    = t('sources.calendars.pending_manifests', count: @pending_manifests)
+    = link_to(t('sources.calendars.open_manifests'), sources_manifests_path(season_id: @calendar_season_id))

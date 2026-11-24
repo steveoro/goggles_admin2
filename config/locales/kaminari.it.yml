@@ -6,6 +6,7 @@ it:
       previous: "&lsaquo; Prec"
       next: "Succ &rsaquo;"
       truncate: "&hellip;"
+      nav_label: "Pagine"
   helpers:
     page_entries_info:
       one_page:

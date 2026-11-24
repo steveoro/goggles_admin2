@@ -33,6 +33,14 @@ RSpec.describe APISwimmingPoolsController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'swimming_pools') do
+      let(:index_path) { api_swimming_pools_path }
+      let(:api_params) do
+        { name: anything, address: anything, pool_type_id: anything, city_id: anything,
+          page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

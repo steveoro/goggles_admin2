@@ -8,11 +8,11 @@ class StatsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  filter(:route, :string, header: 'Route (~)') { |_value, scope| scope }
+  filter(:route, :string) { |_value, scope| scope }
   filter(:day, :date, range: true, input_options: {
            maxlength: 10, placeholder: 'YYYY-MM-DD'
          })
-  filter(:count, :integer, header: 'Count (>=)') do |value, scope|
+  filter(:count, :integer) do |value, scope|
     scope.select { |row| row.count >= value }
   end
 

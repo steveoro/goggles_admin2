@@ -1,0 +1,38 @@
+## exit: 0
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: purge:meeting ***
+
+Purging Meeting 18222 - 6° Trofeo Fanatik Team
+
+- simulate.........: true
+- stop_at_events...: false
+- dest. folder.....: <DATA_ROOT>/results.new
+
+============================================================
+Purge Meeting Report
+Meeting: 18222 - 6° Trofeo Fanatik Team
+Stop at events: no (full purge)
+============================================================
+  laps                                : 0 rows
+  relay_laps                          : 0 rows
+  individual_records                  : 0 rows
+  meeting_relay_swimmers              : 0 rows
+  meeting_individual_results          : 8 rows
+  meeting_relay_results               : 0 rows
+  meeting_entries                     : 0 rows
+  meeting_programs                    : 8 rows
+  meeting_event_reservations          : 4 rows
+  meeting_relay_reservations          : 0 rows
+  meeting_events                      : 12 rows
+  meeting_sessions                    : 2 rows
+  meeting_reservations                : 3 rows
+  meeting_team_scores                 : 0 rows
+  calendars                           : 0 rows
+  meetings                            : 1 rows
+
+  TOTAL                               : 38 rows
+============================================================
+
+Proceed with generating purge script? [y/N] Aborted.

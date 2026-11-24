@@ -1,0 +1,46 @@
+-# Per-table comparison of a DB sync check (locals: fingerprint).
+:ruby
+  flagged = fingerprint.reason_list.group_by { |reason| reason[:table] }.except(nil)
+  number = ->(value) { value.nil? ? '-' : number_with_delimiter(value) }
+  time = ->(value) { value.present? ? l(Time.zone.parse(value.to_s).localtime, format: :short) : '-' }
+  diff = lambda do |mine, theirs|
+    next '-' if mine.nil? || theirs.nil?
+
+    delta = mine.to_i - theirs.to_i
+    delta.zero? ? '=' : format('%+d', delta)
+  end
+  # Row highlight & tooltip from the reasons of the table
+  row_css = lambda do |reasons|
+    codes = reasons.pluck(:code)
+    next 'table-danger' if codes.intersect?(Drift::Verdict::RED_CODES)
+
+    'table-warning' if codes.intersect?(Drift::Verdict::AMBER_CODES)
+  end
+  row_title = ->(reasons) { reasons.map { |reason| Drift::ReasonText.call(reason) }.join(' · ').presence }
+%section.mb-4#db-sync-tables
+  %h2.h5= t('db_sync.sections.tables')
+  %p.small.text-body-secondary= t('db_sync.tables_help')
+  .table-responsive
+    %table.table.table-sm.table-hover.align-middle
+      %thead
+        %tr
+          %th= t('db_sync.columns.table')
+          %th= t('db_sync.columns.owner')
+          %th.text-end= t('db_sync.columns.local_count')
+          %th.text-end= t('db_sync.columns.remote_count')
+          %th.text-end= t('db_sync.columns.local_max_id')
+          %th.text-end= t('db_sync.columns.remote_max_id')
+          %th.text-end= t('db_sync.columns.diff')
+          %th= t('db_sync.columns.remote_updated_at')
+      %tbody.table-group-divider
+        - fingerprint.table_rows.each do |row|
+          - reasons = flagged[row[:table]] || []
+          %tr{ id: "db-sync-table-#{row[:table]}", class: row_css.call(reasons), title: row_title.call(reasons) }
+            %td.font-monospace= row[:table]
+            %td.small= t("db_sync.owners.#{Drift::Tables.owner(row[:table]) || 'user'}")
+            %td.text-end= number.call(row[:local]['count'])
+            %td.text-end= number.call(row[:remote]['count'])
+            %td.text-end= number.call(row[:local]['max_id'])
+            %td.text-end= number.call(row[:remote]['max_id'])
+            %td.text-end.font-monospace= diff.call(row[:local]['max_id'], row[:remote]['max_id'])
+            %td.small= time.call(row[:remote]['max_updated_at'])

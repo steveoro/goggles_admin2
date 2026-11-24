@@ -1,0 +1,13 @@
+= render(partial: 'sources/header', locals: { tab: :results, path: sources_results_path, count: @rows.size })
+
+.card#sources-results
+  .card-body
+    %p.small.text-body-secondary= t('sources.results.intro')
+    = sources_file_table(rows: @rows, empty_text: t('sources.results.empty', season: season_id),
+                         return_to: sources_results_path(season_id:), focus: params[:focus],
+                         table_id: 'sources-results-table')
+    - if @sql_count.positive?
+      %p.small.mt-3.mb-0#sources-results-sql
+        %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+        = t('sources.results.sql_waiting', count: @sql_count)
+        = link_to(t('sources.results.open_outbox'), outbox_path)

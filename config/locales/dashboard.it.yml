@@ -1,8 +1,72 @@
 it:
   dashboard:
     title: "Pannello di controllo"
-    manage_entities: "Gestisci entità (modifiche dirette)"
-    manage_entities_help: "Le azioni in questa sezione vengono eseguite IMMEDIATAMENTE e SOLO sul server remoto a cui si è connessi"
+    subtitle: "Cosa richiede attenzione, cosa è in corso, come va la stagione"
+    zones:
+      loading: "Caricamento..."
+      kpis: "Contatori"
+      needs_you: "Da fare"
+      needs_you_help: "Un pulsante per voce, dalla più urgente: blocchi, job falliti, script da inviare, revisioni, crawl ed estrazioni, avvisi. Una voce sparisce quando ne sparisce la causa."
+      in_progress: "In corso"
+      season_progress: "Avanzamento stagione"
+      system: "Stato del sistema"
+      activity: "Attività"
+    kpis:
+      refresh: "Aggiorna contatori"
+      refresh_tooltip: "Richiede di nuovo i quattro contatori all'API (con un job in background e le sue credenziali)"
+      api_uses: "Uso API"
+      import_queues: "Code di import"
+      issues: "Segnalazioni"
+      users: "Utenti"
+      as_of: "Contatori aggiornati al %{time} (%{ago} fa)"
+      value_as_of: "al %{time}"
+      no_data: "Ancora nessun dato per %{url}: i contatori si aggiornano ogni 15 minuti, o con 'Aggiorna contatori'."
+      no_url: "nessun URL API configurato"
+      states:
+        unreachable: "non raggiungibile"
+        sign_in: "accedi per aggiornare"
+        unavailable: "non disponibile"
+        no_data: "ancora nessun dato"
+      status:
+        partial: "alcuni contatori non sono stati aggiornati"
+        unreachable: "API non raggiungibile all'ultimo aggiornamento"
+        unauthorized: "l'API ha rifiutato le credenziali dei job: accedi di nuovo"
+        no_credentials: "nessuna credenziale valida per i job: accedi di nuovo"
+    in_progress:
+      idle: "Niente in coda né in esecuzione."
+      running: "in esecuzione"
+      queued: "in coda"
+      since: "dalle %{time}"
+      jobs_queued: "Job in coda: %{queues}"
+      queue_unavailable: "La coda dei job non è leggibile qui (Solid Queue non in uso o il suo DB non è pronto)."
+    season_progress:
+      title: "Stagione %{description}"
+      no_season: "Nessuna stagione MASFIN trovata."
+      no_data: "Ancora nessun riepilogo della plancia."
+      open_board: "Apri la plancia stagione"
+      total: "%{count} righe del calendario FIN"
+      segment: "%{state}: %{count}"
+    activity:
+      title: "Attività"
+      subtitle: "Registro eventi di questo admin2: commit, invii, pulizie, job della plancia stagione, modifiche FIN"
+      empty: "Ancora nessun evento."
+      ops_unavailable: "Il registro eventi richiede il DB ops locale (lancia bin/rails ops:prepare)."
+      all: "Tutti gli eventi"
+      columns:
+        time: "Ora"
+        event: "Evento"
+        actor: "Da"
+        season: "Stagione"
+        subject: "Oggetto"
+        details: "Dettagli"
+    flash:
+      kpis_queued: "Aggiornamento dei contatori in coda: la striscia si aggiorna tra poco."
+      kpis_failed: "Impossibile accodare l'aggiornamento dei contatori: %{error}"
+      job_discarded: "Job %{job} fallito scartato."
+      job_retried: "Job %{job} fallito rimesso in coda."
+      job_not_found: "Quel job fallito non c'è più (già scartato o rilanciato)."
+      job_protected: "%{job} non viene mai rilanciato dalla dashboard: scartalo e riavvialo dalla sua pagina."
+      job_action_failed: "Azione sul job fallita: %{error}"
     toggle_selection: "Inverti righe selezionate"
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
@@ -12,8 +76,6 @@ it:
     not_admin_error: "Solo gli Amministratori possono usare questa applicazione!"
     search_field: "Cerca %{field}"
     search_tooltip: "Sovrascrivi coi risultati della ricerca"
-    data_import_helper: "Le azioni eseguite in questa sezione lavorano su file e su entrambi i DB (locale e remoto) ma solo nella fase finale di 'commit & push'"
-    tools_helper: "Le azioni eseguite in questa sezione lavorano ESCLUSIVAMENTE su DB locale (che deve essere sempre sincronizzato prima con il DB remoto)"
     grid_commands:
       delete_selected:
         button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"
@@ -40,6 +102,7 @@ it:
         title: "Prenotazioni eventi e staffette"
     settings:
       title: "Impostazioni"
+      remote_source: "(impostazioni REMOTE di %{url})"
       connection:
         connect_to_label: "🖥 Sei connesso con (includi il protocollo e la porta):"
         save_btn: "Salva"

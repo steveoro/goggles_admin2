@@ -1,0 +1,9 @@
+%section.kpi-strip#kpi-strip{ 'aria-label' => t('dashboard.zones.kpis') }
+  .row.row-cols-2.row-cols-lg-4.g-2
+    - tiles.each do |tile|
+      .col= render(tile)
+  .small.text-body-secondary.mt-1#kpi-strip-as-of
+    - if snapshot?
+      = [as_of_text, status_text].compact.join(' · ')
+    - else
+      = no_data_text

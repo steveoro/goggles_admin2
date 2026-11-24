@@ -51,6 +51,7 @@ services:
       - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
       - "~/Projects/goggles_deploy/backups:/app/db/dump"
       - "~/Projects/goggles_deploy/log.prod:/app/log"
+      - "~/Projects/goggles_deploy/ops.prod:/app/db/ops"
       - "~/Projects/goggles_deploy/master-main.key:/app/config/master.key"
 
 networks:

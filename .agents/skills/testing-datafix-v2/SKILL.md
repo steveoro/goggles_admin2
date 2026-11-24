@@ -82,7 +82,7 @@ The thin `DataFixController` actions 302 to `data_fix_legacy`, which requires a 
 
 ## Shell / DB access notes
 
-- Every fresh `exec` shell needs `export PATH="$HOME/.ruby-3.4.7/bin:$PATH"` or `gem`, `foreman`, `bin/dev`, `bin/rails` fail with `gem: not found`.
+- Every fresh `exec` shell needs `export PATH="$HOME/.ruby-3.4.13/bin:$PATH"` or `gem`, `foreman`, `bin/dev`, `bin/rails` fail with `gem: not found`.
 - No local mysql client — use `docker exec goggles_mariadb mariadb -uroot goggles_development -e "..."` (dev DB name is `goggles_development`; test suite uses `goggles_test`).
 
 ## Phase timings

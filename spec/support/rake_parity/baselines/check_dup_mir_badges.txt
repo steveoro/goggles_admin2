@@ -1,0 +1,7 @@
+## exit: nil
+## output
+
+*** Task: check:dup_mir_badges - Meeting: 18222 ***
+
+--> Found 1 badges with > 1 MIR for the *SAME* MeetingProgram.
+111395

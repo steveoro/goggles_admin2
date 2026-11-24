@@ -1,0 +1,17 @@
+-#
+  Live frame of the Outbox page ('outbox-scripts'): rendered by the page and, alone (no layout), by its live refresh
+  (outbox_path(frame: 1), see outbox_controller.js). Locals: see OutboxController#frame_locals.
+= turbo_frame_tag('outbox-scripts', target: '_top', data: { 'outbox-target': 'frame' }) do
+  %span.d-none{ data: { 'outbox-busy': live_run.present?.to_s } }
+  - if live_run
+    .alert.alert-info.d-flex.align-items-center.gap-2#outbox-live-run
+      %span.spinner-border.spinner-border-sm{ 'aria-hidden' => 'true' }
+      = t('outbox.runs.running', done: live_run.pushed_count, total: live_run.total)
+
+  - if ops_ready
+    = render(partial: 'outbox/needs_push', locals: { needs_push:, blockers:, focus: })
+    = render(partial: 'outbox/filters', locals: { folder:, default_season_id: })
+    = render(partial: 'outbox/on_server', locals: { on_server:, focus:, remote_status: })
+    = render(partial: 'outbox/history', locals: { history:, focus:, runs: })
+  - else
+    = render(partial: 'outbox/disk_list', locals: { disk_scripts: })

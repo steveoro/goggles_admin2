@@ -4,48 +4,23 @@ module DataFix
   # SwimmersController: Phase 3 (swimmers) review, edit and merge actions.
   class SwimmersController < BaseController
     def review_swimmers
-      redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
-
       source_path = @source_path
-      season = source_resolver.detect_season_from_pathname(source_path)
-      categories_cache = PdfResults::CategoriesCache.cached_for(season)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      phase_path = source_resolver.default_phase_path_for(source_path, 3)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 3,
-                                       review_path: method(:review_swimmers_path)) do
-        Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: source_resolver.default_phase_path_for(source_path, 1),
-          phase2_path: source_resolver.default_phase_path_for(source_path, 2)
-        )
-      end
+      # Built when missing, when the 'swimmers' list is missing (older generator or corrupted file) or on rescan:
+      # DataFix::Pipeline#build_needed?
+      phase_path = pipeline.phase_path(3)
+      return unless ensure_phase_file!(phase: 3, review_path: method(:review_swimmers_path))
 
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      season = pipeline.season
+      categories_cache = pipeline.categories_cache
+      refresh_matches_if_db_changed!(3)
+      @retry_needed = pipeline.settle!(3)
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
       @phase3_data = pfm.data
-
-      # Safety: rebuild Phase 3 file if swimmers dictionary is missing (older generator or corrupted file)
-      if @phase3_data['swimmers'].nil?
-        phase1_path = source_resolver.default_phase_path_for(source_path, 1)
-        phase2_path = source_resolver.default_phase_path_for(source_path, 2)
-        Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path
-        )
-        redirect_to(review_swimmers_path(request.query_parameters.merge(file_path: @file_path)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
-      end
-      @source_path = source_path
       base_dir = File.dirname(source_path)
 
-      # Extract season and meeting date for category computation
-      season = source_resolver.detect_season_from_pathname(source_path)
-      phase1_path = source_resolver.default_phase_path_for(source_path, 1)
-      meeting_date = (PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date') if File.exist?(phase1_path))
+      # Meeting date for category computation (phase 1 header_date, else the source date)
+      meeting_date = pipeline.meeting_date
 
       detector = Phase3::RelayEnrichmentDetector.new(
         source_path: source_path,
@@ -55,7 +30,12 @@ module DataFix
         categories_cache:
       )
       @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
-      @relay_enrichment_summary = DataFix::RelayEnrichmentFilter.filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers, @phase3_data)
+      detected = detector.detect
+      @relay_enrichment_summary = DataFix::RelayEnrichmentFilter.filter_relay_enrichment_summary(detected, @show_new_relay_swimmers, @phase3_data)
+      # (same count as the Phase 3 verdict: new-only legs hidden; reused by the stepper)
+      verdict_summary = @relay_enrichment_summary
+      verdict_summary = DataFix::RelayEnrichmentFilter.filter_relay_enrichment_summary(detected, false, @phase3_data) if @show_new_relay_swimmers
+      pipeline.relay_enrichment_count = verdict_summary.size
       @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
                                    .reject { |path| path == phase_path || path.match?(/\.orig(-\d+)?\.json\z/) }
                                    .sort
@@ -72,42 +52,43 @@ module DataFix
 
       swimmers_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'swimmers', file_path: @file_path)
 
-      consistency_stats = DataFix::Phase3Harmonizer.harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
+      # Idempotent: writes phase 2 (re-stamped) only when a new conflict hint appears (normally done at build time)
+      consistency_stats = pipeline.harmonize!
       if consistency_stats.values.sum.positive?
-        summary = []
-        summary << "#{consistency_stats[:phase2_conflicts_detected]} conflict(s) detected" if consistency_stats[:phase2_conflicts_detected].positive?
-        summary << "#{consistency_stats[:phase2_missing_links_detected]} missing link(s) detected" if consistency_stats[:phase2_missing_links_detected].positive?
-        summary << "#{consistency_stats[:phase2_conflict_hints_added]} hint candidate(s) added" if consistency_stats[:phase2_conflict_hints_added].positive?
-        flash.now[:notice] = { body: "Cross-phase review: #{summary.join(', ')}.", sticky: true }
+        summary = {
+          'data_fix.flash.conflicts_detected' => consistency_stats[:phase2_conflicts_detected],
+          'data_fix.flash.missing_links_detected' => consistency_stats[:phase2_missing_links_detected],
+          'data_fix.flash.hints_added' => consistency_stats[:phase2_conflict_hints_added]
+        }.select { |_key, count| count.positive? }.map { |key, count| I18n.t(key, count:) }
+        flash.now[:notice] = { body: I18n.t('data_fix.flash.cross_phase_review', summary: summary.join(', ')), sticky: true }
       end
 
       swimmers = Array(@phase3_data['swimmers'])
       duplicate_summary = DataFix::Phase3Harmonizer.annotate_swimmer_badge_duplicates!(swimmers)
       if duplicate_summary[:swimmers_with_duplicates].positive?
         flash.now[:warning] = {
-          body: "#{duplicate_summary[:swimmers_with_duplicates]} swimmer(s) show duplicate badges in season(s): #{duplicate_summary[:duplicate_seasons].join(', ')}",
+          body: I18n.t('data_fix.flash.duplicate_badges', count: duplicate_summary[:swimmers_with_duplicates],
+                                                          seasons: duplicate_summary[:duplicate_seasons].join(', ')),
           sticky: true
         }
       end
+      # (swimmer_key => team_key of its badge, shown on the cards)
+      @team_key_by_swimmer_key = team_keys_by_swimmer_key(@phase3_data)
 
       apply_review_filters(
         collection: swimmers,
         prefix: 'swimmers',
         cookie_scope: swimmers_state_cookie_scope,
         default_per_page: 100,
-        text_fields: %w[last_name first_name complete_name key]
+        text_fields: %w[last_name first_name complete_name key],
+        default_filter_state: 'review'
       ) do |list, state|
         case state
-        # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 89% (yellow/red matches)
-        # OR similar name found on same team (cross-ref warning)
-        # OR duplicate badges found in same season with different team_id (manual merge red flag)
-        # OR auto-assigned from secondary match due to team priority
-        # This shows ALL swimmers that need manual verification at a glance
+        # Filter swimmers needing review (DataFix::ReviewRules): unconfirmed matches under the 89% bar, gender-guessed,
+        # auto-assigned from a secondary match or with duplicate badges, plus the unconfirmed new swimmers.
+        # A saved (confirmed) swimmer leaves it.
         when 'review'
-          list.select do |s|
-            # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-            s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true || s['auto_assigned_from_secondary_match'] == true
-          end
+          list.select { |s| DataFix::ReviewRules.swimmer_in_review_filter?(s) }
         # Filter swimmers where the current name differs from the original import key
         when 'diff_key'
           list.reject do |s|
@@ -119,6 +100,13 @@ module DataFix
         else
           list
         end
+      end
+
+      # (phase 12) next/previous issue across the pages of the filtered list
+      @issue_nav = DataFix::IssueNav.for_list(@filtered_collection.map { |swimmer| DataFix::IssueMarkers.swimmer(swimmer).present? },
+                                              page: @page, per_page: @per_page) do |page, position|
+        review_swimmers_path(file_path: @file_path, phase3_v2: 1, filter_state: @filter_state, q: @q.presence,
+                             swimmers_per_page: @per_page, swimmers_page: page, anchor: "swimmer-card-#{position}")
       end
 
       # Broadcast ready status to clear progress modal
@@ -133,7 +121,7 @@ module DataFix
 
       if swimmer_key.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 3)
@@ -154,6 +142,8 @@ module DataFix
       # Update the swimmer at the found index
       swimmer = swimmers[swimmer_index]
       old_swimmer_id = swimmer['swimmer_id']
+      # Saving the card confirms the row: it leaves the review filter (DataFix::ReviewRules)
+      swimmer['confirmed'] = true
       swimmer['complete_name'] = swimmer_params[:complete_name]&.strip if swimmer_params.key?(:complete_name)
       swimmer['first_name'] = swimmer_params[:first_name]&.strip if swimmer_params.key?(:first_name)
       swimmer['last_name'] = swimmer_params[:last_name]&.strip if swimmer_params.key?(:last_name)
@@ -190,12 +180,6 @@ module DataFix
       end
       data['badges'] = badges
 
-      # Clear downstream phase data (phase4+) when swimmers are modified
-      data['meeting_event'] = [] if data.key?('meeting_event')
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 
@@ -208,13 +192,19 @@ module DataFix
         season_id: season_id,
         phase3_badges: badges
       )
-      flash[:info] = "Swimmer updated. Cascaded swimmer links to #{cascade_count} downstream record(s)." if cascade_count.positive?
+      cascade_info = I18n.t('data_fix.flash.swimmer_cascaded', count: cascade_count) if cascade_count.positive?
+      restamp_after_cascade!(phases: [5], keys: ['p3'])
 
-      # Preserve pagination and filter params
-      redirect_params = review_redirect_params(v2_flag: :phase3_v2,
-                                               keep: %i[swimmers_page swimmers_per_page q filter_state])
-
-      redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+      respond_to do |format|
+        # (phase 12) saved in place: the card, the stepper and the toasts are replaced
+        format.turbo_stream { render_swimmer_saved(swimmer_key: canonical_swimmer_key.presence || swimmer_key, cascade_info:) }
+        format.html do
+          flash[:info] = cascade_info if cascade_info
+          # Preserve pagination and filter params
+          redirect_params = review_redirect_params(v2_flag: :phase3_v2, keep: %i[swimmers_page swimmers_per_page q filter_state])
+          redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+        end
+      end
     end
 
     # Add a new blank swimmer to Phase 3
@@ -247,7 +237,7 @@ module DataFix
       redirect_params = review_redirect_params(v2_flag: :phase3_v2,
                                                keep: %i[swimmers_page swimmers_per_page q filter_state])
 
-      redirect_to review_swimmers_path(redirect_params), notice: 'Swimmer added' # rubocop:disable Rails/I18nLocaleTexts
+      redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_fix.flash.swimmer_added')
     end
 
     # Merge auxiliary Phase 3 files to enrich relay swimmers
@@ -344,7 +334,7 @@ module DataFix
 
       if swimmer_key.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 3)
@@ -363,12 +353,6 @@ module DataFix
       swimmers.delete_at(swimmer_index)
       data['swimmers'] = swimmers
 
-      # Clear downstream phase data (phase4+) when swimmers are modified
-      data['meeting_event'] = [] if data.key?('meeting_event')
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 
@@ -377,6 +361,30 @@ module DataFix
                                                keep: %i[swimmers_page swimmers_per_page q filter_state])
 
       redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
+    end
+
+    private
+
+    # swimmer_key => team_key of its Phase 3 badge.
+    def team_keys_by_swimmer_key(phase3_data)
+      Array(phase3_data['badges']).each_with_object({}) { |badge, memo| memo[badge['swimmer_key']] = badge['team_key'] if badge['swimmer_key'] }
+    end
+
+    # Turbo-stream answer of a swimmer saved in place (update_phase3_swimmer.turbo_stream.haml): the phase file is the
+    # one the HTML path writes; the edit marker is written first, so that the replaced stepper shows it.
+    def render_swimmer_saved(swimmer_key:, cascade_info:)
+      mark_phase_edited_now!
+      set_api_url
+      phase3_data = PhaseFileManager.new(pipeline.phase_path(3)).data || {}
+      swimmers = Array(phase3_data['swimmers'])
+      DataFix::Phase3Harmonizer.annotate_swimmer_badge_duplicates!(swimmers)
+      @swimmer_key = swimmer_key
+      @swimmer_hash = swimmers.find { |swimmer| swimmer['key'] == swimmer_key } || {}
+      @swimmer_team_key = team_keys_by_swimmer_key(phase3_data)[swimmer_key]
+      @card_index = params[:card_index].presence&.to_i || swimmers.index(@swimmer_hash).to_i
+      flash.now[:notice] = I18n.t('data_import.messages.updated')
+      flash.now[:info] = cascade_info if cascade_info
+      render 'data_fix/update_phase3_swimmer'
     end
   end
 end

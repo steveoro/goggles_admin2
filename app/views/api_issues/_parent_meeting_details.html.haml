@@ -1,8 +1,8 @@
-.row
+%section.mb-3
   %h5.py-2= parent_meeting_class
   %table.table.table-striped.table-sm#parent-meeting
     %thead.text-center
-      %tr.table-info
+      %tr
         %th
           %code id
         %th
@@ -15,16 +15,16 @@
           %code header_year
         %th
           %code season_id
-    %tbody
+    %tbody.table-group-divider
       - if parent_meeting
         %tr
-          %td.text-right
+          %td.text-end
             %b= parent_meeting['id']
           %td= parent_meeting['description']
           %td= parent_meeting['code']
           %td= parent_meeting['header_date']
           %td= parent_meeting['header_year']
-          %td.text-right= parent_meeting['season_id']
+          %td.text-end= parent_meeting['season_id']
         - if parent_meeting['meeting_events'].present?
           %tr
             %th Events:

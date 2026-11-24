@@ -1,0 +1,19 @@
+en:
+  data_fix_sessions:
+    nav: 'Data-Fix sessions'
+    title: 'Data-Fix sessions'
+    subtitle: 'Sources with phase files or staging rows: resume the review or discard the staging rows'
+    empty: 'No Data-Fix session in progress.'
+    columns:
+      source: 'Source'
+      phase: 'Highest phase'
+      mtime: 'Last change'
+      staging_rows: 'Staging rows'
+      actions: 'Actions'
+    source_missing: 'source file missing'
+    idle_days:
+      one: '(1 day ago)'
+      other: '(%{count} days ago)'
+      zero: '(today)'
+    resume: 'Resume'
+    purge: 'Purge staging rows'

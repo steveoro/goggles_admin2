@@ -8,10 +8,10 @@ class MeetingReservationsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  filter(:meeting_id, :integer, header: 'Meeting ID')
-  filter(:team_id, :integer, header: 'Team ID')
-  filter(:swimmer_id, :integer, header: 'Swimmer ID')
-  filter(:badge_id, :integer, header: 'Badge ID')
+  filter(:meeting_id, :integer)
+  filter(:team_id, :integer)
+  filter(:swimmer_id, :integer)
+  filter(:badge_id, :integer)
   filter(:not_coming, :boolean)
   filter(:confirmed, :boolean)
 
@@ -19,7 +19,7 @@ class MeetingReservationsGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:meeting_id, align: :right, mandatory: true)
   column(
-    :meeting_name, header: 'Meeting', html: true, mandatory: true,
+    :meeting_name, html: true, mandatory: true,
                    order: proc { |scope| scope.sort { |a, b| a.meeting.decorate.short_label <=> b.meeting.decorate.short_label } }
   ) do |asset|
     asset.meeting.decorate.short_label
@@ -29,7 +29,7 @@ class MeetingReservationsGrid < BaseGrid
   column(:badge_id, align: :right, mandatory: true)
   column(:swimmer_id, align: :right)
   column(
-    :swimmer_name, header: 'Swimmer', html: true, mandatory: true,
+    :swimmer_name, html: true, mandatory: true,
                    order: proc { |scope| scope.sort { |a, b| a.swimmer.complete_name <=> b.swimmer.complete_name } }
   ) do |asset|
     asset.swimmer.complete_name

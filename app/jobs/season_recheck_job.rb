@@ -14,6 +14,8 @@
 # already exist, imported from another source, so the operator links or crawls it by hand), past meetings first (most
 # recent first), then the failed retries (soonest first), at most MAX_CRAWLS_PER_RUN per run (the
 # crawls then run one at a time). A failed enqueue is logged and doesn't stop the other rows.
+# The full board build is stored as the board summary (SeasonBoard::Snapshot.build!).
+# Nothing is queued while the automation master switch is off (DataFix::Automation, phase 10).
 #
 class SeasonRecheckJob < ApplicationJob
   queue_as :background
@@ -24,11 +26,13 @@ class SeasonRecheckJob < ApplicationJob
   # - season_id: board season (default: SeasonBoard::Builder.latest_season)
   # Returns the Array of FIN ids enqueued.
   def perform(season_id: nil)
+    return [] unless DataFix::Automation.enabled?
+
     season = season_id ? GogglesDb::Season.find_by(id: season_id) : SeasonBoard::Builder.latest_season
     return [] unless season
 
     activity_log = SeasonBoard::ActivityLog.new
-    rows = SeasonBoard::Builder.new(season:, activity_log:).call.rows
+    rows = SeasonBoard::Snapshot.build!(season, builder: SeasonBoard::Builder.new(season:, activity_log:)).rows
     candidates(rows, activity_log).first(MAX_CRAWLS_PER_RUN).select { |row| enqueue_crawl(season, row) }.map(&:fin_event_id)
   end
 

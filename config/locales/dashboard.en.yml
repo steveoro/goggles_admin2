@@ -1,8 +1,72 @@
 en:
   dashboard:
     title: "Dashboard"
-    manage_entities: "Manage entities (direct edits)"
-    manage_entities_help: "Any action in this section will be run exclusively and IMMEDIATELY on the remote server (no local changes)"
+    subtitle: "What needs you, what is running, how the season is going"
+    zones:
+      loading: "Loading..."
+      kpis: "Counters"
+      needs_you: "Needs you"
+      needs_you_help: "One button per item, most urgent first: blockers, failed jobs, scripts to push, reviews, crawls and extractions, notices. An item disappears when its cause does."
+      in_progress: "In progress"
+      season_progress: "Season progress"
+      system: "System status"
+      activity: "Activity"
+    kpis:
+      refresh: "Refresh counters"
+      refresh_tooltip: "Ask the API for the four counters again (a background job, with the background credentials)"
+      api_uses: "API uses"
+      import_queues: "Import queues"
+      issues: "Issues"
+      users: "Users"
+      as_of: "Counters as of %{time} (%{ago} ago)"
+      value_as_of: "as of %{time}"
+      no_data: "No data yet for %{url}: the counters are refreshed every 15 minutes, or with 'Refresh counters'."
+      no_url: "no API URL configured"
+      states:
+        unreachable: "unreachable"
+        sign_in: "sign in to refresh"
+        unavailable: "unavailable"
+        no_data: "no data yet"
+      status:
+        partial: "some counters could not be refreshed"
+        unreachable: "API unreachable at the last refresh"
+        unauthorized: "the API rejected the background credentials: sign in again"
+        no_credentials: "no valid background credentials: sign in again"
+    in_progress:
+      idle: "Nothing queued or running."
+      running: "running"
+      queued: "queued"
+      since: "since %{time}"
+      jobs_queued: "Queued jobs: %{queues}"
+      queue_unavailable: "The job queue can't be read here (Solid Queue not in use or its DB not ready)."
+    season_progress:
+      title: "Season %{description}"
+      no_season: "No MASFIN season found."
+      no_data: "No board summary yet."
+      open_board: "Open the Season board"
+      total: "%{count} FIN calendar rows"
+      segment: "%{state}: %{count}"
+    activity:
+      title: "Activity"
+      subtitle: "Event log of this admin2: commits, pushes, purges, Season board jobs, FIN watcher changes"
+      empty: "No events yet."
+      ops_unavailable: "The event log needs the local ops DB (run bin/rails ops:prepare)."
+      all: "All events"
+      columns:
+        time: "Time"
+        event: "Event"
+        actor: "By"
+        season: "Season"
+        subject: "Subject"
+        details: "Details"
+    flash:
+      kpis_queued: "Counters refresh queued: the strip updates in a moment."
+      kpis_failed: "Could not queue the counters refresh: %{error}"
+      job_discarded: "Failed %{job} job discarded."
+      job_retried: "Failed %{job} job queued again."
+      job_not_found: "That failed job is gone (already discarded or retried)."
+      job_protected: "%{job} is never retried from the dashboard: discard it and start it again from its own page."
+      job_action_failed: "Job action failed: %{error}"
     toggle_selection: "Invert selected rows"
     n_total_rows: "%{tot} total rows"
     confirm_row_delete: "Are you sure you want to delete this row? (%{label})"
@@ -12,8 +76,6 @@ en:
     not_admin_error: "Only Admins can use this application!"
     search_field: "Search %{field}"
     search_tooltip: "Overwrite fields with the current search results"
-    data_import_helper: "Any action in this section will work on files and on both local and remote DB, but only during the final 'commit & push' phase"
-    tools_helper: "Any action in this section will work ESCLUSIVELY on the local DB instance (which needs to be aligned with the remote copy)"
     grid_commands:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"
@@ -40,6 +102,7 @@ en:
         title: "Events and relays reservations"
     settings:
       title: "Settings"
+      remote_source: "(REMOTE %{url} settings)"
       connection:
         connect_to_label: "🖥 You are connected with (include protocol & port):"
         save_btn: "Save"
@@ -69,7 +132,7 @@ en:
       title: "Swimmers"
     swimming_pools:
       title: "Swimming Pools"
-    team_affiliation:
+    team_affiliations:
       title: "Team Affiliations"
     team_managers:
       title: "Team Managers (Managed Affiliations)"

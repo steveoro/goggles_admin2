@@ -109,13 +109,25 @@ module Import
         # array in a single traversal of all sections/rows.
         # LT2 sections group by (event, category, gender); LT4 events group by
         # event code + gender, with results containing categories.
+        #
+        # PDF-derived sections flagged with 'ranking' (overall team ranking) or 'stats'
+        # (meeting statistics) are not events: ranking rows are copied "as is" into
+        # out['teamRankings'] (their team names join the teams dictionary), stats are dropped.
         def build_dictionaries_and_events!(src, out)
           swimmers = {}
           teams = {}
           events_map = {}
+          team_rankings = []
 
           sections = src['sections'] || []
           sections.each do |section|
+            next if section['stats'].present?
+
+            if section['ranking'].present?
+              collect_team_rankings!(section, team_rankings, teams)
+              next
+            end
+
             event_info = extract_event_info(section)
             event_key = "#{event_info[:code]}_#{event_info[:gender]}"
 
@@ -150,6 +162,18 @@ module Import
           out['swimmers'] = swimmers
           out['teams'] = teams
           out['events'] = events_map.values
+          out['teamRankings'] = team_rankings if team_rankings.any?
+        end
+
+        # Copies the rows of an LT2 'ranking' section into +team_rankings+ (raw source strings:
+        # 'pos', 'team', 'ind_score', 'overall_score') and adds each team name to +teams+.
+        def collect_team_rankings!(section, team_rankings, teams)
+          Array(section['rows']).each do |row|
+            next unless row.is_a?(Hash) && row['team'].present?
+
+            team_rankings << row.slice('pos', 'team', 'ind_score', 'overall_score')
+            teams[row['team']] ||= { 'name' => row['team'] }
+          end
         end
 
         # Build composite swimmer key in LT4 format: "GENDER|LAST|FIRST|YEAR|TEAM"

@@ -4,22 +4,17 @@ module DataFix
   # SessionsController: Phase 1 (meeting + sessions) review & edit actions.
   class SessionsController < BaseController
     def review_sessions
-      redirect_to(review_sessions_legacy_path(request.query_parameters)) && return if params[:phase_v2].blank?
-
       source_path = @source_path
-      @season = source_resolver.detect_season_from_pathname(source_path)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      # Use existing phase file unless rescan is requested; build when missing or rescan
-      phase_path = source_resolver.default_phase_path_for(source_path, 1)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 1,
-                                       review_path: method(:review_sessions_path)) do
-        Import::Solvers::Phase1Solver.new(season: @season).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
-      end
+      @season = pipeline.season
+      # Use existing phase file unless rescan is requested; build when missing or rescan (DataFix::Pipeline)
+      phase_path = pipeline.phase_path(1)
+      return unless ensure_phase_file!(phase: 1, review_path: method(:review_sessions_path))
 
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      @retry_needed = pipeline.settle!(1)
+      # (the category recompute discards phases 3-5: its confirmation lists those holding edits)
+      edited = [3, 4, 5].select { |phase| pipeline_summary&.[](phase)&.edited } # (cached verdicts, reused by the stepper)
+      @recompute_confirm = [I18n.t('data_import.data_fix.category_recompute_confirm'),
+                            (I18n.t('data_fix.stepper.recompute_discards_edits', phases: edited.join(', ')) if edited.any?)].compact.join(' ')
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta
       @phase1_data = pfm.data
@@ -32,6 +27,12 @@ module DataFix
       # event codes, suspicious dates) - visible here so the operator reviews
       # them before committing anything.
       @source_warnings = Array(source_resolver.parsed_source_json(source_path).dig('_meta', 'warnings'))
+
+      # (phase 12) cards needing the operator (verdict issues + field errors), issue navigation, "needs you only"
+      @issue_markers = DataFix::IssueMarkers.phase1(data: @phase1_data, structure_report: @structure_report,
+                                                    verdict: pipeline_summary&.[](1))
+      @issues_only = issues_only_switch(@issue_markers[:sessions].any?)
+      @issue_nav = DataFix::IssueNav.single_page((@issue_markers[:meeting].any? ? 1 : 0) + @issue_markers[:sessions].size)
 
       # Fetch existing meeting sessions if meeting_id is present
       meeting_id = @phase1_data['id']
@@ -77,7 +78,12 @@ module DataFix
         progress: ->(message, current, total) { broadcast_progress(message, current, total) }
       ).call
 
-      invalidated = result[:backup_path].present? ? source_resolver.invalidate_category_dependent_artifacts(source_path) : []
+      # (operator action, confirmed with the list of edited phases it discards: forced invalidation)
+      invalidated = if result[:backup_path].present?
+                      pipeline.reload!.invalidate!(phases: [3, 4, 5], reason: :categories_recomputed, force: true)
+                    else
+                      []
+                    end
       result[:invalidated_artifacts] = invalidated
       flash[:notice] = {
         body: source_resolver.category_recompute_summary(result),
@@ -92,6 +98,49 @@ module DataFix
       flash[:error] = I18n.t('data_import.errors.category_recompute_failed')
       redirect_to(review_sessions_path(file_path: source_path || file_path, phase_v2: 1))
     end
+
+    # POST "Rebuild (discard edits)" (step header banner, with a confirmation): the source file changed under
+    # operator edits and DataFix::Pipeline#invalidate! kept the edited phases; this deletes them (after .orig
+    # backups) and reopens the first one, which rebuilds it from the changed source.
+    def discard_phase_edits
+      phases = Array(pipeline.source_row&.stage_details&.dig('phases')).map(&:to_i).presence || [3, 4, 5]
+      pipeline.invalidate!(phases:, reason: :operator_discard, force: true)
+      step_paths = { 1 => :review_sessions_path, 2 => :review_teams_path, 3 => :review_swimmers_path,
+                     4 => :review_events_path, 5 => :review_results_path }
+      redirect_to(send(step_paths.fetch(phases.min, :review_sessions_path), file_path: @source_path),
+                  notice: I18n.t('data_fix.pipeline.edits_discarded', phases: phases.join(', ')))
+    end
+
+    # POST data_fix/rebuild_phase?file_path=&phase=N[&force=1] ("Rebuild" of the stale banner, phase 12): rebuilds
+    # one phase from the source and its upstream phases (DataFix::Pipeline#build_phase!, progress modal through
+    # the Cable sink), then reopens its review page. An edited phase is refused unless +force+ (the banner asks for
+    # a confirmation naming the edits first).
+    def rebuild_phase
+      phase = params[:phase].to_i
+      unless DataFix::Pipeline::PHASES.include?(phase)
+        return redirect_to(review_sessions_path(file_path: @source_path, phase_v2: 1), flash: { warning: I18n.t('data_fix.rebuild.invalid_phase') })
+      end
+
+      review_path = REVIEW_PATHS.fetch(phase)
+      pipeline.build_phase!(phase, force: params[:force].to_s == '1', strict_upstream: false)
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  notice: pipeline.last_build_result[:notice].presence || I18n.t('data_import.messages.phase_rebuilt', phase:))
+    rescue DataFix::Pipeline::EditedPhaseError
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { warning: I18n.t('data_fix.rebuild.refused_edited', number: phase) })
+    rescue DataFix::Pipeline::LeaseBusyError
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { warning: I18n.t('data_fix.pipeline.lease_busy') })
+    rescue StandardError => e
+      Rails.logger.error("[DataFix] rebuild of phase #{phase} failed for #{@source_path}: #{e.class}: #{e.message}")
+      redirect_to(send(review_path, file_path: @source_path, REVIEW_FLAGS.fetch(phase) => 1),
+                  flash: { error: I18n.t('data_fix.rebuild.failed', number: phase, error: e.message.truncate(200)) })
+    end
+
+    REVIEW_PATHS = { 1 => :review_sessions_path, 2 => :review_teams_path, 3 => :review_swimmers_path,
+                     4 => :review_events_path, 5 => :review_results_path }.freeze
+    REVIEW_FLAGS = { 1 => :phase_v2, 2 => :phase2_v2, 3 => :phase3_v2, 4 => :phase4_v2, 5 => :phase5_v2 }.freeze
+    private_constant :REVIEW_PATHS, :REVIEW_FLAGS
 
     # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
     def update_phase1_meeting
@@ -216,7 +265,7 @@ module DataFix
 
       if session_index.negative?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 1)
@@ -289,7 +338,7 @@ module DataFix
 
       if session_index.nil?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 1)
@@ -306,15 +355,6 @@ module DataFix
       # Remove the session at the specified index
       sessions.delete_at(session_index)
       data['meeting_session'] = sessions
-
-      # Clear downstream phase data when sessions are modified
-      data['meeting_event'] = []
-      data['meeting_program'] = []
-      data['meeting_individual_result'] = []
-      data['meeting_relay_result'] = []
-      data['lap'] = []
-      data['relay_lap'] = []
-      data['meeting_relay_swimmer'] = []
 
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)

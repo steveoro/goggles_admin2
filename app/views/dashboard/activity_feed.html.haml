@@ -1,0 +1,2 @@
+= turbo_frame_tag('dashboard-activity', target: '_top') do
+  = render(Dashboard::ActivityFeedComponent.new(events: @events, ops_available: @ops_available))

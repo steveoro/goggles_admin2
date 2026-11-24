@@ -1,0 +1,24 @@
+%section#health-dashboard-card{ data: { live_busy: (ops_available? && pending_count.positive?).to_s } }
+  - if !ops_available?
+    %p.small.text-body-secondary.mb-0= t('health.ops_unavailable')
+  - elsif never_ran?
+    %p.small.text-body-secondary.mb-1#health-card-never= t('health.card.never_ran')
+    = link_to(t('health.card.open'), helpers.health_path, class: 'small', data: { turbo_frame: '_top' })
+  - else
+    %ul.list-unstyled.small.mb-2
+      - if board_season
+        %li.d-flex.flex-wrap.justify-content-between.gap-2#health-card-current
+          = link_to(t('health.card.current', id: board_season.id), helpers.health_season_path(board_season.id), data: { turbo_frame: '_top' })
+          %span
+            %span{ class: count_css(board_errors, 'text-danger-emphasis fw-semibold') }= t('health.card.errors', count: board_errors)
+            %span.text-body-secondary ·
+            %span{ class: count_css(board_warnings, 'text-warning-emphasis') }= t('health.card.warnings', count: board_warnings)
+      %li.d-flex.flex-wrap.justify-content-between.gap-2#health-card-closed
+        = link_to(t('health.card.closed'), helpers.health_path, data: { turbo_frame: '_top' })
+        %span{ class: count_css(closed_errors.size, 'text-danger-emphasis fw-semibold') }
+          = t('health.card.closed_errors', count: closed_errors.values.sum, seasons: closed_errors.size)
+      - if pending_count.positive?
+        %li.text-info-emphasis#health-card-pending
+          %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+          = t('health.card.pending', count: pending_count)
+    %p.small.text-body-secondary.mb-0#health-card-sweep= last_sweep_text

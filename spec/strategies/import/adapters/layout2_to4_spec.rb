@@ -598,5 +598,31 @@ RSpec.describe Import::Adapters::Layout2To4 do
         expect(out['events']).to eq([])
       end
     end
+
+    context 'with PDF-derived team ranking & stats sections' do
+      let(:out) { described_class.normalize(data_hash: JSON.parse(file_fixture('import/pdf-teamrank-lt2.json').read)) }
+
+      it 'moves the ranking rows (raw source strings) into teamRankings' do
+        expect(out['teamRankings'].size).to eq(5)
+        expect(out['teamRankings'].first).to eq(
+          'pos' => '1', 'team' => 'Carlastad Swimming Club ASD', 'ind_score' => '35209.930', 'overall_score' => '35209.930'
+        )
+        expect(out['teamRankings'].last).to include('pos' => '5', 'ind_score' => nil)
+      end
+
+      it 'adds the ranked teams to the teams dictionary, including those without results' do
+        expect(out['teams'].keys).to include('Shizukoborough Swimming Club ASD', 'Funkhaven Swimming Club ASD')
+        expect(out['teams']['Funkhaven Swimming Club ASD']).to eq('name' => 'Funkhaven Swimming Club ASD')
+      end
+
+      it 'builds no event out of the ranking or stats sections' do
+        expect(out['events'].pluck('eventCode')).to contain_exactly('200SL', '50DO')
+        expect(out['events'].flat_map { |event| event['results'] }).to all(include('swimmer'))
+      end
+
+      it 'omits teamRankings when the source has no ranking section' do
+        expect(described_class.normalize(data_hash: header.merge('sections' => []))).not_to have_key('teamRankings')
+      end
+    end
   end
 end

@@ -8,7 +8,11 @@ require 'json'
 # Minimal client for the local crawler server HTTP API (Node, see crawler/server/api.js).
 #
 # Never raises on connection problems: every call returns either a parsed value or nil
-# (#status) or a Result (#pull_meeting).
+# (#status) or a Result (every crawl command: #pull_meeting, #pull_calendar, #pull_results_from_file,
+# #pull_microplus, #pull_ficr, #pull_goandswim).
+#
+# Every crawl command makes the Node server start the crawl in the background and answer right away
+# (with its current status): callers poll #status (see Crawler::RunWatcher) to learn when it ends.
 #
 # == Crawler status file
 # The Node side writes { timestamp:, status:, detail:, progress:, total: } through
@@ -20,9 +24,10 @@ require 'json'
 # See CrawlerClient::Status.
 #
 class CrawlerClient
-  BASE_URL = PullController::CRAWLER_API_URL
+  # URL of the local crawler server API (also read by CrawlerLauncher::STATUS_URL).
+  BASE_URL = 'http://localhost:7000/'
 
-  # Connection-level failures rescued by every call (and by PullController#call_crawler_api).
+  # Connection-level failures rescued by every call.
   # (RestClient::Exception covers HTTP error codes, RestClient timeouts & ServerBrokeConnection.)
   CONNECTION_ERRORS = [
     Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT,
@@ -98,9 +103,42 @@ class CrawlerClient
     get('pull_results', params: { 'season_id' => season_id.to_s, 'layout' => 2, 'meeting_url' => url.to_s })
   end
 
+  # Starts the FIN calendar crawler (GET /pull_calendar): the crawler opens +start_url+ and simulates the click on the
+  # +sub_menu_type+ menu item ('Eventi', 'Riepilogo Eventi', 'Archivio 2012-'), looking for the +year_text+ season
+  # ('2025/2026'). The calendar CSV lands in 'crawler/data/calendar.new/<season_id>/'. Returns a Result.
+  def pull_calendar(season_id:, start_url:, sub_menu_type:, year_text:)
+    get('pull_calendar', params: { 'season_id' => season_id.to_s, 'start_url' => start_url.to_s,
+                                   'sub_menu_type' => sub_menu_type.to_s, 'year_text' => year_text.to_s })
+  end
+
+  # Starts the FIN results crawler on every meeting listed by a calendar CSV file (GET /pull_results with
+  # +file_path+; +layout+: 1 for the seasons before 182, 2 otherwise). Returns a Result.
+  def pull_results_from_file(season_id:, file_path:, layout:)
+    get('pull_results', params: { 'season_id' => season_id.to_s, 'file_path' => file_path.to_s, 'layout' => layout.to_i })
+  end
+
+  # Starts the Microplus results crawler (GET /pull_results_microplus; +target_event+: optional event title filter).
+  # Returns a Result.
+  def pull_microplus(season_id:, url:, target_event: nil)
+    params = { 'season_id' => season_id.to_s, 'layout' => 4, 'meeting_url' => url.to_s }
+    params['target_event'] = target_event.to_s if target_event.present?
+    get('pull_results_microplus', params:)
+  end
+
+  # Starts the FICR results crawler (GET /pull_results_ficr). Returns a Result.
+  def pull_ficr(season_id:, url:)
+    get('pull_results_ficr', params: { 'season_id' => season_id.to_s, 'layout' => 5, 'meeting_url' => url.to_s })
+  end
+
+  # Starts the Go&Swim results crawler (GET /pull_results_goandswim). Returns a Result.
+  def pull_goandswim(season_id:, url:)
+    get('pull_results_goandswim', params: { 'season_id' => season_id.to_s, 'layout' => 6, 'meeting_url' => url.to_s })
+  end
+
   private
 
-  # Same request shape as PullController#call_crawler_api (RestClient turns headers['params'] into the query string).
+  # GET-only commands (RestClient turns headers['params'] into the query string): the crawler API is local, and the
+  # Node middleware would expect encoded form data for any payload.
   def get(endpoint, params: nil)
     headers = { 'Content-Type' => 'application/json' }
     headers['params'] = params if params

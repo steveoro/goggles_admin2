@@ -29,7 +29,8 @@ RSpec.describe APIUsersController do
       end
 
       it 'renders the Devise tracking columns' do
-        get(api_users_path)
+        # (phase 15: the grid headers follow the locale, grids.users.*)
+        get(api_users_path, params: { locale: 'en' })
         expect(response.body).to include('Sign-in count', 'Last sign-in at', 'Failed attempts')
       end
 
@@ -42,6 +43,11 @@ RSpec.describe APIUsersController do
         get(api_users_path, params: { users_grid: { order: 'last_sign_in_at', descending: false } })
         expect(response).to have_http_status(:success)
       end
+    end
+
+    it_behaves_like('an API grid index showing an API error in place', 'users') do
+      let(:index_path) { api_users_path }
+      let(:api_params) { { page: 1, per_page: 25 } }
     end
   end
   #-- -------------------------------------------------------------------------

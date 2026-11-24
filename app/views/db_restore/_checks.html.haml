@@ -1,0 +1,22 @@
+-#
+  Preconditions checklist (DbRestore::Preconditions::Result): one row per check, refused ones first in red.
+  Locals: result (Result), id (DOM id of the list).
+:ruby
+  icons = { ok: 'fa-circle-check text-success', refused: 'fa-circle-xmark text-danger', warning: 'fa-triangle-exclamation text-warning',
+            info: 'fa-circle-info text-info' }
+%ul.list-group.mb-3{ id: id }
+  - result.checks.each do |check|
+    %li.list-group-item.d-flex.gap-2.align-items-start{ data: { check: check.key, level: check.level } }
+      %i.fa-solid.mt-1{ class: icons[check.level], 'aria-hidden' => 'true' }
+      .flex-grow-1
+        .fw-semibold= t("db_restore.checks.#{check.key}.label")
+        - if check.refused?
+          .small.text-danger= t("db_restore.checks.#{check.key}.refused", detail: check.detail.to_s)
+        - elsif !check.ok?
+          .small.text-body-secondary= t("db_restore.checks.#{check.key}.hint", detail: check.detail.to_s)
+        - elsif check.detail.present?
+          .small.text-body-secondary.font-monospace= check.detail
+        - if check.items.any? && !check.ok?
+          %ul.small.mb-0.mt-1
+            - check.items.each do |item|
+              %li.font-monospace.text-break= item

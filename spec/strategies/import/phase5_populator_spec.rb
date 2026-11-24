@@ -613,10 +613,19 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
 
       it 'computes from_start timing for laps' do
         subject.send(:populate_lt4_relay_results!)
-        laps = GogglesDb::DataImportRelayLap.order(:length_in_meters).to_a
+        mrrs = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).to_a
+        expect(mrrs.size).to eq(3)
 
-        # from_start should increase with each lap
-        expect(laps[1].seconds_from_start).to be > laps[0].seconds_from_start
+        # One relay at a time: every relay has a 50m lap, a 100m lap, etc., so a sort by length
+        # across relays has ties, which SQL returns in no guaranteed order.
+        mrrs.each do |mrr|
+          laps = GogglesDb::DataImportRelayLap.where(parent_import_key: mrr.import_key).order(:length_in_meters)
+          from_start = laps.map { |lap| (lap.minutes_from_start * 6000) + (lap.seconds_from_start * 100) + lap.hundredths_from_start }
+
+          # from_start should increase with each lap
+          expect(laps.map(&:length_in_meters)).to eq([50, 100, 150, 200])
+          expect(from_start.each_cons(2).to_a).to all(satisfy { |previous, current| current > previous })
+        end
       end
 
       it 'updates statistics' do

@@ -1,0 +1,83 @@
+-#
+  Progress page of a guided local DB restore (DbRestoreController#show, restore layout: reads only the ops row of
+  the run, no MySQL access). Polls the status JSON every 2 s (db_restore_controller.js, no Action Cable) and reloads
+  itself when the status or the step changes. Interrupted runs: resume, load the safety snapshot, or abandon.
+:ruby
+  needs_operator = @run.needs_operator?
+  percent = @run.progress_percent || 0
+  poll_data = { controller: 'db_restore', 'db-restore-url-value': db_restore_status_path(@run, format: :json),
+                'db-restore-status-value': @run.status, 'db-restore-step-value': @run.step.to_s,
+                'db-restore-needs-operator-value': needs_operator.to_s, 'db-restore-percent-value': percent }
+  abandonable = @run.confirmed? || needs_operator || @run.awaiting_terminal?
+  step_label = t("db_restore.steps.#{@run.step.presence || @run.status}", default: @run.step.to_s)
+  status_label = needs_operator ? t('db_restore.statuses.interrupted') : t("db_restore.statuses.#{@run.status}")
+  resume_options = { method: :post, class: 'btn btn-primary', id: 'btn-db-restore-resume',
+                     form: { data: { turbo_confirm: t('db_restore.show.resume_confirm') } } }
+  snapshot_options = { method: :post, class: 'btn btn-outline-warning', id: 'btn-db-restore-load-snapshot',
+                       form: { data: { turbo_confirm: t('db_restore.show.load_snapshot_confirm') } } }
+  bar_attributes = { role: 'progressbar', 'aria-valuenow' => percent, 'aria-valuemin' => 0, 'aria-valuemax' => 100,
+                     'aria-label' => t('db_restore.show.progress') }
+  abandon_field = { class: 'form-control font-monospace', placeholder: @run.target_database, autocomplete: 'off', required: true,
+                    'aria-label' => t('db_restore.show.abandon_label') }
+- content_for(:title, t('db_restore.show.title', database: @run.target_database))
+%div{ data: @run.terminal? ? {} : poll_data, id: 'db-restore-progress' }
+  %h1.h4= t('db_restore.show.title', database: @run.target_database)
+  %p.text-body-secondary.mb-3
+    = t('db_restore.show.subtitle', id: @run.id, dump: @run.dump_basename)
+    %span.badge.ms-1#db-restore-status{ class: needs_operator ? 'text-bg-danger' : 'text-bg-primary' }= status_label
+
+  - if @run.terminal?
+    .alert.alert-info#db-restore-done{ role: 'status' }
+      = t('db_restore.show.done', status: t("db_restore.statuses.#{@run.status}"))
+    = link_to(t('db_restore.show.open_result'), db_restore_result_path(@run), class: 'btn btn-primary')
+  - elsif needs_operator
+    .alert.alert-danger#db-restore-interrupted{ role: 'alert' }
+      %p.mb-1= t(@run.interrupted? ? 'db_restore.show.interrupted' : 'db_restore.show.stalled')
+      - if @run.error.present?
+        %pre.small.mb-0.text-wrap= @run.error
+    .d-flex.flex-wrap.gap-2.mb-3
+      = button_to(resume_db_restore_path(@run), **resume_options) do
+        %i.fa-solid.fa-rotate-right{ 'aria-hidden' => 'true' }
+        = t('db_restore.show.resume')
+      - if @run.snapshot_exists?
+        = button_to(load_snapshot_db_restore_path(@run), **snapshot_options) do
+          %i.fa-solid.fa-clock-rotate-left{ 'aria-hidden' => 'true' }
+          = t('db_restore.show.load_snapshot')
+    - if @run.snapshot_path.present?
+      %p.small.mb-1= t('db_restore.show.snapshot_terminal')
+      %pre.small.bg-body-tertiary.p-2.rounded.text-wrap#db-restore-snapshot-command= DbRestore::TerminalCommand.rebuild(@run.snapshot_path)
+  - elsif @run.awaiting_terminal?
+    .alert.alert-warning#db-restore-awaiting-terminal{ role: 'status' }
+      %p.mb-2= t('db_restore.show.terminal_intro')
+      %pre.small.mb-0.text-wrap#db-restore-terminal-command= DbRestore::TerminalCommand.rebuild(@run.dump_path)
+    - if @run.error.present?
+      .alert.alert-danger.small{ role: 'alert' }= @run.error
+    = button_to(post_steps_db_restore_path(@run), method: :post, class: 'btn btn-primary mb-3', id: 'btn-db-restore-post-steps') do
+      %i.fa-solid.fa-list-check{ 'aria-hidden' => 'true' }
+      = t('db_restore.show.terminal_done')
+  - else
+    -# (The bar width is set by db_restore_controller.js from its percent value: no inline style.)
+    .progress.mb-2{ bar_attributes }
+      .progress-bar.progress-bar-striped.progress-bar-animated{ data: { db_restore_target: 'bar' } }
+    %p.mb-1
+      %span.fw-semibold{ data: { db_restore_target: 'percent' } } #{percent}%
+      %span.text-body-secondary{ data: { db_restore_target: 'step' } }= step_label
+    %p.small.text-body-secondary= t('db_restore.show.keep_open')
+
+  = render(partial: 'db_restore/log', locals: { run: @run, open: true })
+
+  - if abandonable
+    %details.mt-3#db-restore-abandon
+      %summary.small.text-danger= t('db_restore.show.abandon_title')
+      %p.small.mt-2= t('db_restore.show.abandon_intro')
+      = form_with(url: abandon_db_restore_path(@run), method: :post, data: { turbo: false }) do
+        .input-group.input-group-sm
+          = text_field_tag(:typed_name, nil, **abandon_field)
+          = button_tag(t('db_restore.show.abandon'), type: 'submit', class: 'btn btn-outline-danger', id: 'btn-db-restore-abandon')
+
+  %p.small.text-body-secondary.mt-3.mb-0
+    - if @progress_url
+      = t('db_restore.show.bookmark')
+      %span.font-monospace.text-break#db-restore-progress-url= @progress_url
+    - else
+      = t('db_restore.show.bookmark_hidden')

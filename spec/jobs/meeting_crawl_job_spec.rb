@@ -89,6 +89,7 @@ RSpec.describe MeetingCrawlJob do
     allow(GogglesDb::Season).to receive(:find_by).with(id: 262).and_return(season)
     allow(SeasonBoard::DbIndex).to receive(:new).and_return(db_index)
     allow(SeasonBoard::Notifier).to receive(:ping)
+    allow(SeasonBoard::Snapshot).to receive(:invalidate!)
     state = clock_state
     described_class.clock = clock
     described_class.sleeper = lambda { |seconds|
@@ -136,6 +137,32 @@ RSpec.describe MeetingCrawlJob do
       expect(File).to exist(path_for('results.new', 'm.json'))
       expect(File).to exist(path_for('manifests', 'manifest-m.pdf'))
       expect(SeasonBoard::Notifier).to have_received(:ping)
+      expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
+    end
+
+    it 'enqueues a pipeline planner pass at the end (phase 10: the crawled source gets prepared)' do
+      expect { perform }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'MeetingCrawlJob')
+    end
+
+    it 'refuses an automatic crawl while the automation master switch is off' do
+      activity_log.queue!(fin_id, kind: :crawl, origin: :auto, url:)
+      DataFix::Automation.store!(:enabled, false)
+      perform
+      expect(crawler.pulls).to eq([])
+      expect(crawl_entry).to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.automation_paused'))
+    end
+
+    it 'reads the origin passed by the Scheduler; a manual crawl runs with the automation off' do
+      DataFix::Automation.store!(:enabled, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, url:, origin: 'manual')
+      expect(crawler.pulls).to eq([{ season_id: 262, url: }])
+    end
+
+    it 'fails closed: an unreadable switch refuses an automatic crawl' do
+      allow(Ops::Setting).to receive(:fetch).and_call_original
+      allow(Ops::Setting).to receive(:fetch).with('automation.enabled', true).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, url:, origin: 'auto')
+      expect(crawler.pulls).to eq([])
     end
 
     it 'pauses after the crawl' do
@@ -303,5 +330,31 @@ RSpec.describe MeetingCrawlJob do
     expect { perform }.not_to raise_error
     expect(crawl_entry).to have_attributes(status: :failed, message: 'error: ArgumentError: kaboom')
     expect(SeasonBoard::Notifier).to have_received(:ping)
+  end
+
+  describe 'ops event log' do
+    def last_event = Ops::Event.where(subject_type: 'fin_event', subject_key: fin_id).recent.first
+
+    it 'records board.crawl_finished when the crawl ends' do
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true)) }
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.crawl_finished', level: 'success', actor: 'job', season_id: 262,
+                                            link_path: '/season_board')
+      expect(last_event.data).to eq('status' => 'done', 'message' => 'results found')
+    end
+
+    it 'records board.crawl_failed when the crawl fails' do
+      allow(GogglesDb::Season).to receive(:find_by).with(id: 262).and_return(nil)
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.crawl_failed', level: 'error')
+      expect(last_event.data['message']).to eq('unknown season 262')
+    end
+
+    it 'still closes the activity when the event write fails' do
+      allow(Ops::Event).to receive(:create!).and_raise(ActiveRecord::StatementTimeout, 'database is locked')
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true)) }
+      expect { perform }.not_to raise_error
+      expect(crawl_entry).to have_attributes(status: :done, message: 'results found')
+    end
   end
 end

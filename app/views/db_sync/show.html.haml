@@ -1,0 +1,29 @@
+-#
+  DB sync (DbSyncController#show): page header with "Check now" / "Acknowledge"; everything else lives in the
+  'db-sync-frame' frame (db_sync/_frame), reloaded on a 'db-sync-ping' (Drift::Notifier) or while a "Check now"
+  is pending (outbox_controller.js: the generic frame reload on ping / while busy).
+:ruby
+  check_options = { method: :post, class: 'btn btn-sm btn-primary', form_class: 'd-inline', id: 'btn-db-sync-check' }
+  ack_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline', id: 'btn-db-sync-acknowledge',
+                  form: { data: { turbo_confirm: t('db_sync.acknowledge.confirm') } } }
+  controller_data = { controller: 'outbox', 'outbox-ping-id-value': Drift::Notifier::DOM_ID, 'outbox-interval-value': 5000 }
+= render(Shell::PageHeaderComponent.new(title: t('db_sync.title'), subtitle: t('db_sync.subtitle', url: @api_url.presence || '-'))) do |header|
+  - header.with_actions do
+    - if @ops_available
+      .d-flex.flex-wrap.gap-2
+        = button_to(db_sync_check_path, **check_options) do
+          %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+          = t('db_sync.actions.check')
+        = button_to(db_sync_acknowledge_path, **ack_options) do
+          %i.fa-solid.fa-check-double{ 'aria-hidden' => 'true' }
+          = t('db_sync.actions.acknowledge')
+        -# (14: the guided local DB restore, for a red verdict)
+        = link_to(new_db_restore_path, class: 'btn btn-sm btn-outline-danger', id: 'btn-db-sync-restore') do
+          %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+          = t('db_sync.actions.restore')
+
+- if @ops_available
+  %div{ data: controller_data }
+    = render(partial: 'db_sync/frame', locals: frame_locals)
+- else
+  .alert.alert-warning#db-sync-ops-missing{ role: 'alert' }= t('db_sync.ops_missing')

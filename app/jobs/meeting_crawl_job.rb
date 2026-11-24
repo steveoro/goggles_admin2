@@ -15,6 +15,11 @@
 #
 # Never raises: any error closes the activity as failed (no retries).
 #
+# Phase 10: an automatic crawl (+origin+ 'auto', passed by SeasonBoard::Scheduler; for a job queued without it, the
+# origin of its ActivityLog entry) is refused at start while the automation master switch is off or unreadable
+# (DataFix::Automation fails closed; an unreadable origin counts as automatic); every run ends by enqueuing a
+# PipelinePlannerJob pass (when the switch is on), which prepares the crawled source.
+#
 # The sleeper/clock/factories are class attributes so that specs can run instantly.
 #
 class MeetingCrawlJob < ApplicationJob
@@ -22,18 +27,18 @@ class MeetingCrawlJob < ApplicationJob
 
   # Hard timeout for a single crawl (the FIN server is slow & throttles: large championships can take that long).
   CRAWL_TIMEOUT = 30.minutes
-  # Max wait for another crawl (e.g. started from the Pull page) to end before giving up.
-  IDLE_WAIT_TIMEOUT = 5.minutes
+  # Max wait for another crawl (e.g. a manual one started from the Sources page) to end before giving up.
+  IDLE_WAIT_TIMEOUT = Crawler::RunWatcher::IDLE_WAIT_TIMEOUT
   # A non-idle crawler status not updated for this long is considered stale (a dead run).
-  STALE_STATUS_AFTER = 30.minutes
-  POLL_INTERVAL = 10.seconds
+  STALE_STATUS_AFTER = Crawler::RunWatcher::STALE_STATUS_AFTER
+  POLL_INTERVAL = Crawler::RunWatcher::POLL_INTERVAL
   # Consecutive failed status polls tolerated during a crawl.
-  MAX_UNREACHABLE_POLLS = 6
+  MAX_UNREACHABLE_POLLS = Crawler::RunWatcher::MAX_UNREACHABLE_POLLS
   # Pause after each crawl, to be gentle with the FIN server.
   PAUSE_AFTER_CRAWL = 20.seconds
 
-  # Shared with ManifestExtractJob (also when several job supervisors are running); above the worst-case
-  # run (crawler launch + IDLE_WAIT_TIMEOUT + CRAWL_TIMEOUT + PAUSE_AFTER_CRAWL):
+  # Shared with ManifestExtractJob and SourceCrawlJob (also when several job supervisors are running); above the
+  # worst-case run (crawler launch + IDLE_WAIT_TIMEOUT + CRAWL_TIMEOUT + PAUSE_AFTER_CRAWL):
   limits_concurrency key: 'season_board', group: 'SeasonBoardBackground', to: 1, duration: 1.hour
 
   class_attribute :sleeper, default: ->(seconds) { sleep(seconds) }
@@ -43,15 +48,17 @@ class MeetingCrawlJob < ApplicationJob
   # Base 'crawler/data' folder (nil: SeasonBoard::DiskIndex.default_data_dir).
   class_attribute :data_dir, default: nil
 
-  # Internal: aborts the crawl with a failure message.
-  class Failure < StandardError; end
+  # Internal: aborts the crawl with a failure message (also raised by Crawler::RunWatcher).
+  Failure = Crawler::RunWatcher::Failure
 
-  def perform(season_id:, fin_event_id:, url:)
+  # - origin: 'auto' | 'manual' (SeasonBoard::Scheduler); nil for a job queued before phase 10 (read from the log).
+  def perform(season_id:, fin_event_id:, url:, origin: nil)
+    @season_id = season_id
     @fin_event_id = fin_event_id.to_s
     @finished = false
     @pulled = false
     activity_log.start!(@fin_event_id, kind: :crawl, url:)
-    finish!(*crawl(season_id, url))
+    finish!(*crawl(season_id, url, origin))
   rescue Failure => e
     finish!(:failed, e.message)
   rescue StandardError => e
@@ -60,14 +67,38 @@ class MeetingCrawlJob < ApplicationJob
     finish!(:failed, "error: #{e.class}: #{e.message}".truncate(200))
   ensure
     finish!(:failed, 'interrupted') unless @finished
-    SeasonBoard::Notifier.ping
+    notify_board
     sleeper.call(PAUSE_AFTER_CRAWL) if @pulled
   end
 
   private
 
+  # True for an automatic crawl while the automation master switch is off (or unreadable: fail closed).
+  def automatic_paused?(origin)
+    automatic = origin.present? ? origin.to_s == 'auto' : logged_as_automatic?
+    automatic && !DataFix::Automation.enabled?
+  end
+
+  # Origin of the activity entry (kept from the queued one); an unreadable log counts as automatic.
+  def logged_as_automatic?
+    activity_log.entry(@fin_event_id, :crawl)&.origin == :auto
+  rescue StandardError => e
+    Rails.logger.warn("[MeetingCrawlJob] FIN #{@fin_event_id}: activity log unreadable (#{e.class}), origin counted as automatic")
+    true
+  end
+
+  # Drops the stored board summary (SeasonBoard::Snapshot), pings the open pages and enqueues the next pipeline planner
+  # pass (phase 10; never raises).
+  def notify_board
+    SeasonBoard::Snapshot.invalidate!(@season_id)
+    SeasonBoard::Notifier.ping
+    PipelinePlannerJob.enqueue_after(self.class.name)
+  end
+
   # Returns [status, message].
-  def crawl(season_id, url)
+  def crawl(season_id, url, origin)
+    raise Failure, I18n.t('pipeline_automation.reasons.automation_paused') if automatic_paused?(origin)
+
     season = GogglesDb::Season.find_by(id: season_id)
     raise Failure, "unknown season #{season_id}" unless season
 
@@ -94,22 +125,12 @@ class MeetingCrawlJob < ApplicationJob
   end
 
   def ensure_crawler!
-    return unless launcher_factory.call.ensure_running! == :failed
-
-    raise Failure, "crawler server cannot be started (see #{CrawlerLauncher::LOG_PATH.relative_path_from(Rails.root)})"
+    watcher.ensure_crawler!
   end
 
   # Waits for any other crawl to end (a stale status counts as idle).
   def wait_until_idle!
-    deadline = clock.call + IDLE_WAIT_TIMEOUT
-    loop do
-      status = CrawlerClient::Status.from(client.status)
-      raise Failure, 'crawler server unreachable' unless status
-      return unless status.busy?(now: clock.call, stale_after: STALE_STATUS_AFTER)
-      raise Failure, "crawler busy with another crawl (#{status.status})" if clock.call >= deadline
-
-      sleeper.call(POLL_INTERVAL)
-    end
+    watcher.wait_until_idle!
   end
 
   # Returns [crawl start time (whole seconds), status Hash before the call].
@@ -124,36 +145,35 @@ class MeetingCrawlJob < ApplicationJob
   end
 
   # Polls the crawler status until the run started at +since+ ends; returns its final Status.
-  # (A status counts only once it differs from the +baseline+ read before the call and is not older than +since+.)
   def wait_for_crawl_end!(since, baseline)
-    deadline = since + CRAWL_TIMEOUT
-    unreachable = 0
-    loop do
-      raise Failure, "timeout after #{CRAWL_TIMEOUT.in_minutes.round} min" if clock.call >= deadline
-
-      sleeper.call(POLL_INTERVAL)
-      hash = client.status
-      unreachable = hash ? 0 : unreachable + 1
-      raise Failure, 'crawler server stopped responding' if unreachable >= MAX_UNREACHABLE_POLLS
-
-      status = CrawlerClient::Status.from(hash)
-      return status if crawl_end?(status, hash, baseline, since)
-    end
+    watcher.wait_for_crawl_end!(since, baseline, timeout: CRAWL_TIMEOUT)
   end
 
-  def crawl_end?(status, hash, baseline, since)
-    return false unless status&.idle? && hash != baseline
-
-    status.timestamp.present? && status.timestamp >= since
+  # (Crawler::RunWatcher, phase 15: shared with SourceCrawlJob)
+  def watcher
+    @watcher ||= Crawler::RunWatcher.new(client:, launcher_factory:, sleeper:, clock:)
   end
 
   def finish!(status, message)
     return if @finished || @fin_event_id.blank?
 
     @finished = true
+    record_finish_event(status, message)
     activity_log.finish!(@fin_event_id, kind: :crawl, status:, message:)
   rescue StandardError => e
     Rails.logger.error("[MeetingCrawlJob] cannot update the activity log: #{e.class}: #{e.message}")
+  end
+
+  # Appends 'board.crawl_finished' / 'board.crawl_failed' to the ops event log (never raises).
+  def record_finish_event(status, message)
+    Ops.safely do
+      done = status.to_s == 'done'
+      Ops.record_event!(
+        kind: done ? 'board.crawl_finished' : 'board.crawl_failed', level: done ? 'success' : 'error', actor: 'job',
+        season_id: Integer(@season_id, exception: false), subject_type: 'fin_event', subject_key: @fin_event_id,
+        data: { 'status' => status.to_s, 'message' => message }, link_path: Rails.application.routes.url_helpers.season_board_path
+      )
+    end
   end
 
   def activity_log

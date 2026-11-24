@@ -1,0 +1,8 @@
+                         SAMPLE TEXT THAT MATCHES NO RESULT FORMAT
+
+  This fixture is used by spec/jobs/pdf_scan_job_spec.rb: the format parser checks every
+  format family on its first page, finds none valid and stops there.
+
+  Line 1   nothing to see here
+  Line 2   nothing to see here either
+   second page

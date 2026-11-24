@@ -1,0 +1,120 @@
+it:
+  shell:
+    brand: 'Goggles Admin2'
+    groups:
+      dashboard: 'Pannello'
+      import: 'Importazione'
+      data_quality: 'Qualità dati'
+      entities: 'Entità'
+      reports: 'Report'
+      support: 'Supporto'
+      system: 'Sistema'
+    nav:
+      label: 'Navigazione principale'
+      data_fix: 'Data-Fix'
+      offline_disabled: "Non disponibile con l'API offline: correggi l'URL dell'API nelle Impostazioni"
+    # Ultimo elemento del percorso per una pagina figlia (stesso controller della voce di menu):
+    actions:
+      no_mirs: 'Meeting senza risultati'
+      expand: 'Vista estesa'
+      new: 'Nuovo'
+      edit: 'Modifica'
+      base_timings: 'Tempi base'
+    sidebar:
+      title: 'Menu'
+      open: 'Apri il menu'
+      close: 'Chiudi il menu'
+      toggle: 'Riduci o espandi la barra laterale'
+    breadcrumbs:
+      label: 'Percorso'
+    topbar:
+      label: 'Barra superiore'
+    api_target:
+      title: 'API di destinazione'
+      settings_link: "API di destinazione: cambia l'URL o la sua etichetta nelle Impostazioni"
+      no_url: 'Nessun URL API configurato'
+      unverified: 'non verificato'
+      reported: "%{environment} (dichiarato dall'API)"
+      label_mismatch: "L'etichetta '%{label}' non corrisponde all'ambiente dichiarato dall'API (%{environment})"
+      guess:
+        production: 'produzione'
+        unknown: 'sconosciuto'
+      reachability:
+        reachable: 'raggiungibile'
+        unreachable: 'non raggiungibile'
+        unknown: 'non ancora verificata'
+      checked_ago: 'verificata %{ago} fa'
+      version: 'v. %{version}'
+    status:
+      label: 'Stato del sistema'
+      loading: 'Caricamento dello stato del sistema...'
+      as_of: 'aggiornato al %{time}'
+      failed: 'Verifica fallita (%{error})'
+      levels:
+        ok: 'OK'
+        warn: 'Attenzione'
+        error: 'Errore'
+        unknown: 'Sconosciuto'
+      actions:
+        settings: 'Apri le Impostazioni'
+        crawler: 'Apri la pagina del crawler'
+        season_board: 'Apri la plancia stagione'
+        remote_writes: 'Rivedi le scritture remote'
+        start_crawler: 'Avvia il crawler'
+        check_fin: 'Verifica ora'
+      on_dashboard: '%{action} (nella dashboard)'
+      api:
+        label: 'API'
+        offline: 'Sessione API offline: nessun JWT valido per questa API, quindi qui il suo stato è sconosciuto'
+        never: 'Non ancora verificata'
+        stale: "Raggiungibile all'ultima verifica (%{time}), nessuna da allora: i job in background sono attivi?"
+        ok: 'Raggiungibile (v. %{version})'
+        reachable: 'Raggiungibile'
+        answered: 'Ha risposto con il codice %{code}: %{error}'
+        unreachable: 'Non raggiungibile: %{error}'
+      crawler:
+        label: 'Crawler'
+        never: 'Non avviato da admin2 e non verificato di recente'
+        'off': 'Non avviato (i crawl dalla plancia stagione lo avviano da soli)'
+        idle: 'Avviato, inattivo'
+        running: 'Occupato: %{status}'
+        busy_progress: 'Occupato %{progress}/%{total}: %{status}'
+        running_unknown: 'Avviato (ancora nessun file di stato)'
+        stuck: 'Risulta un lavoro in corso, ma il suo stato non cambia dal %{time}'
+        failed: 'Ultima esecuzione fallita: %{detail}'
+      queue:
+        label: 'Job'
+        not_in_use: 'Solid Queue non è il gestore dei job in questo ambiente'
+        ok: 'Processi job attivi: %{count} (ultimo battito %{ago} s fa)'
+        missing_workers: 'Nessun worker attivo per le code: %{queues} (i loro job restano in attesa)'
+        dead: 'Nessun supervisore attivo: riavvia il server (plugin Solid Queue) o lancia bin/jobs'
+        dead_outside_puma: 'Nessun supervisore attivo: SOLID_QUEUE_IN_PUMA=false, quindi lancia bin/jobs'
+      cable:
+        label: 'Live'
+        ok: 'Aggiornamenti live pronti (Solid Cable)'
+        not_configured: "Nessun database 'cable:' in config/database.yml: aggiornamenti solo a intervalli"
+        not_prepared: 'Il database di Solid Cable non è pronto (lancia bin/rails solid:prepare): aggiornamenti solo a intervalli'
+        other_adapter: "Gli aggiornamenti live usano l'adapter %{adapter} (nessun invio tra processi): solo a intervalli"
+      fin_watch:
+        label: 'FIN'
+        never: 'Nessuna verifica ancora'
+        ok: 'Ultima verifica: %{time}, nessuna modifica in sospeso'
+        stale: "Ultima verifica: %{time}, oltre 75 minuti fa: il job orario è attivo?"
+        pending: 'Modifica al calendario FIN rilevata il %{time}, da confermare'
+        failed: 'Ultima verifica fallita: %{error}'
+      ops_db:
+        label: 'DB ops'
+        ok: 'DB ops locale pronto'
+        not_ready: '%{state} Lancia bin/rails ops:prepare.'
+    user_menu:
+      label: 'Menu account'
+      version: 'Goggles v. %{version}'
+    api_label_form:
+      title: "Etichetta dell'API di destinazione"
+      help: "Un nome breve mostrato accanto all'URL dell'API nella barra superiore (es. \"Produzione\" o \"Copia locale\"). Ogni URL ha la sua etichetta; lascia vuoto per rimuoverla."
+      field: 'Etichetta per %{url}'
+      placeholder: 'es. Produzione'
+      save: 'Salva etichetta'
+      saved: 'Etichetta salvata per %{url}'
+      cleared: 'Etichetta rimossa per %{url}'
+      failed: "Impossibile salvare l'etichetta: il DB ops locale non è disponibile (lancia bin/rails ops:prepare)"

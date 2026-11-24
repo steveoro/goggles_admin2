@@ -9,12 +9,16 @@ module SeasonBoard
   # SeasonBoard::Row per FIN calendar row, each with a pipeline state & one next action
   # (see SeasonBoard::StateResolver for the states, the rules & the NextAction payloads).
   #
-  # Being busy (a queued/running crawl or extraction in the ActivityLog) is an overlay
-  # (Row#busy? + :busy flag), not a state.
+  # Being busy (a queued/running crawl, extraction or prepare in the ActivityLog, or a prepare job holding the
+  # source lease) is an overlay (Row#busy? + :busy flag), not a state. The ops pipeline facts of each row's source
+  # (SeasonBoard::PipelineIndex, phase 10) feed the :prepare_failed / :needs_review / :ready_to_commit states.
   #
-  class Builder
+  class Builder # rubocop:disable Metrics/ClassLength
     STATES = StateResolver::STATES
     ACTIONS = StateResolver::ACTIONS
+
+    # The ops pipeline facts used by the build (read by SeasonBoard::PipelinePlanner: see PipelineIndex#read_error?).
+    attr_reader :pipeline_index
 
     FLAGS = RowFlags::FLAGS
 
@@ -25,14 +29,31 @@ module SeasonBoard
     # - warnings: Array of Strings
     # - active_activities: Array of ActivityLog::Entry (queued/running, for the page strip)
     # - pending_board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (optional, default [])
+    # - unmatched_pipeline: Hash of unmatched source base => PipelineIndex::Facts (phase 15: the non-FIN sources
+    #   prepared from the Sources page; optional, default {})
     Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities,
-                         :pending_board_sql_paths) do
-      def initialize(pending_board_sql_paths: [], **) = super
+                         :pending_board_sql_paths, :unmatched_pipeline) do
+      def initialize(pending_board_sql_paths: [], unmatched_pipeline: {}, **) = super
 
       # Orphans that can be targets of the manual "Link to meeting" action (see Builder.link_candidates).
       def link_candidates
         Builder.link_candidates(orphans)
       end
+
+      # Hash of state (Symbol) => row count, in row order.
+      def state_counts = rows.map(&:state).tally
+
+      # Rows without a FIN link (state :not_linked, hidden by default on the board).
+      def unlinked_count = rows.count { |row| row.state == :not_linked }
+
+      # Past rows already committed with results (hidden by default on the board).
+      def done_count(today: Date.current) = rows.count { |row| Builder.hidden_as_done?(row, today:) }
+    end
+
+    # True for a past row already committed with results (hidden by default on the board).
+    # +row+: anything responding to #state and #last_date (Row, Snapshot::Row).
+    def self.hidden_as_done?(row, today: Date.current)
+      row.state == :committed_with_results && (row.last_date.nil? || row.last_date < today)
     end
 
     # Orphans that can be targets of the manual "Link to meeting" action: only the calendars
@@ -62,13 +83,15 @@ module SeasonBoard
     # - today: reference date for the "past" checks
     # - state_store: FedernuotoWatch::StateStore used when +rows+ is nil (default store when nil)
     # - snapshot_checked_at: overrides the 'last_checked' time read from the store
+    # - pipeline_index: SeasonBoard::PipelineIndex (default: one for the season)
     def initialize(season:, rows: nil, disk_index: nil, db_index: nil, activity_log: nil, today: Date.current, # rubocop:disable Metrics/ParameterLists
-                   state_store: nil, snapshot_checked_at: nil)
+                   state_store: nil, snapshot_checked_at: nil, pipeline_index: nil)
       @season = season
       @rows = rows
       @disk_index = disk_index || DiskIndex.new(season_id: season.id)
       @db_index = db_index || DbIndex.new(season_id: season.id)
       @activity_log = activity_log || ActivityLog.new
+      @pipeline_index = pipeline_index || PipelineIndex.new(season_id: season.id)
       @resolver = StateResolver.new(today:)
       @row_flags = RowFlags.new(season:, db_index: @db_index)
       @state_store = state_store
@@ -87,11 +110,19 @@ module SeasonBoard
         season: @season, rows: board_rows, orphans:,
         unmatched_sources: @disk_index.unmatched, snapshot_checked_at: @snapshot_checked_at,
         warnings: warnings_for(snapshot_rows, board_rows, fin_ids), active_activities: @activity_log.active,
-        pending_board_sql_paths: @disk_index.board_sql_paths
+        pending_board_sql_paths: @disk_index.board_sql_paths, unmatched_pipeline:
       )
     end
 
     private
+
+    # Pipeline facts of the unmatched sources (base => Facts; only the ones with an ops row).
+    def unmatched_pipeline
+      @disk_index.unmatched.each_with_object({}) do |entry, memo|
+        facts = @pipeline_index.for_entry(entry)
+        memo[entry.bases.first] = facts if facts
+      end
+    end
 
     def load_snapshot_rows
       return Array(@rows) if @rows
@@ -104,20 +135,22 @@ module SeasonBoard
     def build_row(row)
       fin_id = FINEventId.parse(row['url'])
       calendar = fin_id && @db_index.calendar_for(fin_id)
+      disk = fin_id && @disk_index.for(fin_id)
       facts = StateResolver::Facts.new(
         row:, fin_event_id: fin_id, row_date: RowDate.parse(row['date'], row['year']),
-        calendar:, meeting: calendar&.meeting, disk: fin_id && @disk_index.for(fin_id)
+        calendar:, meeting: calendar&.meeting, disk:, pipeline: disk && @pipeline_index.for_entry(disk)
       )
-      activity = fin_id ? @activity_log.for(fin_id) : { crawl: nil, extract: nil }
+      activity = fin_id ? @activity_log.for(fin_id) : ActivityLog::KINDS.index_with(nil)
       assemble_row(facts, @resolver.call(facts), activity)
     end
 
     def assemble_row(facts, outcome, activity)
-      busy = activity.values.compact.any?(&:busy?)
+      busy = activity.values.compact.any?(&:busy?) || facts.pipeline&.preparing? || false
       Row.new(
         **snapshot_attributes(facts), **meeting_attributes(facts.calendar, facts.meeting),
         state: outcome.state, state_detail: outcome.detail, next_action: outcome.next_action,
-        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk
+        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk,
+        pipeline: facts.pipeline
       )
     end
 

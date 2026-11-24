@@ -1,0 +1,124 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:team_in_1_meeting ***
+
+Meeting: 18289 - MASTER FIN: Campionati Regionali Basilicata 2018/2019
+Merging Team 'Arlenamouth Swimming Club ASD' (913) |=> 'East Florashire Swimming Club ASD' (1270)
+
+- simulate.......: true
+- full_report....: false
+- dest. folder...: <DATA_ROOT>/results.new
+
+*** Preview Report: ***
+
+============================================================
+Team Merge Preview: Meeting 18289
+============================================================
+Meeting: MASTER FIN: Campionati Regionali Basilicata 2018/2019
+Season: 182 - Circuito italiano supermaster FIN 2018/2019
+
+Source team (WRONG): (913) "Arlenamouth Swimming Club ASD"
+  -> TeamAffiliation: 5683
+Dest team (CORRECT): (1270) "East Florashire Swimming Club ASD"
+  -> TeamAffiliation: 5680
+
+--- Individual Results ---
+- Source team laps: 0
+- Dest team laps: 0
+
+- Source team MIRs: 8
+  IDs: 819729, 819732, 819745, 819789, 819793, 819719, 819841, 819853
+- Dest team MIRs: 20
+
+--- Relay Results ---
+- Source team relay_laps: 0
+- Dest team relay_laps: 0
+
+- Source team MRRs: 0
+- Dest team MRRs: 0
+
+--- Badge Updates ---
+- MIR swimmer badges to update: 4
+  IDs: 122126, 122133, 122142, 122151
+- MRS swimmer badges to update: 0
+
+--- Potential Issues ---
+- Swimmers with badges in BOTH teams: 0
+- Duplicate laps after merge: 0
+- Duplicate relay_laps after merge: 0
+- Duplicate MRRs after merge: 0
+
+============================================================
+
+Proceed with merge? [y/N] 
+Preparing SQL script...
+
+File '<DATA_ROOT>/results.new/misc/NNNN-merge_team_in_meeting-18289-913-to-1270.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-merge_team_in_meeting-18289-913-to-1270.sql
+-- Merge team in meeting: (913) Arlenamouth Swimming Club ASD |=> (1270) East Florashire Swimming Club ASD
+-- Meeting: 18289 - MASTER FIN: Campionati Regionali Basilicata 2018/2019
+-- Season: 182
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Restore overwritten TA name in wrong TeamAffiliation (if needed)
+UPDATE team_affiliations SET updated_at=NOW(), name="Arlenamouth Swimming Club ASD" WHERE id=5683;
+
+-- Step 0a: Update badges for MIR swimmers that are in wrong team
+UPDATE badges b INNER JOIN meeting_individual_results mir ON b.swimmer_id = mir.swimmer_id AND b.season_id = 182 AND b.team_id = 913 INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET b.team_id = 1270, b.team_affiliation_id = 5680 WHERE ms.meeting_id = 18289 AND mir.team_id = 913 AND NOT EXISTS ( SELECT 1 FROM badges b2 WHERE b2.swimmer_id = b.swimmer_id AND b2.team_id = 1270 AND b2.season_id = 182 );
+
+-- Step 0b: Update badges for MRS swimmers that are in wrong team
+UPDATE badges b INNER JOIN meeting_relay_swimmers mrs ON b.swimmer_id = mrs.swimmer_id AND b.season_id = 182 AND b.team_id = 913 INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET b.team_id = 1270, b.team_affiliation_id = 5680 WHERE ms.meeting_id = 18289 AND mrr.team_id = 913 AND NOT EXISTS ( SELECT 1 FROM badges b2 WHERE b2.swimmer_id = b.swimmer_id AND b2.team_id = 1270 AND b2.season_id = 182 );
+
+-- Step 1a: Update laps team_id (move existing laps to CORRECT team)
+UPDATE laps l INNER JOIN meeting_individual_results mir ON l.meeting_individual_result_id = mir.id INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET l.team_id = 1270 WHERE ms.meeting_id = 18289 AND l.team_id = 913;
+
+-- Step 1b: Update MIR team_id and team_affiliation_id with CORRECT values
+UPDATE meeting_individual_results mir INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET mir.team_id = 1270, mir.team_affiliation_id = 5680 WHERE ms.meeting_id = 18289 AND mir.team_id = 913 AND mir.team_affiliation_id = 5683;
+
+-- Step 1c: Update MIR badge_ids to match new CORRECT team
+UPDATE meeting_individual_results mir INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN badges b ON b.swimmer_id = mir.swimmer_id AND b.team_id = 1270 AND b.season_id = 182 SET mir.badge_id = b.id WHERE ms.meeting_id = 18289 AND mir.team_id = 1270;
+
+-- Step 2a: Update relay_laps with CORRECT team_id
+UPDATE relay_laps rl INNER JOIN meeting_relay_results mrr ON rl.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET rl.team_id = 1270 WHERE ms.meeting_id = 18289 AND rl.team_id = 913;
+
+-- Step 2b: Update MRR with CORRECT team_id and team_affiliation_id
+UPDATE meeting_relay_results mrr INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id SET mrr.team_id = 1270, mrr.team_affiliation_id = 5680 WHERE ms.meeting_id = 18289 AND mrr.team_id = 913 AND mrr.team_affiliation_id = 5683;
+
+-- Step 2c: Update MRS badge_ids to match new CORRECT team
+UPDATE meeting_relay_swimmers mrs INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN badges b ON b.swimmer_id = mrs.swimmer_id AND b.team_id = 1270 AND b.season_id = 182 SET mrs.badge_id = b.id WHERE ms.meeting_id = 18289 AND mrr.team_id = 1270;
+
+-- Step 3: Delete duplicate laps
+DELETE l1 FROM laps l1 INNER JOIN meeting_individual_results mir ON l1.meeting_individual_result_id = mir.id INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN laps l2 ON l1.meeting_individual_result_id = l2.meeting_individual_result_id AND l1.swimmer_id = l2.swimmer_id AND l1.team_id = l2.team_id AND l1.length_in_meters = l2.length_in_meters AND l1.id > l2.id WHERE ms.meeting_id = 18289 AND l1.team_id = 1270;
+
+-- Step 3b: Delete laps belonging to duplicate MIRs (clear FK before MIR deletion)
+DELETE l1 FROM laps l1 INNER JOIN meeting_individual_results mir1 ON l1.meeting_individual_result_id = mir1.id INNER JOIN meeting_programs mp ON mir1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN meeting_individual_results mir2 ON mir1.meeting_program_id = mir2.meeting_program_id AND mir1.swimmer_id = mir2.swimmer_id AND mir1.team_id = mir2.team_id AND mir1.id > mir2.id WHERE ms.meeting_id = 18289 AND mir1.team_id = 1270;
+
+-- Step 4: Delete duplicate MIRs
+DELETE mir1 FROM meeting_individual_results mir1 INNER JOIN meeting_programs mp ON mir1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN meeting_individual_results mir2 ON mir1.meeting_program_id = mir2.meeting_program_id AND mir1.swimmer_id = mir2.swimmer_id AND mir1.team_id = mir2.team_id AND mir1.id > mir2.id WHERE ms.meeting_id = 18289 AND mir1.team_id = 1270;
+
+-- Step 5: Delete duplicate relay_laps
+DELETE rl1 FROM relay_laps rl1 INNER JOIN meeting_relay_results mrr ON rl1.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN relay_laps rl2 ON rl1.meeting_relay_result_id = rl2.meeting_relay_result_id AND rl1.swimmer_id = rl2.swimmer_id AND rl1.team_id = rl2.team_id AND rl1.id > rl2.id WHERE ms.meeting_id = 18289 AND rl1.team_id = 1270;
+
+-- Step 6: Delete duplicate MRSs
+DELETE mrs1 FROM meeting_relay_swimmers mrs1 INNER JOIN meeting_relay_results mrr ON mrs1.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN meeting_relay_swimmers mrs2 ON mrs1.meeting_relay_result_id = mrs2.meeting_relay_result_id AND mrs1.swimmer_id = mrs2.swimmer_id AND mrs1.id > mrs2.id WHERE ms.meeting_id = 18289 AND mrr.team_id = 1270;
+
+-- Step 6b: Delete relay_laps belonging to duplicate MRRs (clear FK before MRR deletion)
+DELETE rl1 FROM relay_laps rl1 INNER JOIN meeting_relay_results mrr1 ON rl1.meeting_relay_result_id = mrr1.id INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs1 ON mrr1.id = mrr_sigs1.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs2 ON mrr_sigs1.meeting_program_id = mrr_sigs2.meeting_program_id AND mrr_sigs1.team_id = mrr_sigs2.team_id AND mrr_sigs1.swimmer_signature = mrr_sigs2.swimmer_signature AND mrr_sigs1.id > mrr_sigs2.id WHERE ms.meeting_id = 18289 AND mrr1.team_id = 1270;
+
+-- Step 6c: Delete MRS belonging to duplicate MRRs (clear FK before MRR deletion)
+DELETE mrs1 FROM meeting_relay_swimmers mrs1 INNER JOIN meeting_relay_results mrr1 ON mrs1.meeting_relay_result_id = mrr1.id INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs1 ON mrr1.id = mrr_sigs1.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs2 ON mrr_sigs1.meeting_program_id = mrr_sigs2.meeting_program_id AND mrr_sigs1.team_id = mrr_sigs2.team_id AND mrr_sigs1.swimmer_signature = mrr_sigs2.swimmer_signature AND mrr_sigs1.id > mrr_sigs2.id WHERE ms.meeting_id = 18289 AND mrr1.team_id = 1270;
+
+-- Step 7: Delete duplicate MRRs (same program, team, swimmer composition)
+DELETE mrr1 FROM meeting_relay_results mrr1 INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs1 ON mrr1.id = mrr_sigs1.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18289 AND mrr_inner.team_id = 1270 GROUP BY mrr_inner.id ) AS mrr_sigs2 ON mrr_sigs1.meeting_program_id = mrr_sigs2.meeting_program_id AND mrr_sigs1.team_id = mrr_sigs2.team_id AND mrr_sigs1.swimmer_signature = mrr_sigs2.swimmer_signature AND mrr_sigs1.id > mrr_sigs2.id WHERE ms.meeting_id = 18289 AND mrr1.team_id = 1270;
+
+COMMIT;

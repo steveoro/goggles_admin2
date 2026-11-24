@@ -1,0 +1,297 @@
+it:
+  health:
+    nav: "Salute dati"
+    title: "Salute dati"
+    subtitle: "Controlli sui dati delle stagioni chiuse: meeting senza risultati, badge e risultati duplicati, preparazione stagione."
+    local_mirror: "copia locale"
+    local_mirror_tooltip: "Legge solo il database MySQL locale: le segnalazioni riflettono la copia locale, che può differire dalla produzione."
+    last_sweep: "ultimo giro %{time}"
+    no_sweep_yet: "nessun giro ancora"
+    run_all: "Esegui tutto"
+    run_all_confirm: "Accodare tutti i gruppi di controlli di tutte le stagioni con dati? Girano uno alla volta sul worker di manutenzione."
+    loading: "Caricamento..."
+    ops_unavailable: "Il DB ops locale non è pronto: esegui 'bin/rails ops:prepare' (il report salute vi conserva le segnalazioni)."
+    meetings_grid_link: "Report salute"
+    meetings_grid_link_tooltip: "Meeting senza risultati per stagione (DB locale, esclusi i meeting con sole staffette), con triage e correzioni"
+    groups:
+      meetings: "Meeting"
+      badges: "Badge"
+      people: "Persone"
+      results: "Risultati"
+      setup: "Preparazione"
+    severities:
+      error: "errore"
+      warning: "avviso"
+      info: "info"
+    statuses:
+      open: "aperta"
+      acknowledged: "presa in carico"
+      ignored: "ignorata"
+      resolved: "risolta"
+    season_statuses:
+      current: "in corso"
+      closed: "chiusa"
+      upcoming: "futura"
+      no_data: "senza dati"
+    run_statuses:
+      queued: "in coda"
+      running: "in esecuzione"
+      succeeded: "fatto"
+      failed: "fallito"
+      skipped: "invariato"
+    triggers:
+      scheduled: "pianificato"
+      manual: "manuale"
+      post_commit: "dopo un commit"
+      catch_up: "recupero"
+      after_operation: "dopo un'operazione"
+    runs:
+      stale_error: "mai terminato (il worker di manutenzione si è fermato o il job è stato scartato)"
+      ops_unavailable: "Il DB ops locale non è pronto: nessun controllo accodato."
+      queued:
+        one: "1 controllo accodato (worker di manutenzione)."
+        other: "%{count} controlli accodati (worker di manutenzione)."
+      nothing_queued: "Nulla da accodare: quei controlli sono già in coda o in esecuzione."
+      failed: "Controlli non accodati: %{error}"
+    matrix:
+      empty: "Ancora nessuna stagione con dati."
+      season: "Stagione"
+      last_run: "Ultima esecuzione"
+      actions: "Azioni"
+      never_run: "mai eseguito"
+      unchanged: "%{time}, invariato"
+      rerun_season: "Riesegui tutti i gruppi di questa stagione"
+      legend: "! errore   ~ avviso   ack = solo prese in carico   clic su una cella per aprire la sezione"
+      show_no_data:
+        one: "Mostra 1 stagione senza dati"
+        other: "Mostra %{count} stagioni senza dati"
+      hide_no_data: "Nascondi le stagioni senza dati"
+      cell:
+        ack: "%{count} ack"
+        info: "%{count} info"
+        never: "-"
+        failed: "fallito"
+        ok: "ok"
+        title: "aperte: %{errors} errori, %{warnings} avvisi, %{infos} info; %{acknowledged} prese in carico, %{ignored} ignorate"
+        stale: "eseguito prima dell'ultimo ripristino del DB (dati non aggiornati)"
+    season:
+      crumb: "Stagione %{id}"
+      title: "Stagione %{id}: %{description}"
+      dates: "dal %{begin_date} al %{end_date}"
+      rerun_all: "Riesegui tutti i gruppi"
+      no_data: "Questa stagione non ha meeting né badge: nulla da controllare."
+      group: "Gruppo"
+      last_run: "Ultima esecuzione"
+      open: "Aperte"
+      duration: "(%{seconds}s)"
+      stale: "dati non aggiornati"
+      stale_tooltip: "Il DB locale è stato ripristinato dopo questa esecuzione: rieseguila."
+      rerun: "Riesegui"
+    section:
+      status_filters:
+        visible: "tutte tranne le risolte"
+        open: "aperte"
+        acknowledged: "prese in carico"
+        ignored: "ignorate"
+        resolved: "risolte"
+      select_row: "Seleziona la segnalazione %{id}"
+      acknowledged_count: "%{count} prese in carico"
+      ignored_count: "%{count} ignorate"
+      all: "tutte"
+      search_placeholder: "titolo o id"
+      filter: "Filtra"
+    subjects:
+      meeting: "meeting"
+      calendar: "calendario"
+      calendars: "calendari"
+      swimmer: "nuotatore"
+      swimmers: "nuotatori"
+      badge: "badge"
+      teams: "squadre"
+      season: "stagione"
+    links:
+      review: "Apri in Data-Fix"
+      resume_review: "Riprendi passo %{phase}"
+      push: "Apri nell'Outbox"
+      season_board: "Riga del Season board"
+      results_page: "Pagina risultati FIN"
+      details: "Dettagli"
+      meeting: "Griglia meeting (meeting %{id})"
+      calendars: "Griglia calendari (stagione)"
+      badges: "Griglia badge (nuotatore %{id})"
+      team: "Griglia badge (squadra %{id})"
+    bulk:
+      note: "Nota"
+      note_placeholder: "es. risultati mai pubblicati (obbligatoria per ignorare)"
+      acknowledge: "Prendi in carico"
+      ignore: "Ignora"
+      reopen: "Riapri"
+      errors:
+        ops_unavailable: "Il DB ops locale non è pronto."
+        unknown_operation: "Operazione sconosciuta."
+        no_selection: "Seleziona almeno una segnalazione."
+        note_required: "Serve una nota per ignorare le segnalazioni."
+      done:
+        acknowledge: "%{count} prese in carico (%{skipped} saltate)."
+        ignore: "%{count} ignorate (%{skipped} saltate)."
+        reopen: "%{count} riaperte (%{skipped} saltate)."
+    finding:
+      what_to_do: "Cosa fare"
+      stale: "Questa segnalazione viene da un'esecuzione precedente all'ultimo ripristino del DB locale: riesegui il suo gruppo."
+      rake_command: "Comando (id già inseriti)"
+      rake_hint: "Eseguilo nella cartella del progetto; leggi prima il suo 'desc' (bin/rails -T). Alcuni task scrivono uno script SQL numerato per l'Outbox."
+      doc: "Procedura:"
+      actions: "Azioni"
+      evidence: "Dettagli rilevati"
+      subject: "Oggetto"
+      entity_links_hint: "Le griglie delle entità leggono l'API: mostrano le righe remote, non la copia locale."
+      history: "Storia"
+      first_seen: "Vista la prima volta"
+      last_seen: "Vista l'ultima volta"
+      status_changed: "Stato cambiato"
+      changed_by: "%{time} da %{user}"
+      resolved_at: "Risolta"
+      note: "Nota"
+      by_system: "i controlli salute"
+    evidence:
+      "yes": "sì"
+      "no": "no"
+      meeting_id: "ID meeting"
+      header_date: "Data"
+      code: "Codice"
+      description: "Descrizione"
+      cancelled: "Annullato"
+      results_acquired: "Risultati acquisiti"
+      manifest: "Locandina"
+      events: "Gare"
+      mirs: "Risultati individuali"
+      mrrs: "Risultati staffette"
+      calendar_id: "ID calendario"
+      calendar_ids: "ID calendari"
+      calendar_cancelled: "Calendario annullato"
+      fin_event_id: "ID evento FIN"
+      results_link: "Link risultati"
+      disk: "File su disco"
+      swimmer_id: "ID nuotatore"
+      swimmer_name: "Nuotatore"
+      year_of_birth: "Anno di nascita"
+      same_team: "Stessa squadra"
+      badges: "Badge"
+      teams: "Squadre"
+      swimmers: "Nuotatori"
+      counts: "Conteggi duplicati"
+      duplicate_mirs: "Risultati individuali duplicati"
+      report: "Scansione nuotatori nulli"
+      category_types: "Categorie"
+      standard_timings: "Tempi base"
+    card:
+      never_ran: "Nessun controllo salute è stato ancora eseguito."
+      open: "Apri il report salute"
+      current: "Stagione %{id} (board)"
+      errors:
+        one: "1 errore"
+        other: "%{count} errori"
+      warnings:
+        one: "1 avviso"
+        other: "%{count} avvisi"
+      closed: "Stagioni chiuse"
+      closed_errors: "%{count} errori in %{seasons} stagioni"
+      pending:
+        one: "1 controllo in coda o in esecuzione"
+        other: "%{count} controlli in coda o in esecuzione"
+    checks:
+      meetings:
+        no_results:
+          unflagged:
+            title: "Meeting senza risultati, nessuna sorgente"
+            finding: "Meeting %{id} (%{date}) %{description}: nessun risultato, non annullato"
+            howto: "Il meeting si è svolto (la data è passata) ma non ha risultati individuali né di staffetta, non è segnato annullato e nessun file sorgente lo attende. Se i risultati non sono mai stati pubblicati, ignoralo con una nota (\"risultati mai pubblicati\"). Se è stato annullato, usa \"Segna annullato\": l'anteprima mostra l'SQL, poi il meeting (e il suo calendario) vengono segnati in locale e viene scritto uno script SQL numerato per l'Outbox."
+          source_on_disk:
+            title: "Meeting senza risultati, sorgente su disco"
+            finding: "Meeting %{id} (%{date}) %{description}: risultati in attesa in %{file}"
+            howto: "Per l'evento FIN di questo meeting esistono un file sorgente, file di fase Data-Fix o uno script di commit, ma i risultati non sono ancora nel DB. Riprendi la revisione Data-Fix (o invia lo script in attesa) per importarli."
+        cancel_mismatch:
+          title: "Flag di annullamento non allineati"
+          finding: "Meeting %{id} (%{date}) %{description}: i flag 'annullato' di meeting e calendario differiscono"
+          howto: "Il meeting e il suo calendario non concordano su 'annullato', oppure un meeting annullato ha risultati. Se il lato non ancora segnato non ha risultati, \"Segna annullato\" li allinea. Se un meeting (o calendario) annullato ha risultati, probabilmente è stato segnato per errore: togli il flag dalla griglia Meeting o Calendari (modifica riga) dopo aver verificato il meeting sul sito FIN."
+        no_events:
+          title: "Meeting senza gare"
+          finding: "Meeting %{id} (%{date}) %{description}: nessuna gara"
+          howto: "Il meeting non ha gare (la struttura non è mai stata importata). Apri la revisione della struttura se esiste un file sorgente; altrimenti estrai la locandina dal Season board, oppure ignoralo con una nota per un vecchio meeting che non sarà mai completato."
+        results_flag:
+          title: "Flag risultati non impostato"
+          finding: "Stagione %{id}: %{count} meeting hanno risultati ma 'risultati acquisiti' è spento"
+          howto: "Questi meeting hanno risultati ma il flag 'results_acquired' è ancora falso (lo leggono il Season board e i controlli di import). Esegui il backfill del Season board per la stagione: segna ogni meeting con risultati (prima in simulazione, poi simulate=0 scrive lo script numerato per l'Outbox)."
+      calendars:
+        unlinked:
+          title: "Righe di calendario mai importate"
+          finding: "Calendario %{id} (%{date}) %{name}: nessun meeting collegato"
+          finding_duplicate: "L'evento FIN %{fin_event_id} è usato dai calendari %{ids}"
+          finding_same_code: "Calendario %{id} (%{date}) %{name}: non collegato al meeting %{meetings} (stesso codice)"
+          howto: "La riga di calendario (non annullata) non punta a nessun meeting, o a un meeting che non esiste: il meeting non è mai stato importato. Segnala annullata se l'evento non si è svolto, collegala dal Season board (stagione in corso) o ignorala con una nota. Se un meeting della stagione ha lo stesso codice (\"non collegato al meeting N\"), il meeting è stato importato e manca solo il meeting_id del calendario: impostalo dalla griglia Calendari. Un ID evento FIN condiviso da più righe di calendario indica di solito un calendario duplicato: tienine una e correggi le altre dalla griglia Calendari."
+      badges:
+        duplicate:
+          sure:
+            title: "Badge duplicati (certi)"
+            finding: "%{name} (%{year}): %{count} badge da unire"
+            howto: "Lo stesso nuotatore ha più badge nella stagione con la stessa squadra (o squadre che condividono un meeting). Uniscili con il comando rake qui sotto (verificalo prima con 'check:badge src= dest='), poi riesegui il gruppo badge."
+          possible:
+            title: "Badge duplicati (possibili)"
+            finding: "%{name} (%{year}): %{count} badge con nomi di squadra simili"
+            howto: "Lo stesso nuotatore ha badge con squadre dai nomi simili: o le squadre sono la stessa società (unisci prima le squadre, vedi la sezione squadre duplicate) o il nuotatore ha davvero cambiato squadra. Ignora con una nota se entrambi i badge sono corretti."
+        relay_category:
+          title: "Badge su una categoria staffetta"
+          finding: "Badge %{id} di %{name} sulla categoria staffetta %{category}"
+          howto: "I badge devono avere una categoria individuale. Unisci il badge all'altro badge del nuotatore, oppure lascia che 'merge:badge src=<id> autofix=1' calcoli la categoria giusta dall'anno di nascita."
+      teams:
+        possible_duplicates:
+          title: "Possibili squadre duplicate"
+          finding: "Squadre simili: %{names}"
+          howto: "Squadre con nomi simili condividono un nuotatore con più badge. Verificale con 'check:team src= dest=' (la destinazione è la riga più vecchia) e uniscile con 'merge:team' se sono la stessa società; altrimenti ignora."
+      swimmers:
+        possible_duplicates:
+          title: "Possibili nuotatori duplicati"
+          finding: "%{name1} (%{year1}) / %{name2} (%{year2})"
+          howto: "Due nuotatori con lo stesso nome e un anno di nascita diverso, o con nomi molto simili nella stessa squadra, sesso e anno di nascita. Verificali con 'check:swimmer src= dest=' (la destinazione è la riga più vecchia) e uniscili con 'merge:swimmer' se sono la stessa persona; altrimenti ignora con una nota."
+      results:
+        duplicates:
+          title: "Risultati duplicati"
+          finding: "Meeting %{id} %{description}: %{total} righe duplicate"
+          howto: "Il meeting contiene risultati duplicati (stesso nuotatore e programma, vasche, frazionisti o risultati di staffetta). Il comando rake mostra i duplicati e, dopo una conferma, scrive lo script di cancellazione (vengono tenuti gli id più bassi)."
+          null_swimmers_first: "Questo meeting ha anche risultati con nuotatore NULL: correggili prima (vedi la sezione nuotatori nulli). Il report dei duplicati raggruppa insieme i nuotatori NULL, ma lo script di cancellazione non li intercetta mai."
+        null_swimmers:
+          title: "Risultati senza nuotatore"
+          finding: "Meeting %{id} %{description}: %{mirs} risultati e %{mrss} frazionisti senza nuotatore"
+          howto: "Alcuni risultati hanno swimmer_id NULL. Il comando rake lo ripristina dal badge quando il badge esiste e ha un nuotatore (di default simula, scrivendo lo script da rivedere); le righe senza un badge utilizzabile vanno corrette a mano."
+        dup_mir_per_badge:
+          title: "Più risultati per badge e programma"
+          finding: "Meeting %{id} %{description}: %{count} badge con più di un risultato in un programma"
+          howto: "Un badge ha più di un risultato individuale nello stesso programma: di solito un badge assegnato male o un import disallineato. Elencali con il comando rake, poi correggili con gli strumenti per i risultati duplicati o a mano."
+      season:
+        setup:
+          title: "Preparazione stagione"
+          finding: "Stagione %{id}: %{categories} categorie, %{timings} tempi base"
+          howto: "La stagione non ha categorie o non ha tempi base. Per una stagione in corso o futura segui docs/HOWTO_prepare_new_season_at_championship_start.md; per una vecchia stagione chiusa è solo informativo."
+  inbox:
+    sources:
+      health: "salute dati"
+    health:
+      errors_title: "Stagione %{season} · %{group}: %{count} errori"
+      warnings_title: "Salute dati: %{count} avvisi in %{seasons} stagioni"
+      failed_title: "Controllo salute fallito: stagione %{season} · %{group}"
+      overdue_title: "Controlli salute in ritardo: ultima esecuzione %{time}"
+      stuck_title: "Controlli salute fermi in coda dal %{time}"
+      overdue_detail: "Nessun controllo salute terminato da 8 giorni: il worker 'maintenance' è attivo (config/queue.yml)?"
+      open: "Apri"
+      open_report: "Apri il report"
+      rerun: "Riesegui"
+  dashboard:
+    zones:
+      health: "Salute dati"
+  ops:
+    events:
+      health:
+        findings_triaged: "Segnalazioni salute smistate"
+        meeting_cancelled: "Meeting segnato annullato (salute)"
+        calendar_cancelled: "Calendario segnato annullato (salute)"
+        runs_requested: "Controlli salute richiesti"

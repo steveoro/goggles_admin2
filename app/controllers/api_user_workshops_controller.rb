@@ -5,6 +5,8 @@
 # Manage User Workshops via API.
 #
 class APIUserWorkshopsController < ApplicationController
+  include APIGridIndex
+
   # GET /api_user_workshops
   # Show the UserWorkshops dashboard.
   #
@@ -12,7 +14,6 @@ class APIUserWorkshopsController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'user_workshops', jwt: current_user.jwt,
@@ -25,28 +26,7 @@ class APIUserWorkshopsController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page] || 25
       }
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(UserWorkshopsGrid, GogglesDb::UserWorkshop, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = UserWorkshopsGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv,
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-workshops-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
-    end
+    render_api_index(UserWorkshopsGrid, GogglesDb::UserWorkshop, result, csv_name: 'workshops')
   end
 
   # POST /api_user_workshops
@@ -71,7 +51,6 @@ class APIUserWorkshopsController < ApplicationController
     end
     redirect_to(api_user_workshops_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

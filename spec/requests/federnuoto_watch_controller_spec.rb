@@ -24,9 +24,9 @@ RSpec.describe FedernuotoWatchController do
 
     describe 'POST /federnuoto_watch/check' do
       it 'enqueues a manual check and redirects back' do
-        expect { post(federnuoto_watch_check_path, headers: { 'HTTP_REFERER' => pull_index_url }) }
+        expect { post(federnuoto_watch_check_path, headers: { 'HTTP_REFERER' => sources_crawler_url }) }
           .to have_enqueued_job(FedernuotoWatchJob).with(manual: true)
-        expect(response).to redirect_to(pull_index_url)
+        expect(response).to redirect_to(sources_crawler_url)
         expect(flash[:info]).to eq(I18n.t('federnuoto_watch.check.started'))
       end
     end
@@ -52,7 +52,7 @@ RSpec.describe FedernuotoWatchController do
       it 'starts the crawler if needed and opens the Pull page with the sub-menu preset' do
         allow(launcher).to receive(:ensure_running!).and_return(:started)
         post(federnuoto_watch_pull_calendar_path)
-        expect(response).to redirect_to(pull_index_path(sub_menu_type: 'Riepilogo Eventi'))
+        expect(response).to redirect_to(sources_crawler_path(sub_menu_type: 'Riepilogo Eventi'))
         expect(flash[:info]).to eq(I18n.t('federnuoto_watch.crawler.started'))
       end
 
@@ -66,13 +66,13 @@ RSpec.describe FedernuotoWatchController do
     describe 'layout rendering' do
       it 'shows the pending change alert on any page' do
         store.update { { 'change' => { 'detected_at' => Time.current.iso8601, 'added' => [{ 'key' => 'k', 'name' => 'Brand new meeting' }] } } }
-        get(pull_index_path(sub_menu_type: 'Riepilogo Eventi'))
+        get(sources_crawler_path(sub_menu_type: 'Riepilogo Eventi'))
         expect(response.body).to include(FedernuotoWatch::ALERT_DOM_ID, 'Brand new meeting')
         expect(response.body).to include('<option selected="selected" value="Riepilogo Eventi">')
       end
 
       it 'does not show the alert when there is no pending change' do
-        get(pull_index_path)
+        get(sources_crawler_path)
         expect(response.body).not_to include(%(id="#{FedernuotoWatch::ALERT_DOM_ID}"))
       end
     end

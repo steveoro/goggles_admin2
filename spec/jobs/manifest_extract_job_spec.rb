@@ -10,9 +10,8 @@ RSpec.describe ManifestExtractJob do
   let(:fin_id) { '150091' }
   let(:season) { FactoryBot.build_stubbed(:season, id: 262) }
   let(:activity_log) { SeasonBoard::ActivityLog.new }
-  let(:llm_client) { instance_double(PdfManifests::DevinClient) }
-  let(:preflight_error) { nil }
-  let(:runner) { instance_double(PdfManifests::BatchRunner, preflight_error:, client: llm_client) }
+  let(:engine_available) { true }
+  let(:llm_client) { instance_double(PdfManifests::DevinClient, available?: engine_available, model_available?: true) }
   let(:extractor) { instance_double(PdfManifests::Extractor) }
   let(:out_path) { path_for('results.new', 'm-lt4.json') }
   let(:result) { PdfManifests::Extractor::Result.new(pdf_path: pdf_path, out_path:, warnings: [], events_count: 12) }
@@ -31,10 +30,11 @@ RSpec.describe ManifestExtractJob do
     write_json('results.new', 'm.json', lt2_hash(fin_id:))
     write_file('manifests', 'manifest-m.pdf', '%PDF')
     allow(GogglesDb::Season).to receive(:find_by).with(id: 262).and_return(season)
-    allow(PdfManifests::BatchRunner).to receive_messages(running?: false, new: runner)
+    allow(PdfManifests::ClientFactory).to receive(:build).and_return(llm_client)
     allow(PdfManifests::Extractor).to receive(:new).and_return(extractor)
     allow(extractor).to receive(:call).and_return(result)
     allow(SeasonBoard::Notifier).to receive(:ping)
+    allow(SeasonBoard::Snapshot).to receive(:invalidate!)
   end
 
   after(:each) do
@@ -48,15 +48,16 @@ RSpec.describe ManifestExtractJob do
       .to have_enqueued_job(described_class).on_queue('background')
   end
 
-  it 'extracts the pending PDF with the requested engine & archives it' do
+  it 'extracts the pending PDF with the requested engine & archives it (PdfManifests::Extraction)' do
     perform(engine: 'ollama')
-    expect(PdfManifests::BatchRunner).to have_received(:new).with(season_id: 262, engine: 'ollama', data_root: Pathname.new(data_dir))
+    expect(PdfManifests::ClientFactory).to have_received(:build).with(engine: 'ollama', model: nil)
     expect(PdfManifests::Extractor).to have_received(:new).with(client: llm_client, results_root: Pathname.new(data_dir).join('results.new'))
-    expect(extractor).to have_received(:call).with(pdf_path)
+    expect(extractor).to have_received(:call).with(pdf_path, force: false)
     expect(File).not_to exist(pdf_path)
     expect(File).to exist(path_for('manifests.done', 'manifest-m.pdf'))
     expect(extract_entry).to have_attributes(status: :done, message: 'extracted (12 events)')
     expect(SeasonBoard::Notifier).to have_received(:ping)
+    expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
   end
 
   it 'archives on an archivable skip' do
@@ -75,15 +76,8 @@ RSpec.describe ManifestExtractJob do
     expect(extract_entry).to have_attributes(status: :failed, message: 'extraction failed: extraction failed')
   end
 
-  it 'skips while a season-wide batch is running' do
-    allow(PdfManifests::BatchRunner).to receive(:running?).and_return(true)
-    perform
-    expect(extractor).not_to have_received(:call)
-    expect(extract_entry).to have_attributes(status: :failed, message: 'a season-wide manifest extraction is running')
-  end
-
   context 'when the preflight check fails' do
-    let(:preflight_error) { :engine_unavailable }
+    let(:engine_available) { false }
 
     it 'does not extract' do
       perform
@@ -103,5 +97,114 @@ RSpec.describe ManifestExtractJob do
     expect { perform }.not_to raise_error
     expect(extract_entry).to have_attributes(status: :failed, message: 'error: RuntimeError: kaboom')
     expect(File).to exist(pdf_path)
+  end
+
+  describe 'ops event log' do
+    def last_event = Ops::Event.where(subject_type: 'fin_event', subject_key: fin_id).recent.first
+
+    it 'records board.extract_finished when the extraction ends' do
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.extract_finished', level: 'success', actor: 'job', season_id: 262)
+      expect(last_event.data).to eq('status' => 'done', 'message' => 'extracted (12 events)')
+    end
+
+    it 'records board.extract_failed when the extraction fails' do
+      allow(llm_client).to receive(:available?).and_return(false)
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.extract_failed', level: 'error')
+    end
+
+    it 'still closes the activity when the ops DB is not available' do
+      allow(Ops::Database).to receive(:state).and_return(:not_configured)
+      expect { perform }.not_to change(Ops::Event, :count)
+      expect(extract_entry).to have_attributes(status: :done)
+    end
+  end
+
+  describe 'automatic attempts (phase 10)' do
+    let(:run) { FactoryBot.create(:ops_pipeline_run, kind: 'extract', origin: 'auto', subject_key: 'manifest-m.pdf', status: 'queued') }
+
+    it 'follows the attempt on its run row and enqueues a planner pass' do
+      expect { described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id) }
+        .to have_enqueued_job(PipelinePlannerJob).with(trigger: 'ManifestExtractJob')
+      expect(run.reload).to have_attributes(status: 'done', message: 'extracted (12 events)')
+      expect(run.started_at).to be_present
+    end
+
+    it 'marks the run failed when the extraction fails (counted by the planner retry cap)' do
+      allow(llm_client).to receive(:available?).and_return(false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload).to have_attributes(status: 'failed', error: 'LLM engine unavailable')
+    end
+
+    it 'refuses an automatic attempt whose run row cannot be read, and one whose switch cannot be read (fail closed)' do
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id + 1000)
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+      expect(extract_entry).to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.ops_unavailable'))
+
+      allow(Ops::Setting).to receive(:fetch).and_call_original
+      allow(Ops::Setting).to receive(:fetch).with('automation.enabled', true).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.status).to eq('refused')
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+    end
+
+    it 'marks a refusal for a switch off with the automation_paused code (not counted as an attempt by the planner)' do
+      DataFix::Automation.store!(:auto_extract, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.error).to start_with('automation_paused: ')
+      expect(SeasonBoard::PipelinePlanner.switch_refusal?(run)).to be true
+    end
+
+    it 'refuses the attempt (not a failed one) while auto_extract is off' do
+      DataFix::Automation.store!(:auto_extract, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.status).to eq('refused')
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+      expect(File).to exist(pdf_path)
+    end
+  end
+
+  # Phase 15: a given PDF (the Sources Manifests tab), tracked under its source key.
+  describe 'with a pdf_path' do
+    let!(:key) { SeasonBoard::ActivityLog.source_key('extract', File.realpath(pdf_path)) }
+
+    def perform_file(path = File.realpath(pdf_path))
+      described_class.perform_now(season_id: 262, pdf_path: path)
+    end
+
+    it 'extracts and archives the file, logging it under the source key with its name' do
+      real = File.realpath(pdf_path)
+      perform_file(real)
+      expect(extractor).to have_received(:call).with(real, force: false)
+      expect(activity_log.entry(key, :extract)).to have_attributes(status: :done, message: 'extracted (12 events)', label: 'manifest-m.pdf')
+      expect(File).to exist(path_for('manifests.done', 'manifest-m.pdf'))
+      event = Ops::Event.where(kind: 'sources.extract_finished').last
+      expect(event).to have_attributes(subject_type: 'manifest_pdf', subject_key: 'manifest-m.pdf')
+      expect(event.link_path).to eq('/sources/manifests?season_id=262')
+    end
+
+    it 'refuses a PDF outside manifests/<season> of the data root' do
+      outside = File.join(Dir.mktmpdir('outside-manifest'), 'manifest-x.pdf')
+      File.write(outside, '%PDF')
+      described_class.perform_now(season_id: 262, pdf_path: outside)
+      expect(extractor).not_to have_received(:call)
+      entry = activity_log.entry(SeasonBoard::ActivityLog.source_key('extract', outside), :extract)
+      expect(entry).to have_attributes(status: :failed, message: 'no such manifest PDF in manifests/<season>')
+      expect(File).to exist(outside)
+    ensure
+      FileUtils.rm_rf(File.dirname(outside)) if outside
+    end
+
+    it 'refuses a symlink pointing out of the data root' do
+      outside_dir = Dir.mktmpdir('outside-manifest')
+      File.write(File.join(outside_dir, 'real.pdf'), '%PDF')
+      link = path_for('manifests', 'manifest-link.pdf')
+      File.symlink(File.join(outside_dir, 'real.pdf'), link)
+      described_class.perform_now(season_id: 262, pdf_path: link)
+      expect(extractor).not_to have_received(:call)
+    ensure
+      FileUtils.rm_rf(outside_dir)
+    end
   end
 end

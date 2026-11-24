@@ -1,0 +1,81 @@
+// = Design tokens =
+//
+// Monospaced "LED" font (base/_fonts.scss), falling back to the Bootstrap monospace stack:
+:root {
+  --ga-font-mono: 'Share Tech Mono', var(--bs-font-monospace);
+}
+
+//
+// Pastel row/panel tints behind the `.bg-light-*` helper classes, as CSS custom properties:
+// light values on :root, darker (still distinguishable) ones in Bootstrap's dark color mode.
+// Text keeps the Bootstrap body color, which flips with `data-bs-theme`.
+:root {
+  --ga-tint-blue: #d8ecff;
+  --ga-tint-cyan: #dbeeff;
+  --ga-tint-cyan2: #e5f1fd;
+  --ga-tint-green: #e8ffee;
+  --ga-tint-green2: #90a0a0;
+  --ga-tint-grey: #e6e6e6;
+  --ga-tint-grey2: #b0b0b0;
+  --ga-tint-yellow: #feffd6;
+  --ga-tint-brown: #ffdfcc;
+  --ga-tint-red: #ffa1a1;
+  --ga-tint-red2: #ffd2d2;
+}
+
+[data-bs-theme='dark'] {
+  --ga-tint-blue: #1d3a55;
+  --ga-tint-cyan: #1c3b52;
+  --ga-tint-cyan2: #213a4f;
+  --ga-tint-green: #1e4430;
+  --ga-tint-green2: #3f5555;
+  --ga-tint-grey: #3a3d40;
+  --ga-tint-grey2: #52565a;
+  --ga-tint-yellow: #4a4720;
+  --ga-tint-brown: #5a3a2a;
+  --ga-tint-red: #7a2e2e;
+  --ga-tint-red2: #5e2b2b;
+}
+
+// = App shell (phase 04) =
+// Sizes of the sidebar & top bar, and the accents of the API target guess badge.
+:root,
+[data-bs-theme='light'] {
+  --ga-sidebar-width: 15rem;
+  --ga-sidebar-collapsed-width: 4rem;
+  --ga-topbar-height: 3.5rem;
+  --ga-env-production: var(--bs-danger);
+  --ga-env-unknown: var(--bs-secondary);
+}
+
+[data-bs-theme='dark'] {
+  --ga-sidebar-width: 15rem;
+  --ga-sidebar-collapsed-width: 4rem;
+  --ga-topbar-height: 3.5rem;
+  --ga-env-production: var(--bs-danger);
+  --ga-env-unknown: var(--bs-secondary);
+}
+
+// = Datagrid ordering (phase 04, G2) =
+// Background of the cells of the column the grid is ordered by, and color of its active order arrow.
+:root,
+[data-bs-theme='light'] {
+  --ga-grid-order-bg: #cebca630;
+  --ga-grid-order-fg: #eab000;
+}
+
+[data-bs-theme='dark'] {
+  --ga-grid-order-bg: #eab00024;
+  --ga-grid-order-fg: #ffc933;
+}
+
+// = Slider switches (components/_slider_switch.scss) =
+// Track of an unchecked switch (the knob stays white).
+:root,
+[data-bs-theme='light'] {
+  --ga-switch-off-bg: #ccc;
+}
+
+[data-bs-theme='dark'] {
+  --ga-switch-off-bg: #6c757d;
+}

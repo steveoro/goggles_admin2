@@ -2,7 +2,7 @@
 
 # PhaseFileManager: read/write helper for phase-focused JSON files used by the
 # new Data-Fix pipeline. Each phase file contains only the minimal data
-# necessary for a given review phase plus some metadata for dependency checks.
+# necessary for a given review phase plus some metadata (edit markers and input digests: see DataFix::Pipeline).
 #
 # File shape:
 # {
@@ -11,10 +11,8 @@
 #     "generator": "Phase1Solver",
 #     "created_at": "2025-09-15T00:00:00Z",
 #     "source_path": "/abs/path/to/original.json",
-#     "parent_checksum": "<sha256 of parent file>",
-#     "dependencies": {
-#       "phase2": { "path": "...", "checksum": "..." }
-#     }
+#     "built": { "by": "auto|operator|adopted", "at": "...", "digest": "<sha256 of data>", "inputs": {...} },
+#     "operator_edit": { "at": "...", "user_id": 1, "actions": [...] }
 #   },
 #   "data": { ... phase-specific payload ... }
 # }
@@ -45,10 +43,27 @@ class PhaseFileManager
     # stale value carried over in +meta+ can't survive).
     payload = { META_KEY => default_meta.merge(meta).merge('generated_at' => Time.now.utc.iso8601),
                 DATA_KEY => data }
+    write_payload!(payload)
+  end
+
+  # Writes the whole +payload+ Hash as is (any shape, e.g. the flat Phase 5 file) atomically:
+  # a temporary sibling file renamed over the target, so a reader never sees a half-written file.
+  def write_payload!(payload)
     FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, JSON.pretty_generate(payload))
+    temporary_path = File.join(File.dirname(path), ".#{File.basename(path)}.tmp-#{Process.pid}-#{SecureRandom.hex(6)}")
+    File.write(temporary_path, JSON.pretty_generate(payload))
+    File.rename(temporary_path, path)
     @read = nil
     payload
+  ensure
+    FileUtils.rm_f(temporary_path) if temporary_path && File.exist?(temporary_path)
+  end
+
+  # SHA256 of the canonical JSON of the phase data ('_meta' excluded; see DataFix::Pipeline::Digests).
+  # +phase+ selects the layout: the Phase 5 file is flat (no 'data' section).
+  def data_digest(phase: nil)
+    phase ||= path[/-phase(\d+)\.json\z/, 1].to_i
+    DataFix::Pipeline::Digests.data_digest(read, phase)
   end
 
   def data
@@ -57,20 +72,6 @@ class PhaseFileManager
 
   def meta
     read[META_KEY] || {}
-  end
-
-  # Minimal dependency check placeholder (expand later):
-  def dependencies_satisfied?
-    deps = meta.fetch('dependencies', {})
-    return true if deps.blank?
-
-    deps.all? do |_k, h|
-      dep_path = h['path']
-      dep_checksum = h['checksum']
-      next false if dep_path.blank? || dep_checksum.blank?
-
-      File.exist?(dep_path) && checksum(dep_path) == dep_checksum
-    end
   end
 
   def checksum(target_path = path)

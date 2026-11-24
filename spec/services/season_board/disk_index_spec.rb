@@ -167,6 +167,50 @@ RSpec.describe SeasonBoard::DiskIndex do
       expect(index.entries).to eq({})
       expect(index.board_sql_paths).to eq([backfill, link])
     end
+
+    it 'excludes the data health "Flag cancelled" scripts too (meeting & calendar), counting them apart' do
+      meeting = write_file('results.new', '0422-meeting_cancel-19412.sql')
+      calendar = write_file('results.new', '0423-calendar_cancel-881.sql')
+      write_file('results.sent', '0418-meeting_cancel-19000.sql')
+      expect(index.unmatched).to eq([])
+      expect(index.entries).to eq({})
+      expect(index.board_sql_paths).to eq([meeting, calendar])
+    end
+
+    it 'counts a pending team-manager or merge script as other SQL, never as an unmatched source' do
+      team_manager = write_file('results.new', '0422-team_manager-10556-163.sql')
+      merge = write_file('results.new', '0423-merge_badges-1-2.sql')
+      expect(index.unmatched).to eq([])
+      expect(index.entries).to eq({})
+      expect(index.other_sql_paths).to eq([team_manager, merge])
+    end
+
+    it 'still drives sql_pending with a commit script' do
+      write_json('results.new', 'm.json', lt2_hash(fin_id: 150_095, results: true))
+      sql = write_file('results.new', '0424-m-lt4.sql')
+      write_file('results.new', '0425-team_manager-1-2.sql')
+      expect(index.for('150095')).to be_sql_pending
+      expect(index.for('150095').sql_new_paths).to eq([sql])
+    end
+
+    it 'uses the Outbox registry kind before the name' do
+      write_json('results.new', 'm.json', lt2_hash(fin_id: 150_096, results: true))
+      sql = write_file('results.new', '0426-m.sql') # (an LT4-content source has no '-lt4' in its commit name)
+      odd = write_file('results.new', '0427-odd-lt4.sql')
+      create_sql_script(data_dir, 'results.new/262/0426-m.sql', kind: 'commit', file: false)
+      create_sql_script(data_dir, 'results.new/262/0427-odd-lt4.sql', kind: 'manual', file: false)
+      expect(index.for('150096').sql_new_paths).to eq([sql])
+      expect(index.other_sql_paths).to eq([odd])
+    end
+
+    it 'falls back to the name when the ops DB is not available' do
+      allow(Ops::Database).to receive(:state).and_return(:missing)
+      write_json('results.new', 'm.json', lt2_hash(fin_id: 150_097, results: true))
+      sql = write_file('results.new', '0428-m-lt4.sql')
+      other = write_file('results.new', '0429-merge_teams-1-2.sql')
+      expect(index.for('150097').sql_new_paths).to eq([sql])
+      expect(index.other_sql_paths).to eq([other])
+    end
   end
 
   describe 'large files (bounded reads)' do

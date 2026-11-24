@@ -33,6 +33,14 @@ RSpec.describe APIUserWorkshopsController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'user_workshops') do
+      let(:index_path) { api_user_workshops_path }
+      let(:api_params) do
+        { name: anything, date: anything, header_year: anything, season_id: anything,
+          team_id: anything, user_id: anything, page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

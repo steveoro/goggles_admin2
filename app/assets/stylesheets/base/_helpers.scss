@@ -1,0 +1,79 @@
+// = Generic helper classes =
+
+// Pastel row/panel tints (values from base/_tokens.scss, which flip with the color mode):
+.bg-light-blue {
+  background-color: var(--ga-tint-blue);
+}
+
+.bg-light-cyan {
+  background-color: var(--ga-tint-cyan);
+}
+.bg-light-cyan2 {
+  background-color: var(--ga-tint-cyan2);
+}
+
+.bg-light-green {
+  background-color: var(--ga-tint-green);
+}
+.bg-light-green2 {
+  background-color: var(--ga-tint-green2);
+}
+
+.bg-light-grey {
+  background-color: var(--ga-tint-grey);
+}
+.bg-light-grey2 {
+  background-color: var(--ga-tint-grey2);
+}
+
+.bg-light-yellow {
+  background-color: var(--ga-tint-yellow);
+}
+.bg-light-brown {
+  background-color: var(--ga-tint-brown);
+}
+
+.bg-light-red {
+  background-color: var(--ga-tint-red);
+}
+.bg-light-red2 {
+  background-color: var(--ga-tint-red2);
+}
+
+// (also used by the goggles_db GoggleCup partials)
+.small-text {
+  font-size: 0.80rem;
+}
+
+.shadow-box {
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(50, 50, 50, 0.33);
+}
+
+.round-avatar {
+  border-radius: 12px;
+  height: 24px;
+  width: 24px;
+}
+
+// Big red oblique stamp ("Cancelled"/"Void"):
+.cancelled {
+  float: right;
+  transform: rotate(350deg) translate(-50%, 25%);
+  transform-origin: center;
+  text-align: center;
+  opacity: 0.85;
+  font-size: 1.25em;
+  color: #F00;
+  text-transform: uppercase;
+  font-family: 'Saira Stencil One';
+}
+
+// Timer LEDs:
+.timer-leds {
+  text-align: center;
+  font-size: 2em;
+  color: rgb(33, 21, 146);
+  text-transform: uppercase;
+  font-family: var(--ga-font-mono);
+}

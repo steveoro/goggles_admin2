@@ -1,0 +1,84 @@
+{
+  "_meta": {
+    "fixture": "spec/fixtures/import/pdf-teamrank-lt2.json",
+    "generator": "legacy Data-Fix wizard: macro solver #solve + macro committer #commit_all (retired in 0.10.80)",
+    "note": "meeting_team_scores committed by the legacy flow; meeting_id omitted (new on each run)"
+  },
+  "team_scores": [
+    {
+      "rank": 1,
+      "team_id": 77,
+      "team_affiliation_id": 5736,
+      "season_id": 192,
+      "sum_individual_points": 35209.93,
+      "sum_relay_points": 0.0,
+      "sum_team_points": 35209.93,
+      "meeting_points": 35209.93,
+      "meeting_relay_points": 0.0,
+      "meeting_team_points": 35209.93,
+      "season_points": 0.0,
+      "season_relay_points": 0.0,
+      "season_team_points": 0.0
+    },
+    {
+      "rank": 2,
+      "team_id": 251,
+      "team_affiliation_id": 5738,
+      "season_id": 192,
+      "sum_individual_points": 35004.29,
+      "sum_relay_points": 0.0,
+      "sum_team_points": 35004.29,
+      "meeting_points": 35004.29,
+      "meeting_relay_points": 0.0,
+      "meeting_team_points": 35004.29,
+      "season_points": 0.0,
+      "season_relay_points": 0.0,
+      "season_team_points": 0.0
+    },
+    {
+      "rank": 3,
+      "team_id": 45,
+      "team_affiliation_id": 5745,
+      "season_id": 192,
+      "sum_individual_points": 32368.92,
+      "sum_relay_points": 750.0,
+      "sum_team_points": 33118.92,
+      "meeting_points": 32368.92,
+      "meeting_relay_points": 750.0,
+      "meeting_team_points": 33118.92,
+      "season_points": 0.0,
+      "season_relay_points": 0.0,
+      "season_team_points": 0.0
+    },
+    {
+      "rank": 4,
+      "team_id": 59,
+      "team_affiliation_id": 5754,
+      "season_id": 192,
+      "sum_individual_points": 32255.31,
+      "sum_relay_points": 0.0,
+      "sum_team_points": 32255.31,
+      "meeting_points": 32255.31,
+      "meeting_relay_points": 0.0,
+      "meeting_team_points": 32255.31,
+      "season_points": 0.0,
+      "season_relay_points": 0.0,
+      "season_team_points": 0.0
+    },
+    {
+      "rank": 5,
+      "team_id": 108,
+      "team_affiliation_id": 5747,
+      "season_id": 192,
+      "sum_individual_points": 0.0,
+      "sum_relay_points": 30981.85,
+      "sum_team_points": 30981.85,
+      "meeting_points": 0.0,
+      "meeting_relay_points": 30981.85,
+      "meeting_team_points": 30981.85,
+      "season_points": 0.0,
+      "season_relay_points": 0.0,
+      "season_team_points": 0.0
+    }
+  ]
+}

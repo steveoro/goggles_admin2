@@ -1,176 +1,158 @@
-.card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "team-card-#{team_index}" }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: "team-header-#{team_index}",
-                                                                  style: 'cursor: pointer;',
-                                                                  data: { toggle: 'collapse', target: "#team-panel-#{team_index}" } }
-    .d-flex.align-items-center
-      %span.mr-2
-        %i.fa{ class: icon_class, title: icon_title }
-      %strong
-        = editable_name
-      &nbsp;
-      %small.ml-2.fw-bold
-        .fa.fa-key.text-warning
-        #{team_key}
-      &nbsp;
+-#
+  One Step 2 team card (rendered by data_fix/_team_card_frame, inside its key-based Turbo frame).
+  Positional ids (team-card-N, team-header-N, team-panel-N, team_N_*, fuzzy_select_N) are kept for the anchors,
+  the specs and the team-card controller.
+:ruby
+  issue_codes = Array(local_assigns[:issue_codes])
+  fuzzy_matches = team_hash['fuzzy_matches'] || []
+  selected_match = fuzzy_matches.find { |m| m['id'] == team_id }
+  # (as before: no hint / similarity badge on a new team with missing data)
+  badge_hints = has_match || !has_missing_data
+  hint_match = ->(m) { m['from_phase3_conflict_hint'] && (!has_match || m['id'] != team_id) }
+  phase3_hint = (fuzzy_matches.find(&hint_match) if phase3_conflict_hint && badge_hints)
+  aff_top = (fuzzy_matches.find { |m| m['affiliated_this_season'] && m['id'] != team_id } if similar_affiliated)
+  # (restored by team-card#selectMatch when no fuzzy match is selected)
+  baseline_data = { id: nil, editable_name:, name: team_name, name_variations:, city_id: }
+  keep_params = %i[teams_page teams_per_page q filter_state unmatched name_differs]
+  card_data = { controller: 'team-card', team_card_index_value: team_index, team_card_baseline_value: baseline_data.to_json,
+                issue: data_fix_issue_marker(issue_codes) }
+  # ("Verify via swimmers": GET data_fix/verify_team, JSON)
+  verify_data = if has_match
+                  { controller: 'verify-team',
+                    verify_team_url_value: data_fix_verify_team_path(file_path:, team_key:, candidate_team_id: team_id),
+                    verify_team_failed_label_value: t('data_fix.wizard.teams.verify_failed'),
+                    verify_team_empty_label_value: t('data_fix.wizard.teams.verify_empty') }
+                end
+.card.mb-2.data-fix-card{ class: "#{card_bg} #{border_color} #{border_width}", id: "team-card-#{team_index}", data: card_data }
+  .card-header.d-flex.justify-content-between.align-items-center.gap-2{ id: "team-header-#{team_index}", role: 'button',
+                                                                        aria: { expanded: 'false', controls: "team-panel-#{team_index}" },
+                                                                        data: { bs_toggle: 'collapse', bs_target: "#team-panel-#{team_index}" } }
+    .d-flex.flex-wrap.align-items-center.gap-2
+      %i.fa{ class: icon_class, title: icon_title }
+      %strong= editable_name
+      %small.fw-bold
+        %i.fa.fa-key.text-warning{ 'aria-hidden': 'true' }
+        = team_key
       - if has_match
-        - fuzzy_matches = team_hash['fuzzy_matches'] || []
-        - selected_match = fuzzy_matches.find { |m| m['id'] == team_id }
-        - phase3_hint = fuzzy_matches.find { |m| m['from_phase3_conflict_hint'] && m['id'] != team_id }
-        - color_class = selected_match&.dig('color_class').presence || 'success'
-        %small.ml-2.badge{ class: "badge-#{color_class}" }
-          ID: #{team_id}
-        - if defined?(phase3_conflict_hint) && phase3_conflict_hint && phase3_hint
-          %small.ml-1.badge.badge-warning{ title: phase3_hint['phase3_conflict_reason'] || 'Phase 3 detected a different team candidate' }
-            %i.fa.fa-exclamation-triangle
-            PHASE3 HINT: ID #{phase3_hint['id']} (#{phase3_hint['editable_name']})
-        - if defined?(similar_affiliated) && similar_affiliated
-          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] && m['id'] != team_id }
-          - aff_badge = (selected_match&.dig('percentage').to_f >= 100.0) ? 'badge-light' : 'badge-warning'
-          - if aff_top
-            %small.ml-1.badge{ class: aff_badge, title: "Similar affiliated team ID #{aff_top['id']} found in season - please verify" }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
-          - else
-            %small.ml-1.badge{ class: aff_badge, title: 'Similar team detected but no alternative candidate - likely a false positive' }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR TEAM IN SEASON
+        %small.badge{ class: "text-bg-#{selected_match&.dig('color_class').presence || 'success'}" }= t('data_fix.wizard.badges.id', id: team_id)
       - elsif has_missing_data
-        %small.ml-2.badge.badge-danger
-          MISSING DATA
-      - else
-        - fuzzy_matches = team_hash['fuzzy_matches'] || []
-        - phase3_hint = fuzzy_matches.find { |m| m['from_phase3_conflict_hint'] }
-        - if defined?(phase3_conflict_hint) && phase3_conflict_hint && phase3_hint
-          %small.ml-2.badge.badge-warning{ title: phase3_hint['phase3_conflict_reason'] || 'Phase 3 detected a different team candidate' }
-            %i.fa.fa-exclamation-triangle
-            PHASE3 HINT: ID #{phase3_hint['id']} (#{phase3_hint['editable_name']})
-        - if defined?(similar_affiliated) && similar_affiliated
-          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] && m['id'] != team_id }
-          - if aff_top
-            %small.ml-2.badge.badge-warning{ title: "Similar affiliated team ID #{aff_top['id']} found in season - please verify" }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
-          - else
-            %small.ml-2.badge.badge-warning{ title: 'Similar team detected but no alternative candidate - likely a false positive' }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR TEAM IN SEASON
+        %small.badge.text-bg-danger= t('data_fix.wizard.badges.missing_data')
+      - elsif !similar_affiliated
+        %small.badge.text-bg-primary= t('data_fix.wizard.badges.new')
+      - if phase3_hint
+        %small.badge.text-bg-warning{ title: phase3_hint['phase3_conflict_reason'] || 'Phase 3 detected a different team candidate' }
+          %i.fa.fa-exclamation-triangle{ 'aria-hidden': 'true' }
+          PHASE3 HINT: ID #{phase3_hint['id']} (#{phase3_hint['editable_name']})
+      - if similar_affiliated && badge_hints
+        - aff_badge = has_match && selected_match&.dig('percentage').to_f >= 100.0 ? 'text-bg-light' : 'text-bg-warning'
+        - if aff_top
+          %small.badge{ class: aff_badge, title: "Similar affiliated team ID #{aff_top['id']} found in season - please verify" }
+            %i.fa.fa-exclamation-triangle{ 'aria-hidden': 'true' }
+            SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
         - else
-          %small.ml-2.badge.badge-primary
-            NEW
+          %small.badge{ class: aff_badge, title: 'Similar team detected but no alternative candidate - likely a false positive' }
+            %i.fa.fa-exclamation-triangle{ 'aria-hidden': 'true' }
+            SIMILAR TEAM IN SEASON
+      - if team_hash['confirmed'] == true
+        %small.badge.text-bg-secondary.data-fix-confirmed-badge
+          %i.fa-solid.fa-check{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.badges.confirmed')
+      - if issue_codes.any?
+        %small.badge.text-bg-warning.data-fix-issue-badge{ title: data_fix_issue_title(issue_codes) }
+          %i.fa-solid.fa-hand-point-right{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.card_issue')
     .d-flex.align-items-center
-      = form_tag(data_fix_delete_team_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete team \\'#{team_key}\\'?');") do
+      -# (full-page redirect: the delete form targets the page, not the card frame)
+      = form_tag(data_fix_delete_team_path, method: :delete, class: 'd-inline',
+                 data: { turbo_frame: '_top', turbo_confirm: t('data_fix.wizard.confirm.delete_team', key: team_key) }) do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :team_key, team_key
-        = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
-        = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
-        = hidden_field_tag :q, params[:q] if params[:q].present?
-        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
-        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
-        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
-        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
-          %i.fa.fa-trash
+        - keep_params.each do |key|
+          = hidden_field_tag(key, params[key]) if params[key].present?
+        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => t('data_fix.wizard.buttons.delete'),
+                                       data: { action: 'click->team-card#stop' } }
+          %i.fa.fa-trash{ 'aria-hidden': 'true' }
 
-  .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}", 'data-parent' => "#team-card-#{team_index}" }
-    .card-body.border-bottom.border-secondary
-      = form_tag(update_phase2_team_path, method: :patch) do
+  .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby': "team-header-#{team_index}", data: { issue_panel: true } }
+    .card-body.border-bottom
+      -# (saved in place: update_phase2_team answers a Turbo stream replacing this card, the stepper and the toasts)
+      = form_tag(update_phase2_team_path, method: :patch, id: "team-form-#{team_index}") do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :team_key, team_key
-        = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
-        = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
-        = hidden_field_tag :q, params[:q] if params[:q].present?
-        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
-        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
-        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
+        = hidden_field_tag :card_index, team_index
+        - keep_params.each do |key|
+          = hidden_field_tag(key, params[key]) if params[key].present?
 
-        .container-fluid
-          -# Row 0: Fuzzy matches dropdown (quick selection)
-          - fuzzy_matches = team_hash['fuzzy_matches'] || []
-          - if fuzzy_matches.present?
-            .row
-              .col-12
-                .form-group
-                  = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
-                  :ruby
-                    baseline_data = {
-                      id: nil,
-                      editable_name: editable_name,
-                      name: team_name,
-                      name_variations: name_variations,
-                      city_id: city_id
-                    }
-                    baseline_data_json = json_escape(baseline_data.to_json)
-                    onchange_event = "var teamId = this.value; if (teamId && teamId.toString().trim().length > 0) { document.getElementById('team_#{team_index}_team_id').value = teamId; document.getElementById('team_#{team_index}_team_id').dispatchEvent(new Event('change', { bubbles: true })); document.getElementById('team_#{team_index}_id_field').value = teamId; document.getElementById('team_#{team_index}').value = teamId; document.getElementById('team_#{team_index}').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetTeamFormToOriginal(#{baseline_data_json}, #{team_index}); }"
-                  = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: onchange_event
-                  %small.form-text.text-muted
-                    Select a match from the list to quickly populate team fields via AutoComplete.
+        -# Row 0: Fuzzy matches dropdown (quick selection)
+        - if fuzzy_matches.present?
+          .mb-2
+            = label_tag("fuzzy_select_#{team_index}", t('data_fix.wizard.teams.quick_match'), class: 'form-label')
+            = select_tag("fuzzy_select_#{team_index}",
+                         options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id),
+                         class: 'form-select', id: "fuzzy_select_#{team_index}",
+                         data: { action: 'change->team-card#selectMatch' })
+            %small.form-text.text-body-secondary= t('data_fix.wizard.teams.quick_match_hint')
 
-          -# Row 1: Team AutoComplete + editable_name + hidden ID field
-          -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
-          .row
-            .col-6
-              / -- TEAM FORM CARD --
-              = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
-              = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
-                                                 base_dom_id: "team_#{team_index}", base_api_url: api_url,
-                                                 default_value: team_id,
-                                                 detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
-                                                 search_endpoint: 'teams', search_column: 'name',
-                                                 target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
-                                                 target4_dom_id: "team_#{team_index}_city_id_field", target4_column: 'city_id',
-                                                 target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
-                                                 target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
-                                                 target7_dom_id: "team_#{team_index}_id_field", target7_column: 'id',
-                                                 jwt: current_user.jwt))
-              %small.form-text.text-muted Clear search to unmatch team
-            .col-6
-              .form-group
-                = label_tag "team_#{team_index}_editable_name", 'editable_name'
-                = text_field_tag 'team[editable_name]', editable_name,
-                                id: "team_#{team_index}_editable_name",
-                                class: 'form-control', required: true, placeholder: 'editable_name'
+        -# Row 1: Team AutoComplete + editable_name + hidden ID field
+        -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
+        .row.g-2
+          .col-lg-6
+            = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
+            = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
+                                                     base_dom_id: "team_#{team_index}", base_api_url: api_url,
+                                                     default_value: team_id,
+                                                     detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
+                                                     search_endpoint: 'teams', search_column: 'name',
+                                                     target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
+                                                     target4_dom_id: "team_#{team_index}_city_id_field", target4_column: 'city_id',
+                                                     target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
+                                                     target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
+                                                     target7_dom_id: "team_#{team_index}_id_field", target7_column: 'id',
+                                                     jwt: current_user.jwt))
+            %small.form-text.text-body-secondary Clear search to unmatch team
+          .col-lg-6
+            = label_tag("team_#{team_index}_editable_name", 'editable_name', class: 'form-label')
+            = text_field_tag('team[editable_name]', editable_name, id: "team_#{team_index}_editable_name",
+                                                                   class: 'form-control', required: true, placeholder: 'editable_name')
 
-          -# Row 2: name + name_variations
-          .row
-            .col-5
-              .form-group
-                = label_tag "team_#{team_index}_name", 'name'
-                = text_field_tag 'team[name]', team_name,
-                                id: "team_#{team_index}_name",
-                                class: 'form-control', required: true, placeholder: 'name'
-            .col-7
-              .form-group
-                = label_tag "team_#{team_index}_name_variations", 'name_variations'
-                = text_field_tag 'team[name_variations]', name_variations,
-                                id: "team_#{team_index}_name_variations",
-                                class: 'form-control', placeholder: 'name_variations (pipe-separated)'
-          
-          -# Row 3: City AutoComplete + hidden city_id field
+        -# Row 2: name + name_variations
+        .row.g-2.mt-1
+          .col-md-5
+            = label_tag("team_#{team_index}_name", 'name', class: 'form-label')
+            = text_field_tag('team[name]', team_name, id: "team_#{team_index}_name", class: 'form-control', required: true, placeholder: 'name')
+          .col-md-7
+            = label_tag("team_#{team_index}_name_variations", 'name_variations', class: 'form-label')
+            = text_field_tag('team[name_variations]', name_variations, id: "team_#{team_index}_name_variations",
+                                                                        class: 'form-control', placeholder: 'name_variations (pipe-separated)')
+
+        -# Row 3: City AutoComplete + hidden city_id field
+        .mt-1
           = hidden_field_tag 'team[city_id]', city_id, id: "team_#{team_index}_city_id_field"
           = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
-                                             base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
-                                             default_value: city_id,
-                                             detail_endpoint: 'city', base_name: 'city', label_column: 'area',
-                                             search_endpoint: 'cities', search_column: 'name',
-                                             target2_field: 'area', target2_column: 'area',
-                                             target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
-                                             target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
-                                             jwt: current_user.jwt))
-          %small.form-text.text-muted.ml-3 Clear search to unmatch city
-          -# Save button + Verify button
-          .form-group.mt-3.d-flex.align-items-center
+                                                   base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
+                                                   default_value: city_id,
+                                                   detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+                                                   search_endpoint: 'cities', search_column: 'name',
+                                                   target2_field: 'area', target2_column: 'area',
+                                                   target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
+                                                   target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
+                                                   jwt: current_user.jwt))
+          %small.form-text.text-body-secondary Clear search to unmatch city
+
+        -# Save button + "Verify via swimmers" (verify-team controller)
+        %div{ data: verify_data }
+          .d-flex.flex-wrap.align-items-center.gap-2.mt-3
             = submit_tag(t('data_import.generic_save_btn'),
                          class: 'btn btn-primary', 'aria-label': 'Save',
-                         data: { turbo_confirm: t('data_import.btn_save_confirm') })
+                         data: { turbo_confirm: t('data_import.btn_save_confirm'), turbo_submits_with: t('data_fix.wizard.buttons.saving') })
             - if has_match
-              %button.btn.btn-outline-info.btn-sm.ml-2.verify-team-btn{ type: 'button', title: 'Cross-validate team via swimmer badges from Phase 3',
-                                                                        onclick: 'event.preventDefault();',
-                                                                        data: { file_path: file_path, team_key: team_key, candidate_team_id: team_id, target: "#team-verify-#{team_index}" } }
-                %i.fa.fa-search
-                Verify via swimmers
-          -# Team verification panel (expanded via AJAX)
+              %button.btn.btn-outline-info.btn-sm.verify-team-btn{ type: 'button', title: t('data_fix.wizard.teams.verify_title'),
+                                                                   data: { action: 'verify-team#verify' } }
+                %i.fa.fa-search{ 'aria-hidden': 'true' }
+                = t('data_fix.wizard.buttons.verify_team')
           - if has_match
-            .collapse{ id: "team-verify-#{team_index}" }
-              .bg-light.border.border-info.p-2.mt-2
-                .text-center.text-muted
-                  %i.fa.fa-spinner.fa-spin
-                  Checking swimmer badges...
+            .collapse{ id: "team-verify-#{team_index}", data: { verify_team_target: 'panel' } }
+              .bg-body-tertiary.border.border-info.p-2.mt-2{ data: { verify_team_target: 'content' } }
+                .text-center.text-body-secondary
+                  %i.fa.fa-spinner.fa-spin{ 'aria-hidden': 'true' }
+                  = t('data_fix.wizard.teams.verify_checking')

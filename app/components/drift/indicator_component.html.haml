@@ -1,0 +1,14 @@
+.drift-indicator
+  - if link?
+    %a.text-decoration-none{ pill_attributes.merge(href: helpers.db_sync_path) }
+      %i.fa-solid{ class: icon, 'aria-hidden' => 'true' }
+      = label
+  - else
+    %span{ pill_attributes }
+      %i.fa-solid{ class: icon, 'aria-hidden' => 'true' }
+      = label
+  - if details?
+    %ul.small.mb-1.mt-2.ps-3#drift-indicator-reasons
+      - reasons.each do |text|
+        %li= text
+    .small.text-body-secondary= checked_text

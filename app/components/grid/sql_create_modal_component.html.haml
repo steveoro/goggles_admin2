@@ -1,5 +1,5 @@
-.modal.fade{ id: "#{@base_dom_id}-modal", 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
-             'aria-labelledby' => 'modal title' }
+.modal.fade{ id: "#{@base_dom_id}-modal", 'aria-hidden' => 'true', tabindex: '-1',
+             'aria-labelledby' => "#{@base_dom_id}-modal-title" }
   .modal-dialog.modal-lg{ role: 'document' }
     = form_tag(url_for(only_path: true, controller: @controller_name, action: @form_action),
                id: "frm-#{@base_dom_id}", method: :post) do
@@ -11,10 +11,9 @@
         .modal-header
           %h5.modal-title{ id: "#{@base_dom_id}-modal-title" }
             = I18n.t('datagrid.sql_create.modal_title')
-          %button.close{ 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'), 'data-dismiss' => 'modal' }
-            %span{ 'aria-hidden' => 'true' } &times;
+          %button.btn-close{ type: 'button', 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'), 'data-bs-dismiss' => 'modal' }
         .modal-body{ id: "#{@base_dom_id}-modal-body" }
-          .form-group.row
+          .row.mb-3
             = content_tag(:small, class: 'col-sm-3') do
               = label_tag("#{@base_dom_id}[season_id]", I18n.t('datagrid.sql_create.season_label'),
                           class: 'col-form-label')
@@ -24,7 +23,7 @@
                        search_endpoint: 'seasons', search_column: 'description',
                        label_column: 'header_year', label2_column: 'edition',
                        jwt: @jwt, show_top_labels: true))
-          .form-group.row
+          .row.mb-3
             = content_tag(:small, class: 'col-sm-3') do
               = label_tag("#{@base_dom_id}[team_id]", I18n.t('datagrid.sql_create.team_label'),
                           class: 'col-form-label')
@@ -34,7 +33,7 @@
                        search_endpoint: 'teams', search_column: 'name',
                        label_column: 'editable_name', label2_column: 'city_name',
                        jwt: @jwt, show_top_labels: true))
-          .form-group.row
+          .row.mb-3
             = content_tag(:small, class: 'col-sm-3') do
               = label_tag("#{@base_dom_id}[user_id]", I18n.t('datagrid.sql_create.user_label'),
                           class: 'col-form-label')
@@ -47,7 +46,7 @@
 
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'),
-                                                    'data-dismiss' => 'modal', type: 'button' }
+                                                    'data-bs-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.sql_create.cancel_btn')
           %button.btn.btn-sm.btn-outline-success{ id: "btn-#{@base_dom_id}-submit-generate", type: 'submit',
                 'aria-label' => I18n.t('datagrid.sql_create.generate_btn'),

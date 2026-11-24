@@ -5,7 +5,7 @@ module Import
   # = Phase5Populator
   #
   # Populates temporary data_import_* tables from source result file.
-  # Reads phases 1-4 JSON for entity IDs, generates import_keys using MacroSolver patterns,
+  # Reads phases 1-4 JSON for entity IDs, generates import_keys using the legacy import-key patterns,
   # and inserts individual results + laps into GogglesDb data_import tables.
   #
   # Supports both LT2 and LT4 source formats through automatic normalization:
@@ -33,8 +33,10 @@ module Import
                 :source_data, :phase1_data, :phase2_data, :phase3_data, :phase4_data,
                 :stats, :data_integrator, :programs
 
-    def initialize(source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:, categories_cache: nil)
+    def initialize(source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:, categories_cache: nil,
+                   progress: Import::Progress.default)
       @source_path = source_path
+      @progress = progress || Import::Progress::Null.new
       @categories_cache = categories_cache
       @phase1_path = phase1_path
       @phase2_path = phase2_path
@@ -52,19 +54,34 @@ module Import
         mirs_matched: 0,
         errors: []
       }
+      @stats[:collisions] = []
       # Hash to collect program groups: program_key => program_data
       @programs = {}
+      # Parity counters per program key: { 'expected' => source rows with a category, 'staged' => rows created }
+      @parity = Hash.new { |hash, key| hash[key] = { 'expected' => 0, 'staged' => 0 } }
     end
 
-    # Main entry point: truncate existing data, load phase files, populate tables
+    # Main entry point: load phase files, then truncate + populate the tables of this source in ONE transaction
+    # (a failure leaves the previous staging rows in place); finally the parity check and the phase5 output.
     # Note: LT2 files are normalized to LT4 format during load_phase_files!
+    #
+    # Extra stats:
+    # - collisions: [{ import_key:, other_source:, table: }] for keys already staged by ANOTHER source (the row is
+    #   not reused any more: the phase 5 verdict is blocked until that source is committed);
+    # - parity: { 'expected', 'staged', 'mismatched_programs' => ['<program key>: staged/expected', ...] }
+    #   (source result rows with a category vs staged rows, per program).
     def populate!
-      truncate_tables!
+      @stats[:collisions] = []
+      @parity = Hash.new { |hash, key| hash[key] = { 'expected' => 0, 'staged' => 0 } }
       load_phase_files!
 
       # All files are now in LT4 format (normalized if needed)
       Rails.logger.info('[Phase5Populator] Populating from LT4 format (normalized if LT2)')
-      populate_lt4_results!
+      ActiveRecord::Base.transaction do
+        truncate_tables!
+        populate_lt4_results!
+      end
+      @stats[:parity] = parity_report
       write_phase5_output!
       stats
     end
@@ -183,7 +200,10 @@ module Import
 
         distance = extract_distance(event)
         stroke = extract_stroke(event)
-        next if distance.blank? || stroke.blank?
+        if distance.blank? || stroke.blank?
+          count_unmapped_event!(event)
+          next
+        end
 
         # Build event_key matching EventSolver's format (for Phase 4 mapping lookup)
         event_key = build_event_key(event)
@@ -210,6 +230,7 @@ module Import
 
           # Generate keys
           program_key = build_program_key(session_order, event_code, category, gender)
+          @parity[program_key]['expected'] += 1
           team_key = build_team_key_from_result(result)
           import_key = GogglesDb::DataImportMeetingIndividualResult.build_import_key(program_key, swimmer_key)
 
@@ -243,6 +264,7 @@ module Import
 
           next unless mir
 
+          @parity[program_key]['staged'] += 1 if @last_record_created
           # Create lap records
           create_lap_records(mir, result, import_key)
 
@@ -270,7 +292,10 @@ module Import
         # Broadcast progress every relay event
         distance = extract_distance(event)
         stroke = extract_stroke(event)
-        next if distance.blank? || stroke.blank?
+        if distance.blank? || stroke.blank?
+          count_unmapped_event!(event)
+          next
+        end
 
         # Build event_key matching EventSolver's format (for Phase 4 mapping lookup)
         event_key = build_event_key(event)
@@ -293,6 +318,7 @@ module Import
 
           # Generate keys
           program_key = build_program_key(session_order, event_code, category, gender)
+          @parity[program_key]['expected'] += 1
           team_key = build_team_key_from_result(result)
           timing_string = result['timing'] || '0'
           import_key = GogglesDb::DataImportMeetingRelayResult.build_import_key(program_key, team_key, timing_string)
@@ -324,6 +350,7 @@ module Import
 
           next unless mrr
 
+          @parity[program_key]['staged'] += 1 if @last_record_created
           @stats[:relay_results_created] += 1
 
           # Create relay swimmers and laps
@@ -983,15 +1010,55 @@ module Import
     # Returns the DataImport record for import_key: the one already created in
     # this run when the key repeats, otherwise a fresh create! (the tables were
     # just truncated, so the old find_or_create_by! SELECT almost always missed).
-    # A RecordNotUnique from a cross-source import_key collision falls back to
-    # the existing row, matching find_or_create_by! semantics.
+    # Sets @last_record_created (true only for a row created by this call).
+    #
+    # A RecordNotUnique means the key is already staged: when the existing row belongs to ANOTHER source
+    # (phase_file_path), the collision is recorded in stats[:collisions] and nil is returned (the other source's
+    # row is never reused); otherwise the existing row is returned.
     def create_import_record!(klass, import_key, &)
+      @last_record_created = false
       created = (@created_import_records ||= {})[klass.name] ||= {}
       return created[import_key] if created.key?(import_key)
 
       created[import_key] = klass.create!(import_key: import_key, &)
+      @last_record_created = true
+      created[import_key]
+    rescue ActiveRecord::RecordInvalid => e
+      # (the model validates the key uniqueness: the usual signal of a key staged by another source)
+      raise unless e.record.errors.of_kind?(:import_key, :taken)
+
+      existing_or_collision(klass, import_key, created)
     rescue ActiveRecord::RecordNotUnique
-      created[import_key] ||= klass.find_by(import_key: import_key)
+      existing_or_collision(klass, import_key, created)
+    end
+
+    # Row already staged under +import_key+: nil (+ a recorded collision) when it belongs to another source,
+    # the row itself otherwise.
+    def existing_or_collision(klass, import_key, created)
+      existing = klass.find_by(import_key: import_key)
+      if existing && existing.phase_file_path.present? && existing.phase_file_path != source_path
+        (@stats[:collisions] ||= []) << { import_key:, other_source: existing.phase_file_path, table: klass.table_name }
+        return created[import_key] = nil
+      end
+
+      created[import_key] ||= existing
+    end
+
+    # Source results of an event that can't be mapped (no distance/stroke): counted as expected rows that will
+    # never be staged (reported by the parity check).
+    def count_unmapped_event!(event)
+      results = Array(event['results'])
+      return if results.empty?
+
+      key = "unmapped:#{event['eventCode'] || event['code'] || event['eventDescription'] || '?'}"
+      @parity[key]['expected'] += results.size
+    end
+
+    def parity_report
+      expected = @parity.values.sum { |row| row['expected'] }
+      staged = @parity.values.sum { |row| row['staged'] }
+      mismatched = @parity.filter_map { |key, row| "#{key}: #{row['staged']}/#{row['expected']}" if row['staged'] != row['expected'] }
+      { 'expected' => expected, 'staged' => staged, 'mismatched_programs' => mismatched.first(100) }
     end
 
     # Create MIR record
@@ -1033,6 +1100,8 @@ module Import
         record.meeting_points = result['meeting_points'].to_f
         record.reaction_time = result['reaction_time'].to_f
       end
+      return nil unless mir
+
       @stats[:mir_created] += 1
       mir
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
@@ -1475,18 +1544,25 @@ module Import
         'programs' => programs_array
       }
 
-      File.write(phase5_output_path, JSON.pretty_generate(output_data))
+      # Keeps the '_meta' of the existing file (overwrite snapshot, edit markers, build stamp): atomic write
+      existing_meta = existing_phase5_meta
+      payload = existing_meta ? { PhaseFileManager::META_KEY => existing_meta }.merge(output_data) : output_data
+      PhaseFileManager.new(phase5_output_path).write_payload!(payload)
       Rails.logger.info("[Phase5Populator] Phase5 output written: #{programs_array.size} programs, #{output_data['total_results']} results")
     end
 
-    # Broadcast progress updates via ActionCable for real-time UI feedback
+    def existing_phase5_meta
+      return nil unless File.exist?(phase5_output_path)
+
+      meta = JSON.parse(File.read(phase5_output_path))[PhaseFileManager::META_KEY]
+      meta.is_a?(Hash) && meta.any? ? meta : nil
+    rescue JSON::ParserError
+      nil
+    end
+
+    # Progress updates through the injected sink (see Import::Progress; Cable by default)
     def broadcast_progress(message, current, total)
-      ActionCable.server.broadcast(
-        'ImportStatusChannel',
-        { msg: message, progress: current, total: total }
-      )
-    rescue StandardError => e
-      Rails.logger&.warn("[Phase5Populator] Failed to broadcast progress: #{e.message}")
+      @progress.call(message, current, total)
     end
   end
 end

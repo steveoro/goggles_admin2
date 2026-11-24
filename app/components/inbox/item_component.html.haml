@@ -1,0 +1,16 @@
+%li.list-group-item.d-flex.flex-wrap.flex-sm-nowrap.align-items-start.column-gap-3.row-gap-1.py-2.inbox-item{ data: item_data }
+  %span.inbox-item-icon.flex-shrink-0.pt-1{ class: icon_css, title: band_label }
+    %i.fa-solid.fa-fw{ class: icon, 'aria-hidden' => 'true' }
+    %span.visually-hidden= band_label
+  .flex-grow-1.inbox-item-body
+    .fw-semibold.text-break
+      = item.title
+      - if item.count > 1
+        %span.badge.rounded-pill.text-bg-secondary.ms-1= item.count
+    - if item.detail.present?
+      .small.text-body-secondary.text-break= item.detail
+    .small.text-body-secondary{ title: since_title }= since_text
+  -# (below the text on phones, on its right from sm up)
+  .flex-shrink-0.d-flex.flex-row.flex-sm-column.flex-wrap.align-items-center.align-items-sm-end.gap-2.gap-sm-1.inbox-item-actions
+    = render(Dashboard::ActionButtonComponent.new(action: item.action, css: button_css))
+    = render(Dashboard::ActionButtonComponent.new(action: item.secondary_action, css: 'btn btn-sm btn-link p-0'))

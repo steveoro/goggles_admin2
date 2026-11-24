@@ -12,13 +12,13 @@
      selected_label: @default_row&.name
    ))
 .col
-  .form-group
+  .mb-3
     .field
-      = label_tag(:city_area, t('swimming_pools.area_code'))
+      = label_tag(:city_area, t('swimming_pools.area_code'), class: 'form-label')
       = text_field_tag('city_area', @default_row&.area, autofocus: true, required: true, class: 'form-control')
 .col-3
-  .form-group
+  .mb-3
     .field
-      = label_tag(:city_country_code, t('swimming_pools.country_code'))
+      = label_tag(:city_country_code, t('swimming_pools.country_code'), class: 'form-label')
       = text_field_tag('city_country_code', @default_row&.country_code || 'IT', maxlength: 3, required: true,
                        autofocus: true, class: 'form-control')

@@ -276,6 +276,39 @@ Each swimmer result "row" can have an optional "sex" field, which is usually inh
 - The system handles both 4-token and 5-token lap swimmer formats
 - Relay category codes like "M320" represent sum of ages (4 swimmers × ~80 years avg)
 
+#### LT2 - Team ranking & stats sections (PDF-derived files only)
+
+The PDF parser (`PdfResults::L2Converter`) may add two non-event sections, recognizable by a flag:
+
+```json
+{ "title": "Overall Team Ranking", "ranking": true,
+  "rows": [{ "pos": "1", "team": "Roma Nuoto Master ssd", "ind_score": "35209.930", "overall_score": "35209.930" }] }
+{ "title": "Overall Stats", "stats": true,
+  "rows": [{ "stats_label": "Numero di società iscritte", "stats_value": "47" }] }
+```
+
+- `ind_score` may be `null` (some formats print only the overall points).
+- Neither section holds results: `DataFix::SourceResolver#source_result_free?` / `#source_has_result_rows?` ignore them.
+- `Import::Adapters::Layout2To4` turns neither into an event: ranking rows are copied as-is (raw strings) into the
+  LT4 root `teamRankings` array and their team names join the `teams` dictionary; stats sections are dropped.
+- The FIN crawler doesn't emit them (FIN/Microplus LT4 sources carry no team ranking).
+
+#### LT4 - `teamRankings` (optional)
+
+```
+[root]
+     +--- teamRankings            (only when the LT2 source had a "ranking" section)
+     |   +--- [0]
+     |       +--- pos             (String, e.g. "1")
+     |       +--- team            (team key, as in the "teams" dictionary)
+     |       +--- ind_score       (String or null, e.g. "35209.930")
+     |       +--- overall_score   (String, e.g. "35209.930")
+```
+
+Phase 2 converts these rows into `phase2.json` → `data.team_scores`
+(`{ "team_key", "rank" (Integer), "ind_score" (Float), "overall_score" (Float) }`, see `Import::TeamScoreExtractor`
+and PHASES.md, Phase 2), which Phase 6 commits as `meeting_team_scores` rows.
+
 ---
 
 **Event Codes**:

@@ -25,31 +25,30 @@
   'legacy-autocomplete-jwt-value' => @jwt } }
   .col-md-3.my-1
     - if @show_top_labels
-      = label_tag(namespaced_attr_name("#{entity_name}_id"), 'id')
+      = label_tag(namespaced_attr_name("#{entity_name}_id"), 'id', class: 'form-label')
     .input-group
       = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
                         data: { 'legacy-autocomplete-target' => 'field' })
-      .input-group-append
-        %i.fa.fa-search.btn.btn-sm.btn-outline-secondary.pt-2{ data: { action: 'click->legacy-autocomplete#processUpdate',
-          toggle: 'tooltip', title: I18n.t('dashboard.search_tooltip') } }
+      %i.fa.fa-search.btn.btn-sm.btn-outline-secondary.pt-2{ data: { action: 'click->legacy-autocomplete#processUpdate',
+        bs_toggle: 'tooltip', bs_title: I18n.t('dashboard.search_tooltip') } }
   .col.my-1
     - if @show_top_labels
-      = label_tag(namespaced_attr_name(entity_name), I18n.t('dashboard.search_field', field: '...'))
+      = label_tag(namespaced_attr_name(entity_name), I18n.t('dashboard.search_field', field: '...'), class: 'form-label')
     = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
                      placeholder: I18n.t('dashboard.search_field', field: entity_name),
                      data: { 'legacy-autocomplete-target' => 'search' })
   - if @target2_field
     %div{ class: @target2_class }
       - if @show_top_labels
-        = label_tag(namespaced_attr_name(@target2_field), @target2_field)
+        = label_tag(namespaced_attr_name(@target2_field), @target2_field, class: 'form-label')
       = text_field_tag(namespaced_attr_name(@target2_field), nil, class: 'form-control',
                        data: { 'legacy-autocomplete-target' => 'field2' })
     - if @target3_field
       %div{ class: @target3_class }
         - if @show_top_labels
-          = label_tag(namespaced_attr_name(@target3_field), @target3_field)
+          = label_tag(namespaced_attr_name(@target3_field), @target3_field, class: 'form-label')
         = text_field_tag(namespaced_attr_name(@target3_field), nil, class: 'form-control',
                          data: { 'legacy-autocomplete-target' => 'field3' })
   .col-12
     %small
-      %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'legacy-autocomplete-target' => 'desc' } }
+      %i.form-text.text-body-secondary{ id: "#{entity_name}-desc", data: { 'legacy-autocomplete-target' => 'desc' } }

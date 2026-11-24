@@ -1,0 +1,14 @@
+%li.list-group-item.d-flex.align-items-start.gap-2.py-2.dashboard-status-row{ id: "status-row-#{result.key.to_s.dasherize}",
+                                                                              data: { status_key: result.key, status_level: result.level } }
+  %i.fa-solid.fa-fw.pt-1{ class: [LEVEL_ICON.fetch(result.level), LEVEL_TEXT_CSS.fetch(result.level)], 'aria-hidden' => 'true' }
+  .flex-grow-1.dashboard-status-body
+    .d-flex.flex-wrap.align-items-center.gap-2
+      %span.fw-semibold= result.label
+      %span.badge.rounded-pill{ class: LEVEL_BADGE_CSS.fetch(result.level) }= level_text
+    - if result.detail.present?
+      .small.text-body-secondary.text-break= result.detail
+    - if as_of_text
+      .small.text-body-secondary= as_of_text
+    - if result.action_path
+      .mt-1.dashboard-status-action
+        = render(Dashboard::ActionButtonComponent.new(action: result.action, css: action_css))

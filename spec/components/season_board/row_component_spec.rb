@@ -66,7 +66,7 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
   it 'renders :possible_unlinked_meeting as a warning badge' do
     page = render_row(build_row(next_action: action(:crawl), flags: [:possible_unlinked_meeting]))
     badge = page.css('[data-flag="possible_unlinked_meeting"]').first
-    expect(badge['class']).to include('badge-warning')
+    expect(badge['class']).to include('text-bg-warning')
     expect(badge.text.strip).to eq('a local meeting on this date is not linked yet')
     expect(badge['title']).to be_present
   end
@@ -111,9 +111,17 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       end
     end
 
-    it 'links the Push page for :push' do
+    it 'links the Outbox focused on the row script for :push' do
       page = render_row(build_row(state: :sql_pending, next_action: action(:push, sql_path: '/x.sql', sql_paths: ['/x.sql'])))
-      expect(page.css('a.btn').first['href']).to eq('/push/index')
+      expect(page.css('a.btn').first['href']).to eq('/outbox?focus=x.sql')
+    end
+
+    it 'focuses the script file name, for absolute and relative script paths' do
+      ['/home/x/goggles_admin2/crawler/data/results.new/242/0001-a-lt4.sql', 'crawler/data/results.new/242/0001-a-lt4.sql',
+       'data/results.new/242/0001-a-lt4.sql'].each do |sql_path|
+        page = render_row(build_row(state: :sql_pending, next_action: action(:push, sql_path:, sql_paths: [sql_path])))
+        expect(page.css('a.btn').first['href']).to eq('/outbox?focus=0001-a-lt4.sql')
+      end
     end
 
     it 'renders the inline link form with the orphans for :link' do
@@ -129,7 +137,7 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
     it 'renders a muted note instead of an empty select for :link without link candidates' do
       page = render_row(build_row(state: :archived_unlinked, next_action: action(:link, bases: ['a'])))
       expect(page.css('form, select')).to be_empty
-      expect(page.css('small.text-muted').map(&:text)).to include('no unlinked calendar to link to')
+      expect(page.css('small.text-body-secondary').map(&:text)).to include('no unlinked calendar to link to')
     end
 
     it 'offers the secondary link control only to unmatched rows when orphans exist' do
@@ -187,14 +195,14 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
     it 'shows the last success as muted text' do
       done = entry(status: :done, finished_at: Time.zone.local(2026, 11, 8, 10, 0))
       page = render_row(build_row(next_action: action(:crawl), activity: { crawl: done, extract: nil }))
-      expect(page.css('.text-muted').map(&:text).join).to include('last crawl OK 08/11 10:00')
+      expect(page.css('.text-body-secondary').map(&:text).join).to include('last crawl OK 08/11 10:00')
     end
 
     it 'shows a stale running crawl as a "seems stuck" warning, keeping the action enabled' do
       stuck = entry(status: :running, origin: :auto, started_at: Time.zone.local(2026, 11, 8, 8, 40))
       expect(stuck).to be_stale
       page = render_row(build_row(next_action: action(:crawl), activity: { crawl: stuck, extract: nil }))
-      expect(page.css('span.badge-warning').map(&:text).join).to include('Crawl seems stuck since 08:40')
+      expect(page.css('span.text-bg-warning').map(&:text).join).to include('Crawl seems stuck since 08:40')
       expect(page.css('form[action="/season_board/crawl"] button[type=submit]')).not_to be_empty
       expect(page.css('button[disabled]')).to be_empty
     end

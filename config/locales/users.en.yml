@@ -13,6 +13,7 @@ en:
     swimmer_binding:
       title: "ID yourself as a Swimmer"
     help_labels:
+      change_password: "Change password"
       unhappy?: "Unhappy?"
       unhappy_erase_explanation: "You can easily erase you Master-Goggles account by clicking the button below."
       erase_explanation_about_results: "(This won't touch the Meeting results data published by each Swimming Federation.)"

@@ -1,0 +1,70 @@
+-#
+  Commit summary: the meeting (how it was matched), the existing / new counts per entity and the new teams and
+  swimmers. Locals: commit_summary (DataFix::CommitSummary).
+:ruby
+  meeting = commit_summary.meeting
+  lists = [[:new_teams, commit_summary.new_teams], [:new_swimmers, commit_summary.new_swimmers]]
+  limit = DataFix::CommitSummary::LIST_LIMIT
+.row.g-3
+  .col-lg-6
+    .card.h-100
+      .card-header
+        %strong= t('data_fix.commit_summary.meeting')
+      .card-body
+        %p.mb-1
+          %strong= meeting['name']
+          %span.text-body-secondary= meeting['header_date']
+        - if meeting['id'].present?
+          %p.mb-1
+            %span.badge.text-bg-success ID #{meeting['id']}
+            %span.ms-1 #{t('data_fix.commit_summary.matched_by')}: #{t("data_fix.commit_summary.matched_by_#{meeting['matched_by']}")}
+        - else
+          %p.mb-1
+            %span.badge.text-bg-primary= t('data_fix.commit_summary.new_meeting')
+        - if commit_summary.result_free?
+          %p.mb-0.small.text-body-secondary= t('data_fix.commit_summary.structure_only')
+  .col-lg-6
+    .card.h-100
+      .card-body.p-0
+        %table.table.table-sm.mb-0#commit-summary-counts
+          %thead
+            %tr
+              %th.ps-3= t('data_fix.commit_summary.entity')
+              %th.text-end= t('data_fix.commit_summary.existing')
+              %th.text-end.pe-3= t('data_fix.commit_summary.new')
+          %tbody
+            - commit_summary.rows.each do |row|
+              %tr{ data: { summary_row: row.key } }
+                %td.ps-3= t("data_fix.commit_summary.#{row.key}")
+                %td.text-end= row.existing
+                %td.text-end.pe-3= row.new
+            - if commit_summary.overwrite_deletions.positive?
+              %tr.table-warning
+                %td.ps-3= t('data_fix.commit_summary.overwrite_deletions')
+                %td.text-end= commit_summary.overwrite_deletions
+                %td.pe-3
+            - if commit_summary.team_scores.any?
+              %tr
+                %td.ps-3= t('data_fix.commit_summary.team_scores')
+                %td.text-end
+                %td.text-end.pe-3= commit_summary.team_scores.size
+
+.row.g-3.mt-0
+  - lists.each do |key, entries|
+    .col-lg-6
+      .card.h-100{ id: "commit-summary-#{key.to_s.dasherize}" }
+        .card-header.d-flex
+          %strong= t("data_fix.commit_summary.#{key}")
+          %span.badge.text-bg-primary.ms-auto= entries.size
+        .card-body
+          - if entries.empty?
+            %p.mb-0.text-body-secondary= t('data_fix.commit_summary.none')
+          - else
+            %ul.list-unstyled.small.mb-0
+              - entries.first(limit).each do |entry|
+                %li
+                  = entry['name']
+                  - if entry['year_of_birth'].present?
+                    %span.text-body-secondary (#{entry['gender_type_code']} #{entry['year_of_birth']})
+            - if entries.size > limit
+              %p.small.text-body-secondary.mb-0= t('data_fix.commit_summary.more', count: entries.size - limit)

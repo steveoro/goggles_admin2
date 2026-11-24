@@ -18,17 +18,17 @@ class UsersGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:name, mandatory: true)
   column(:description, mandatory: true)
-  column(:sign_in_count, header: 'Sign-in count', align: :right, mandatory: true)
-  column(:last_sign_in_at, header: 'Last sign-in at', mandatory: true,
+  column(:sign_in_count, align: :right, mandatory: true)
+  column(:last_sign_in_at, mandatory: true,
                            order_by_value: ->(user) { user.last_sign_in_at || Time.zone.at(0) })
-  column(:failed_attempts, header: 'Failed attempts', align: :right, mandatory: true)
+  column(:failed_attempts, align: :right, mandatory: true)
 
-  column(:locked, header: 'Locked?', html: true, mandatory: true, order: false) do |asset|
+  column(:locked, html: true, mandatory: true, order: false) do |asset|
     render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
                                                  column_name: 'locked_at', bkgnd_color: 'red', true_color: 'text-danger', true_icon: 'fa-ban'))
   end
 
-  column(:active, header: 'Active?', html: true, mandatory: true, order: false) do |asset|
+  column(:active, html: true, mandatory: true, order: false) do |asset|
     render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
                                                  column_name: 'active', bkgnd_color: 'green', true_color: 'text-success', true_icon: 'fa-check'))
   end

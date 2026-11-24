@@ -8,31 +8,34 @@ module SeasonBoard
   # place, linked local meeting (with MIR/MRR counts), state badge (+ flags), crawl/extraction
   # activity and the primary action (derived from <tt>row.next_action.kind</tt>).
   #
-  # The POST actions (crawl, extract, link) take only the FIN event ID: the URLs are looked up
-  # server-side. They are disabled while the row is busy (a crawl/extraction is queued or running).
+  # The POST actions (crawl, extract, prepare, link) take only the FIN event ID: the URLs are looked up
+  # server-side. They are disabled while the row is busy (a crawl/extraction/prepare is queued or running).
+  # The action targets come from SeasonBoard::ActionPaths (shared with the pages summarising the board).
+  #
+  # Phase 10: a row with a Data-Fix source also offers "Prepare" (a DataFixPrepareJob, phases 1-5 only) and the
+  # automation hold toggle (SECONDARY_PREPARE_STATES / #hold_toggle?); "Commit" only opens the commit summary.
   #
   class RowComponent < ViewComponent::Base
-    # Bootstrap badge class for each state:
+    # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):
+    NEUTRAL_CSS = 'bg-body-tertiary text-body-emphasis border'
+
+    # Bootstrap 5 badge colour class for each state:
     STATE_CSS = {
-      cancelled: 'badge-dark', sql_pending: 'badge-danger', in_review: 'badge-warning', results_ready: 'badge-primary',
-      structure_ready: 'badge-info', manifest_pending: 'badge-info', committed_with_results: 'badge-success',
-      structure_committed: 'badge-secondary', crawled_no_manifest: 'badge-light border',
-      archived_unlinked: 'badge-warning', link_not_crawled: 'badge-light border', not_linked: 'badge-light border'
+      cancelled: 'text-bg-dark', sql_pending: 'text-bg-danger', prepare_failed: 'text-bg-danger', needs_review: 'text-bg-warning',
+      ready_to_commit: 'text-bg-success', in_review: 'text-bg-warning', results_ready: 'text-bg-primary',
+      structure_ready: 'text-bg-info', manifest_pending: 'text-bg-info', committed_with_results: 'text-bg-success',
+      structure_committed: 'text-bg-secondary', crawled_no_manifest: NEUTRAL_CSS,
+      archived_unlinked: 'text-bg-warning', link_not_crawled: NEUTRAL_CSS, not_linked: NEUTRAL_CSS
     }.freeze
 
     # Flags rendered as warning badges
     WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
 
-    # Actions run through a POST of the FIN event ID: kind => path helper
-    POST_ACTIONS = { crawl: :season_board_crawl_path, check_results: :season_board_crawl_path,
-                     extract_manifest: :season_board_extract_path }.freeze
+    # States offering a secondary "Prepare" button (the primary action stays the review / commit link).
+    SECONDARY_PREPARE_STATES = %i[needs_review in_review results_ready structure_ready crawled_no_manifest].freeze
 
-    # Data-Fix review step for each phase number: [route helper, params key]
-    PHASE_STEPS = {
-      1 => %i[review_sessions_path phase_v2], 2 => %i[review_teams_path phase2_v2],
-      3 => %i[review_swimmers_path phase3_v2], 4 => %i[review_events_path phase4_v2],
-      5 => %i[review_results_path phase5_v2]
-    }.freeze
+    # States whose source can be held (no automatic prepare) or released.
+    HOLD_STATES = (SECONDARY_PREPARE_STATES + %i[prepare_failed ready_to_commit]).freeze
 
     # == Params:
     # - row: SeasonBoard::Row
@@ -60,11 +63,11 @@ module SeasonBoard
     end
 
     def state_css
-      STATE_CSS.fetch(row.state, 'badge-light border')
+      STATE_CSS.fetch(row.state, NEUTRAL_CSS)
     end
 
     def state_label
-      I18n.t("season_board.states.#{row.state}", phase: row.state_detail[:phase])
+      StateText.label(row.state, row.state_detail)
     end
 
     def state_tooltip
@@ -78,7 +81,7 @@ module SeasonBoard
 
     # Badge class of a flag (warning flags stand out)
     def flag_css(flag)
-      WARNING_FLAGS.include?(flag) ? 'badge-warning' : 'badge-secondary'
+      WARNING_FLAGS.include?(flag) ? 'text-bg-warning' : 'text-bg-secondary'
     end
 
     def action_label
@@ -86,33 +89,44 @@ module SeasonBoard
     end
 
     def post_action?
-      POST_ACTIONS.key?(action_kind)
+      ActionPaths.post?(action_kind)
     end
 
     def post_action_path
-      public_send(POST_ACTIONS.fetch(action_kind))
+      ActionPaths.post_path(action)
     end
 
     # Primary action path for the link-style actions (nil when unavailable)
     def link_action_path
-      case action_kind
-      when :review_results, :review_structure, :review_header
-        review_sessions_path(file_path: action[:file_path], phase_v2: 1)
-      when :resume_review
-        helper, key = PHASE_STEPS.fetch(action[:phase].to_i, PHASE_STEPS[1])
-        public_send(helper, { file_path: action[:file_path], key => 1 })
-      when :push
-        push_index_path
-      end
+      ActionPaths.link_path(action)
     end
 
     def link_action?
-      %i[review_results review_structure review_header resume_review push].include?(action_kind)
+      ActionPaths.link?(action_kind)
     end
 
     # True when the POST action has no FIN URL to work with
     def missing_url?
       post_action? && row.url.blank?
+    end
+
+    # Source path of the row's next action (review, commit, prepare), or nil.
+    def source_path
+      action&.params&.dig(:file_path).presence
+    end
+
+    # True for a row offering the secondary "Prepare" button.
+    def secondary_prepare?
+      !row.busy? && source_path.present? && row.fin_event_id.present? && SECONDARY_PREPARE_STATES.include?(row.state)
+    end
+
+    # True for a row offering the automation hold toggle.
+    def hold_toggle?
+      !row.busy? && source_path.present? && row.fin_event_id.present? && HOLD_STATES.include?(row.state)
+    end
+
+    def held?
+      row.flag?(:prepare_held)
     end
 
     def show_secondary_link?
@@ -129,26 +143,26 @@ module SeasonBoard
 
     # == Activity badges:
 
-    # Returns an Array of Hashes { css:, text:, spin: } for the crawl/extract entries of the row
+    # Returns an Array of Hashes { css:, text:, spin: } for the crawl/extract/prepare entries of the row
     def activity_items
-      %i[crawl extract].filter_map { |kind| activity_item(kind, row.activity[kind]) }
+      ActivityLog::KINDS.filter_map { |kind| activity_item(kind, row.activity[kind]) }
     end
 
     def activity_item(kind, entry)
       return unless entry
-      return { css: entry.running? ? 'badge-primary' : 'badge-info', text: busy_text(kind, entry), spin: entry.running? } if entry.busy?
-      return { css: 'badge-warning', text: stuck_text(kind, entry), tooltip: I18n.t('season_board.activity.stuck_tooltip') } if entry.stale?
+      return { css: entry.running? ? 'text-bg-primary' : 'text-bg-info', text: busy_text(kind, entry), spin: entry.running? } if entry.busy?
+      return { css: 'text-bg-warning', text: stuck_text(kind, entry), tooltip: I18n.t('season_board.activity.stuck_tooltip') } if entry.stale?
       return { css: 'text-danger', text: failed_text(entry), tooltip: entry.message } if entry.failed?
 
       return unless entry.done? && entry.finished_at
 
-      { css: 'text-muted', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
-                                                                              kind: I18n.t("season_board.activity.kinds.#{kind}")) }
+      { css: 'text-body-secondary', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
+                                                                                       kind: I18n.t("season_board.activity.kinds.#{kind}")) }
     end
 
     def busy_text(kind, entry)
       origin = entry.origin == :auto ? 'auto' : 'manual'
-      return I18n.t("season_board.activity.extract_#{entry.status}", time: hour(entry.started_at || entry.queued_at)) if kind == :extract
+      return I18n.t("season_board.activity.#{kind}_#{entry.status}", time: hour(entry.started_at || entry.queued_at)) if %i[extract prepare].include?(kind)
 
       I18n.t("season_board.activity.crawl_#{origin}_#{entry.status}", time: hour(entry.started_at || entry.queued_at))
     end

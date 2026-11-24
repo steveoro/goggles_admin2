@@ -4,6 +4,19 @@ This document describes the common source/destination contract shared by all
 merge strategies in `goggles_admin2` and the specific columns each class
 overwrites.
 
+> **From the UI (phases 11 and 13):** every merge and fix strategy also runs as a maintenance operation (`/operations`,
+> or the **Fix** buttons of the data health findings): `Merge::Badge` => `badge.merge`, `Merge::Swimmer` =>
+> `swimmer.merge`, `Merge::Team` => `team.merge`, `Merge::Meeting` => `meeting.merge`, `Merge::TeamInMeeting` =>
+> `meeting.team_fix`, `Merge::TeamInBadge` => `badge.team_fix`, `Merge::SwimmerInBadge` => `badge.swimmer_fix`,
+> `Merge::SeasonBadgeFixer` (the former `merge:season_fix` loop) => `season.badge_fix`, `Merge::DuplicateResultCleaner`
+> => `results.dedupe`; the checkers (`TeamChecker`, `SwimmerChecker`, `BadgeChecker`, `BadgeSeasonChecker`,
+> `DupBadgesForTeamChecker`) are the read-only inspectors (`team.check`, `swimmer.check`, `badge.check`,
+> `season.badges`, `team.dup_badges`). Same calls and options as the `merge:*` / `fix:*` / `check:*` rake tasks, which
+> since phase 13 are thin callers of the same operations (`Maintenance::RakeRunner`): a dry run first (checker log,
+> warnings, errors, SQL), then a confirmed local apply that registers the script in the SQL Outbox
+> (`results.new/misc/`). See `app/services/maintenance/operations/` and the data health section of
+> `docs/season_board.md`.
+
 ## Common contract
 
 Every merge follows the same identity rule:

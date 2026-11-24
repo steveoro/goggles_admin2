@@ -4,22 +4,11 @@ module DataFix
   # EventsController: Phase 4 (events) review & edit actions, plus the results chunk endpoint.
   class EventsController < BaseController
     def review_events
-      redirect_to(review_events_legacy_path(request.query_parameters)) && return if params[:phase4_v2].blank?
-
       source_path = @source_path
-      season = source_resolver.detect_season_from_pathname(source_path)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      phase_path = source_resolver.default_phase_path_for(source_path, 4)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 4,
-                                       review_path: method(:review_events_path)) do
-        Import::Solvers::EventSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: source_resolver.default_phase_path_for(source_path, 1)
-        )
-      end
+      phase_path = pipeline.phase_path(4)
+      return unless ensure_phase_file!(phase: 4, review_path: method(:review_events_path))
 
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      @retry_needed = pipeline.settle!(4)
       pfm = PhaseFileManager.new(phase_path)
       @phase4_meta = pfm.meta
       @phase4_data = pfm.data
@@ -104,6 +93,11 @@ module DataFix
           )
         end
       end
+
+      # (phase 12) events needing the operator (verdict issues naming them), issue navigation, "needs you only"
+      @event_issue_codes = DataFix::IssueMarkers.phase4(events: @all_events, verdict: pipeline_summary&.[](4))
+      @issues_only = issues_only_switch(@event_issue_codes.any?(&:present?))
+      @issue_nav = DataFix::IssueNav.single_page(@event_issue_codes.count(&:present?))
     end
 
     # Update a single Phase 4 event entry by session and event index
@@ -117,7 +111,7 @@ module DataFix
 
       if session_index.nil? || event_index.nil?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 4)
@@ -342,7 +336,7 @@ module DataFix
 
       if session_index.nil? || event_index.nil?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 4)
@@ -366,68 +360,10 @@ module DataFix
       sessions[session_index]['events'] = events
       data['sessions'] = sessions
 
-      # Clear downstream phase data (phase5) when events are modified
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 
       redirect_to review_events_path(file_path:, phase4_v2: 1), notice: I18n.t('data_import.messages.updated')
-    end
-
-    # Returns an HTML partial with the detailed results for a specific (event_key, gender, category)
-    # in Step 5 v2. This reads from the original source JSON (LT4 expected).
-    def results_chunk_v2
-      file_path = params[:file_path]
-      event_key = params[:event_key].to_s
-      gender = params[:gender].to_s
-      category = params[:category].to_s
-      if file_path.blank? || event_key.blank? || gender.blank? || category.blank?
-        return render plain: I18n.t('data_import.errors.invalid_request'), status: :bad_request
-      end
-
-      source_path = source_resolver.resolve_working_source_path(file_path)
-      begin
-        data_hash = source_resolver.parsed_source_json(source_path)
-      rescue StandardError => e
-        return render plain: e.message, status: :unprocessable_content
-      end
-
-      events = Array(data_hash['events'])
-      # Match by eventCode if possible, else fallback to distance|stroke key
-      dist_key = nil
-      stroke_key = nil
-      dist_key, stroke_key = event_key.split('|', 2) if event_key.include?('|')
-      matched = events.select do |ev|
-        code = ev['eventCode'].to_s
-        if code.present?
-          code == event_key
-        else
-          d = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
-          s = ev['stroke'] || ev['style'] || ev['eventStroke']
-          d.to_s == dist_key.to_s && s.to_s == stroke_key.to_s
-        end
-      end
-
-      # Collect results for the requested gender and category
-      results = []
-      matched.each do |ev|
-        Array(ev['results']).each do |res|
-          g = (res['gender'] || ev['eventGender']).to_s
-          c = res['category'] || res['categoryTypeCode'] || res['category_code'] || res['cat'] || res['category_type_code']
-          next unless g == gender && c.to_s == category.to_s
-
-          results << res
-        end
-      end
-
-      @event_key = event_key
-      @gender = gender
-      @category = category
-      @results = results
-      render partial: 'data_fix/results_category_v2', formats: [:html]
     end
   end
 end

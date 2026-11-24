@@ -47,6 +47,9 @@ Rails.application.configure do
   # Keep the FIN page watcher state separate from the development one (see FedernuotoWatch::StateStore):
   config.x.federnuoto_watch.state_path = Rails.root.join('tmp/federnuoto-watch.test.json')
   config.x.season_board.activity_log_path = Rails.root.join('tmp/season-board.test.json')
+  # Local crawler status & PID files read by SystemStatus::CrawlerProbe (never the developer's real ones):
+  config.x.crawler.status_path = Rails.root.join('tmp/crawler-status.test.json')
+  config.x.crawler.pid_path = Rails.root.join('tmp/pids/crawler.test.pid')
   # Action Mailer default URL, required by Devise:
   config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 
@@ -55,7 +58,21 @@ Rails.application.configure do
   config.active_support.report_deprecations = false
 
   # Raises error for missing translations.
-  # config.action_view.raise_on_missing_translations = true
+  # Missing translations (views and I18n.t) must fail the suite:
+  config.i18n.raise_on_missing_translations = true
+
+  # GogglesDb's Localizable probes the optional '<scope>.alt_label_<code>' / 'long_label_<code>'
+  # keys and falls back to the default label when they are missing: keep those probes non-raising.
+  config.after_initialize do
+    strict_handler = I18n.exception_handler
+    I18n.exception_handler = lambda do |exception, locale, key, options|
+      if exception.is_a?(I18n::MissingTranslation) && key.to_s.match?(/(?:\A|\.)(?:alt|long)_label_[^.]+\z/)
+        "translation missing: #{locale}.#{key}"
+      else
+        strict_handler.call(exception, locale, key, options)
+      end
+    end
+  end
 
   # ============================================================================
   # Bullet gem specific configuration:

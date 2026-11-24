@@ -1,0 +1,10 @@
+= turbo_frame_tag('dashboard-system-frame', target: '_top') do
+  %ul.list-group.list-group-flush#dashboard-status-rows
+    - @results.each do |result|
+      = render(Dashboard::StatusRowComponent.new(result:))
+  .border-top.px-3.py-2#dashboard-automation
+    %h3.h6.mb-2= t('pipeline_automation.switches.title')
+    = render('automation/switches', return_to: 'dashboard')
+    %p.small.text-body-secondary.mt-2.mb-0#dashboard-worker-mode
+      %i.fa-solid.fa-gears{ 'aria-hidden' => 'true' }
+      = t(ENV['SOLID_QUEUE_IN_PUMA'] == 'false' ? 'pipeline_automation.worker_mode.separate' : 'pipeline_automation.worker_mode.puma')

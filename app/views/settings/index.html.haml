@@ -1,59 +1,63 @@
-%meta
-.wrapper-body
-  .spacer-left
+= render(Shell::PageHeaderComponent.new(title: t('dashboard.settings.title'), count: @domain_count))
+- if @remote
+  = render(Grid::EditModalComponent.new(controller_name: controller_name,
+           asset_row: Setting.new, jwt: current_user.jwt))
 
-  .main-content
-    = render(DashboardTitleComponent.new(title: t('dashboard.settings.title'), row_count: @domain_count))
-    - if @remote
-      = render(Grid::EditModalComponent.new(controller_name: controller_name,
-               asset_row: Setting.new, jwt: current_user.jwt))
+- if api_offline_session?
+  %section.my-4#api-offline-help
+    .alert.alert-warning
+      %h5.alert-heading
+        %i.fa.fa-exclamation-circle.text-warning
+        = t('api_offline.title')
+      %p.mb-1= t('api_offline.settings_help', url: api_offline_info['url'])
+      %p.mb-0
+        %small
+          %code= api_offline_info['reason']
 
-    - if api_offline_session?
-      %section.my-4#api-offline-help
-        .alert.alert-warning.shadow-box
-          %h5.alert-heading
-            %i.fa.fa-exclamation-circle.text-warning
-            = t('api_offline.title')
-          %p.mb-1= t('api_offline.settings_help', url: api_offline_info['url'])
-          %p.mb-0
-            %small
-              %code= api_offline_info['reason']
+%section.my-4#curr-config
+  = form_tag(settings_api_config_path, id: 'frm-curr-config', method: :post) do
+    .card.card-body.bg-success-subtle#curr-config-box
+      .row
+        .col-12.mb-3
+          = label_tag(:connect_to, t('dashboard.settings.connection.connect_to_label'), class: 'form-label')
+          = text_field_tag(:connect_to, @connection_url, required: true,
+                            autofocus: true, class: 'form-control')
+      .row
+        .col-12.text-center
+          %i= @connection_status
+      .row
+        .col-12.mt-2.text-end
+          = submit_tag(t('dashboard.settings.connection.save_btn'), id: 'btn-save-config',
+                       class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'Save', type: 'submit',
+                       data: { turbo_confirm: t('dashboard.settings.connection.save_confirmation') })
 
-    %section.my-4#curr-config
-      = form_tag(settings_api_config_path, id: 'frm-curr-config', method: :post) do
-        .container.bg-light-green.pt-3.shadow-box#curr-config-box
-          .row
-            .col-12
-              .form-group
-                = label_tag(:connect_to, t('dashboard.settings.connection.connect_to_label'))
-                = text_field_tag(:connect_to, @connection_url, required: true,
-                                  autofocus: true, class: 'form-control')
-          .row
-            .col-12.text-center
-              %i= @connection_status
-          .row
-            .col-12.mt-2.mb-3.text-right
-              = submit_tag(t('dashboard.settings.connection.save_btn'), id: 'btn-save-config',
-                           class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'Save', type: 'submit',
-                           data: { turbo_confirm: t('dashboard.settings.connection.save_confirmation') })
+%section.my-4#api-target-label
+  = form_with(url: settings_api_target_label_path, method: :post, id: 'api-target-label-form',
+              class: 'card card-body shadow-sm') do
+    %h2.h6.card-title= t('shell.api_label_form.title')
+    %p.small.text-body-secondary.mb-2= t('shell.api_label_form.help')
+    .row.g-2.align-items-end
+      .col-md-8
+        = label_tag('api-target-label', t('shell.api_label_form.field', url: @connection_url), class: 'form-label small')
+        = text_field_tag(:label, Shell::APITarget.labels[@connection_url.to_s.delete_suffix('/')],
+                         id: 'api-target-label', class: 'form-control form-control-sm',
+                         maxlength: Shell::APITarget::LABEL_MAX_LENGTH,
+                         placeholder: t('shell.api_label_form.placeholder'))
+      .col-md-4
+        = submit_tag(t('shell.api_label_form.save'), id: 'btn-save-api-target-label', class: 'btn btn-sm btn-outline-primary w-100')
 
-    %section.my-4#data-grid
+%section.my-4#data-grid
+  - if @remote
+    = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,
+             controller_name: controller_name, request_params: @grid_filter_params))
+    = datagrid_form_with(model: @grid, method: :get,
+                        url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
+    = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+
+  .text-center#settings-source
+    %i
       - if @remote
-        = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,
-                 controller_name: controller_name, request_params: @grid_filter_params))
-        = datagrid_form_with(model: @grid, method: :get,
-                            url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
-        = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
-
-      .row-fluid.text-center#settings-source
-        %i
-          - if @remote
-            %small.text-muted (REMOTE #{@connection_url} settings)
-          - else
-            %small.text-danger= t('api_offline.local_settings', db: GogglesDb::AppParameter.connection_db_config.database)
-      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-
-    %section.text-center.fixed-bottom#footer
-      &nbsp;
-
-  .spacer-right
+        %small.text-body-secondary= t('dashboard.settings.remote_source', url: @connection_url)
+      - else
+        %small.text-danger= t('api_offline.local_settings', db: GogglesDb::AppParameter.connection_db_config.database)
+  = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })

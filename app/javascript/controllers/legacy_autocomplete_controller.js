@@ -443,7 +443,7 @@ export default class extends Controller {
         option: (data, escape) => {
           const row = data._row || {}
           const descValue = this.computeLabelDescription(this, row)
-          return `<div class="option">${escape(data.text)} - <small class="text-muted">${escape(descValue)}</small></div>`
+          return `<div class="option">${escape(data.text)} - <small class="text-body-secondary">${escape(descValue)}</small></div>`
         }
       },
       onItemAdd: (value) => {
@@ -509,7 +509,7 @@ export default class extends Controller {
         option: (data, escape) => {
           const row = data._row || {}
           const descValue = this.computeLabelDescription(this, row)
-          return `<div class="option">${escape(data.text)} - <small class="text-muted">${escape(descValue)}</small></div>`
+          return `<div class="option">${escape(data.text)} - <small class="text-body-secondary">${escape(descValue)}</small></div>`
         }
       },
       onItemAdd: (value) => {

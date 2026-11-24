@@ -2,8 +2,6 @@ it:
   season_board:
     title: 'Plancia stagione'
     nav: 'Plancia stagione'
-    home_button: 'Plancia stagione'
-    home_button_tooltip: "Flusso settimanale per l'ultima stagione MASFIN: controllo, crawl, revisione e push, una riga per meeting FIN"
     back_to_board: 'Torna alla Plancia stagione'
     header:
       season: 'Stagione %{description}'
@@ -13,8 +11,8 @@ it:
       board_sql_pending:
         one: '1 script SQL in attesa di invio'
         other: '%{count} script SQL in attesa di invio'
-      board_sql_pending_tooltip: 'Script di collegamento calendario / backfill scritti dalla Plancia stagione'
-      board_sql_pending_link: 'Apri la pagina di invio'
+      board_sql_pending_tooltip: 'Script di questa stagione diversi dai commit Data-Fix (collegamenti calendario, backfill, team manager, merge, ...)'
+      board_sql_pending_link: "Apri l'Outbox"
     empty:
       no_rows: 'Lo snapshot del calendario FIN è vuoto: il monitor non ha ancora salvato nessun meeting.'
       check_now: 'Controlla ora'
@@ -124,7 +122,7 @@ it:
       link_secondary: 'Collega a meeting...'
       link_select_prompt: 'Scegli una riga del calendario...'
       no_link_candidates: 'nessun calendario non collegato a cui collegarsi'
-      busy_tooltip: 'Per questo meeting un crawl o un''estrazione è già in coda o in corso'
+      busy_tooltip: 'Per questo meeting un crawl, un''estrazione o una preparazione è già in coda o in corso'
       no_url: 'Nessun link FIN disponibile'
     orphans:
       title: 'Righe di calendario non presenti nella lista FIN (%{count})'

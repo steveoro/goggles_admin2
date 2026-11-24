@@ -1,0 +1,51 @@
+:ruby
+  relative = file_guard.relative(@pdf_path)
+  # (the frame reloads itself only while the scan is queued or running: a finished result is never re-rendered under
+  #  the operator, e.g. while the log is open)
+  frame_src = (sources_pdf_scan_result_path(path: relative) if @scan&.pending?)
+  live = { controller: 'live-frames', 'live-frames-ping-ids-value': [PdfScanJob::NOTIFY_DOM_ID].to_json, 'live-frames-interval-value': 5000 }
+= render(partial: 'sources/header', locals: { tab: :pdfs, path: sources_pdfs_path })
+
+%h2.h5.text-break.mb-3#sources-pdf-name
+  %i.fa-solid.fa-file-pdf{ 'aria-hidden' => 'true' }
+  = @pdf_path.basename
+
+.row.g-3
+  .col-lg-5
+    .card#sources-pdf-scan-form-card
+      .card-header.fw-semibold= t('sources.pdfs.scan.form_title')
+      .card-body
+        = form_with(url: sources_pdf_scan_path, method: :post, id: 'frm-sources-pdf-scan') do
+          = hidden_field_tag(:path, relative)
+          .mb-2
+            = label_tag(:ffamily, t('sources.pdfs.scan.ffamily'), class: 'form-label small')
+            = select_tag(:ffamily, options_for_select(@format_families, @scan&.options&.dig('ffamily')), include_blank: t('sources.pdfs.scan.any_family'),
+                                                                                                         class: 'form-select form-select-sm')
+          .row.g-2.mb-2
+            .col-6
+              = label_tag(:start_page, t('sources.pdfs.scan.start_page'), class: 'form-label small')
+              = number_field_tag(:start_page, nil, class: 'form-control form-control-sm', min: -1)
+            .col-6
+              = label_tag(:end_page, t('sources.pdfs.scan.end_page'), class: 'form-label small')
+              = number_field_tag(:end_page, nil, class: 'form-control form-control-sm', min: -1)
+          .form-text.mb-2= t('sources.pdfs.scan.pages_hint')
+          .form-check.mb-3
+            = check_box_tag(:debug, '1', false, class: 'form-check-input')
+            = label_tag(:debug, t('sources.pdfs.scan.debug'), class: 'form-check-label small')
+          = button_tag(type: 'submit', class: 'btn btn-sm btn-primary', id: 'btn-sources-pdf-scan', disabled: @scan&.pending?) do
+            %i.fa-solid.fa-magnifying-glass{ 'aria-hidden' => 'true' }
+            = t('sources.pdfs.scan.submit')
+        %p.small.text-body-secondary.mt-2.mb-0= t('sources.pdfs.scan.queue_note')
+  .col-lg-7{ data: live }
+    = turbo_frame_tag('sources-pdf-scan', src: frame_src, target: '_top', data: { live_frames_target: 'frame' }) do
+      = sources_scan_result(@scan, @pdf_path)
+
+.card.mt-3#sources-pdf-txt
+  .card-header.fw-semibold
+    = t('sources.pdfs.txt_title')
+    %code.small.ms-1= @pdf_path.sub_ext('.txt').basename
+  .card-body
+    - if @page1
+      %pre.small.mb-0.sources-txt-preview= @page1
+    - else
+      %p.text-body-secondary.mb-0#sources-pdf-no-txt= t('sources.pdfs.no_txt')

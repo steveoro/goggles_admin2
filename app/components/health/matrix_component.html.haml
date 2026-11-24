@@ -1,0 +1,52 @@
+%section#health-matrix-table{ data: { live_busy: busy?.to_s } }
+  - if rows.empty?
+    %p.text-body-secondary.mb-0#health-matrix-empty= t('health.matrix.empty')
+  - else
+    .table-responsive
+      %table.table.table-sm.table-hover.align-middle.mb-2.health-matrix
+        %thead
+          %tr
+            %th{ scope: 'col' }= t('health.matrix.season')
+            - GROUPS.each do |group|
+              %th.text-center{ scope: 'col' }= t("health.groups.#{group}")
+            %th{ scope: 'col' }= t('health.matrix.last_run')
+            %th{ scope: 'col' }
+              %span.visually-hidden= t('health.matrix.actions')
+        %tbody
+          - rows.each do |row|
+            %tr{ id: "health-season-#{row.season_id}" }
+              %th{ scope: 'row' }
+                = link_to(helpers.health_season_path(row.season_id), class: 'text-decoration-none') do
+                  %span.font-monospace= row.season_id
+                  %span.badge.ms-1{ class: status_css(row) }= season_label(row)
+                .small.text-body-secondary.text-truncate.health-season-description= row.entry.description
+              - GROUPS.each do |group|
+                - cell = row.cells[group]
+                - if runnable?(row, group)
+                  %td{ class: cell_css(cell), title: cell_title(cell), data: { health_cell: "#{row.season_id}-#{group}", level: cell.level } }
+                    = link_to(cell_path(row, group), class: 'd-block text-reset text-decoration-none') do
+                      - if cell.pending?
+                        %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+                        %span.visually-hidden= t('health.run_statuses.running')
+                      - else
+                        = cell_text(cell)
+                      - if cell.stale
+                        %i.fa-solid.fa-clock-rotate-left.ms-1{ 'aria-hidden' => 'true' }
+                - else
+                  %td.text-center.text-body-tertiary{ data: { health_cell: "#{row.season_id}-#{group}", level: 'none' } } ·
+              %td.small.text-nowrap= last_run_text(row)
+              %td.text-end
+                - unless row.entry.no_data?
+                  = button_to(helpers.health_runs_path, params: { season_id: row.season_id, return_to: helpers.health_path },
+                                                        class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline',
+                                                        title: t('health.matrix.rerun_season'), disabled: row.pending?,
+                                                        data: { turbo_frame: '_top' }) do
+                    %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+                    %span.visually-hidden= t('health.matrix.rerun_season')
+  .d-flex.flex-wrap.justify-content-between.gap-2.small.text-body-secondary
+    %span#health-matrix-legend= t('health.matrix.legend')
+    - if no_data_count.positive?
+      - if include_no_data
+        = link_to(t('health.matrix.hide_no_data'), helpers.health_path, data: { turbo_frame: '_top' })
+      - else
+        = link_to(t('health.matrix.show_no_data', count: no_data_count), helpers.health_path(no_data: 1), data: { turbo_frame: '_top' })

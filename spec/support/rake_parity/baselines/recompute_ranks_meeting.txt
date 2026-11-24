@@ -1,0 +1,91 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: recompute:ranks - season  ***
+
+- SIMULATE...............: ✔
+- 1 meetings found.
+
+- Meeting 1/1, ID 18211 'CAMPIONATI ITALIANI FIN', MIRs: 51, MRRs: 7:
+...................................................
+
+Generating file 'NNNN-182-recompute_ranks'...
+
+File '<DATA_ROOT>/results.new/misc/NNNN-182-recompute_ranks.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-182-recompute_ranks.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+--
+-- *** Recompute ranks: season 182, 1 meeting(s) ***
+--
+
+-- Meeting 1/1, ID 18211 'CAMPIONATI ITALIANI FIN', MIRs: 51, MRRs: 7
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840605; -- MPrg: 163640, 12'50"09
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840572; -- MPrg: 163608, 3'11"07
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840571; -- MPrg: 163609, 3'00"25
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840589; -- MPrg: 163621, 5'49"99
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840586; -- MPrg: 163621, 5'58"07
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840585; -- MPrg: 163622, 6'11"89
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840587; -- MPrg: 163623, 4'41"03
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840588; -- MPrg: 163624, 6'32"43
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840578; -- MPrg: 163613, 3'30"11
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840577; -- MPrg: 163614, 3'30"38
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840576; -- MPrg: 163615, 3'00"71
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840581; -- MPrg: 163616, 2'41"24
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840583; -- MPrg: 163617, 2'34"38
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840579; -- MPrg: 163617, 2'46"01
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840582; -- MPrg: 163618, 2'57"06
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840580; -- MPrg: 163619, 3'04"71
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840584; -- MPrg: 163620, 2'36"26
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840575; -- MPrg: 163610, 3'14"02
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840573; -- MPrg: 163611, 2'55"81
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840574; -- MPrg: 163612, 2'47"23
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840595; -- MPrg: 163627, 0'34"05
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840596; -- MPrg: 163628, 0'33"63
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840593; -- MPrg: 163629, 0'46"87
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840592; -- MPrg: 163630, 0'37"12
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840594; -- MPrg: 163631, 0'33"10
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840591; -- MPrg: 163625, 0'33"24
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840590; -- MPrg: 163626, 0'37"53
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840600; -- MPrg: 163632, 0'45"06
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840599; -- MPrg: 163632, 0'45"66
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840598; -- MPrg: 163633, 0'45"62
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840601; -- MPrg: 163634, 0'49"32
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840597; -- MPrg: 163635, 0'35"19
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840567; -- MPrg: 163602, 1'09"54
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840564; -- MPrg: 163603, 1'14"62
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840568; -- MPrg: 163604, 1'08"51
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840565; -- MPrg: 163605, 0'59"10
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840569; -- MPrg: 163605, 1'00"10
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840563; -- MPrg: 163606, 1'17"01
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840566; -- MPrg: 163607, 1'07"43
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840570; -- MPrg: 163607, 1'08"87
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37794; -- MPrg: 163642, 2'15"13
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=2 WHERE id = 37795; -- MPrg: 163642, 2'20"29
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37796; -- MPrg: 163643, 2'30"44
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840560; -- MPrg: 163596, 1'35"92
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840559; -- MPrg: 163597, 1'39"05
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=2 WHERE id = 840558; -- MPrg: 163597, 1'41"76
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840557; -- MPrg: 163598, 1'37"81
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840561; -- MPrg: 163599, 1'22"15
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840562; -- MPrg: 163600, 1'29"33
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840556; -- MPrg: 163601, 1'20"21
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840555; -- MPrg: 163639, 1'29"99
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37797; -- MPrg: 163644, 2'25"85
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37798; -- MPrg: 163645, 2'07"21
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37799; -- MPrg: 163646, 2'27"25
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840603; -- MPrg: 163636, 0'30"78
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840604; -- MPrg: 163637, 0'27"35
+UPDATE meeting_individual_results SET updated_at=NOW(), rank=1 WHERE id = 840602; -- MPrg: 163638, 0'32"45
+UPDATE meeting_relay_results SET updated_at=NOW(), rank=1 WHERE id = 37793; -- MPrg: 163641, 1'58"11
+
+COMMIT;

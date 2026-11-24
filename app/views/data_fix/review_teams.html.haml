@@ -1,206 +1,63 @@
 -# frozen_string_literal: true
 
-= render(partial: 'data_fix_legacy/modal_progress')
+= render(partial: 'goggles/modal_progress')
 
+- page_params = { filter_state: @filter_state, q: @q, teams_per_page: @per_page, file_path: @file_path, phase2_v2: 1 }
 .container-fluid
-  = render(partial: 'data_fix/v2_phase_header',
-           locals: { title: 'Data-Fix V2 • Step 2: Teams (Phase 2)',
-                     active_step: 2,
-                     file_path: @file_path,
-                     retry_needed: @retry_needed })
+  = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 2, name: t('data_fix.steps.teams')),
+                                          subtitle: File.basename(@file_path).split('.json').first)) do |header|
+    - header.with_actions do
+      = link_to(sources_results_path, class: 'btn btn-sm btn-outline-secondary') do
+        %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
+        = t('data_fix.wizard.back_to_files')
+      = link_to(review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)), class: 'btn btn-sm btn-primary') do
+        = t('data_fix.wizard.proceed', number: 3, name: t('data_fix.steps.swimmers'))
+        %i.fa-solid.fa-arrow-right{ 'aria-hidden': 'true' }
 
-  -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    = link_to('< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2')
-    = link_to('Proceed to Step 3 (Swimmers)', review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)),
-              class: 'btn btn-primary')
+  = render(data_fix_stepper(2))
+  = render(DataFix::IssueNavComponent.new(nav: @issue_nav))
 
-  -# Phase Metadata card
-  - basename = File.basename(@file_path).split('.json').first
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 2, metadata: @phase2_meta,
-                                                         extra_info: basename })
+                                                         extra_info: File.basename(@file_path).split('.json').first })
+  - team_scores = Array(@phase2_data['team_scores'])
+  - if team_scores.any?
+    = render(partial: 'data_fix/team_scores_card', locals: { team_scores:, teams: @phase2_data['teams'] })
+
   -# Search and filter controls
   .card.my-2
     .card-header
-      - filter_component = DataFix::TurboFilterStateComponent.new(target_url: review_teams_path,
-                                                                  hidden_params: { file_path: @file_path, phase2_v2: 1 },
-                                                                  per_page_param_name: :teams_per_page, per_page_value: @per_page,
-                                                                  filter_state: @filter_state, q: @q, filter_label: 'Filter',
-                                                                  q_min_length: DataFix::BaseController::TURBO_FILTER_MIN_QUERY_LENGTH,
-                                                                  q_placeholder: 'Search teams...',
-                                                                  review_help_text: '(review: unmatched + yellow/red matches + phase3 hints)')
-      = render(filter_component)
+      = render(DataFix::TurboFilterStateComponent.new(target_url: review_teams_path,
+                                                      hidden_params: { file_path: @file_path, phase2_v2: 1 },
+                                                      per_page_param_name: :teams_per_page, per_page_value: @per_page,
+                                                      filter_state: @filter_state, q: @q,
+                                                      q_min_length: DataFix::BaseController::TURBO_FILTER_MIN_QUERY_LENGTH,
+                                                      q_placeholder: t('data_fix.wizard.teams.search_placeholder'),
+                                                      review_help_text: t('data_fix.wizard.teams.review_help')))
+    .card-body.py-2.d-flex.flex-wrap.justify-content-between.align-items-center.gap-2
+      %span.small= t('data_fix.wizard.page_info', page: @page, pages: @total_pages, range: @row_range, count: @total_count)
+      - if @items.present?
+        .flex-grow-1
+          = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
+                                                  per_page: @per_page, param_name: :teams_page, extra_params: page_params))
+      = form_tag(data_fix_add_team_path, method: :post, class: 'd-inline', data: { turbo_confirm: t('data_fix.wizard.confirm.add_team') }) do
+        = hidden_field_tag :file_path, @file_path
+        - %i[teams_page teams_per_page q filter_state].each do |key|
+          = hidden_field_tag(key, params[key]) if params[key].present?
+        %button.btn.btn-sm.btn-success{ type: 'submit' }
+          %i.fa.fa-plus{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.buttons.add_team')
 
-    .card-body.py-0
-      -# Pagination controls (top) and Add button
-      .d-flex.justify-content-between.align-items-center
-        %div
-          %strong Page:
-          = @page
-          = "/"
-          = @total_pages
-          &nbsp;•&nbsp;
-          %strong Rows:
-          = @row_range
-          = "/"
-          = @total_count
-        .flex-grow-1.pt-3
-          - if @items.present?
-            = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
-                                                    per_page: @per_page, param_name: :teams_page,
-                                                    extra_params: { filter_state: @filter_state, q: @q,
-                                                                    teams_per_page: @per_page,
-                                                                    file_path: @file_path, phase2_v2: 1 }))
-        %div
-          = form_tag(data_fix_add_team_path, method: :post, class: 'd-inline', onsubmit: "return confirm('Add a new blank team?');") do
-            = hidden_field_tag :file_path, @file_path
-            = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
-            = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
-            = hidden_field_tag :q, params[:q] if params[:q].present?
-            = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
-            %button.btn.btn-sm.btn-success{ type: 'submit' }
-              %i.fa.fa-plus
-              Add Team
-
-  -# Collapsible card layout for each team
+  -# Collapsible card layout for each team (each one in its key-based Turbo frame: saved in place)
   - if @items.empty?
     .alert.alert-info
-      %em No teams found. Adjust filters or rescan to rebuild phase2 file.
+      %em= t('data_fix.wizard.teams.none')
   - else
     - @items.each_with_index do |team_hash, idx|
-      :ruby
-        team_index = ((@page - 1) * @per_page) + idx
-        team_key = team_hash['key'] || team_hash['name']
-        team_name = team_hash['name'] || team_key
-        editable_name = team_hash['editable_name'] || team_name
-        team_id = team_hash['team_id']
-        city_id = team_hash['city_id']
-        name_variations = team_hash['name_variations']
-        
-        # Visual indicators
-        has_match = team_id.to_i.positive?
-        similar_affiliated = team_hash['similar_affiliated'] == true
-        phase3_conflict_hint = phase3_conflict_hint?(team_hash)
-        
-        # Check for required data (for teams, only name is required)
-        has_missing_data = team_name.blank?
-        
-        # Determine visual styling
-        if has_match && phase3_conflict_hint
-          # Matched team but cross-phase conflict hint detected
-          card_bg = 'bg-light-yellow'
-          border_color = 'border-warning'
-          icon_class = 'fa-exclamation-triangle text-warning'
-          icon_title = 'Phase 3 conflict hint found'
-        elsif has_match
-          # Matched team
-          card_bg = 'bg-light'
-          border_color = 'border-secondary'
-          icon_class = 'fa-check-circle text-success'
-          icon_title = 'Matched'
-        elsif has_missing_data
-          # Missing required data (extremely rare for teams since name is always present)
-          card_bg = 'bg-light-red'
-          border_color = 'border-danger'
-          icon_class = 'fa-exclamation-triangle text-danger'
-          icon_title = 'Missing required data'
-        elsif similar_affiliated
-          # New team but a similar team is already affiliated this season
-          card_bg = 'bg-light-yellow'
-          border_color = 'border-warning'
-          icon_class = 'fa-exclamation-triangle text-warning'
-          icon_title = 'Similar team in season'
-        else
-          # New team with all required data
-          card_bg = 'bg-light-yellow'
-          border_color = 'border-warning'
-          icon_class = 'fa-plus-circle text-warning'
-          icon_title = 'New/Unmatched'
-        end
-        border_width = 'border-2'
-
-      = render(partial: 'team_form_card',
-               locals: { file_path: @file_path, api_url: @api_url, team_hash:, team_index:,
-                         team_key:, team_name:, editable_name:, team_id:, city_id:,
-                         name_variations:, has_match:, has_missing_data:, similar_affiliated:, phase3_conflict_hint:,
-                         card_bg:, border_color:, border_width:, icon_class:, icon_title: })
+      = render(partial: 'data_fix/team_card_frame',
+               locals: { team_hash:, team_index: ((@page - 1) * @per_page) + idx, file_path: @file_path, api_url: @api_url })
 
   -# Pagination controls (bottom)
-  .mt-3
+  .mt-3.mb-4
     - if @items.present?
       = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
-                                              per_page: @per_page, param_name: :teams_page,
-                                              extra_params: { filter_state: @filter_state, q: @q,
-                                                              teams_per_page: @per_page,
-                                                              file_path: @file_path, phase2_v2: 1 }))
-  .mb-4 &nbsp;
-
-:javascript
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('.verify-team-btn')) {
-      e.preventDefault();
-      var btn = e.target.closest('.verify-team-btn');
-      var filePath = btn.dataset.filePath;
-      var teamKey = btn.dataset.teamKey;
-      var candidateTeamId = btn.dataset.candidateTeamId;
-      var targetSelector = btn.dataset.target;
-      var panel = document.querySelector(targetSelector);
-      panel.classList.add('show');
-
-      var url = '/data_fix/verify_team?file_path=' + encodeURIComponent(filePath) + '&team_key=' + encodeURIComponent(teamKey) + '&candidate_team_id=' + encodeURIComponent(candidateTeamId);
-      fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
-      })
-      .then(function(response) {
-        return response.json();
-      })
-      .then(function(data) {
-        const container = panel.querySelector('div');
-        if (container) container.innerHTML = renderTeamVerifyPanel(data);
-      })
-      .catch(function(xhr) {
-        var msg = 'Verification failed';
-        const container = panel.querySelector('div');
-        if (container) container.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>';
-      });
-    }
-  });
-
-  function renderTeamVerifyPanel(data) {
-    var html = '';
-    var confClass = { high: 'text-success', medium: 'text-warning', low: 'text-danger', none: 'text-muted' };
-    var confLabel = { high: 'HIGH', medium: 'MEDIUM', low: 'LOW', none: 'N/A' };
-    var cls = confClass[data.confidence] || 'text-muted';
-    var lbl = confLabel[data.confidence] || 'N/A';
-
-    html += '<div class="mb-2"><strong>Confidence: <span class="' + cls + '">' + lbl + '</span></strong>';
-    html += ' (' + data.confirmed + '/' + data.total + ' swimmers confirmed';
-    if (data.confirmed_other_seasons && data.confirmed_other_seasons > 0) {
-      html += ' +' + data.confirmed_other_seasons + ' via other seasons';
-    }
-    html += ')</div>';
-
-    if (data.swimmers && data.swimmers.length > 0) {
-      html += '<table class="table table-sm table-bordered mb-0"><thead><tr><th>Swimmer</th><th>ID</th><th>Badge Teams (target season)</th><th>Other Season Badges</th><th>Match</th></tr></thead><tbody>';
-      data.swimmers.forEach(function(s) {
-        var matchIcon;
-        if (s.matches_candidate) {
-          matchIcon = '<span class="text-success"><i class="fa fa-check-circle"></i> Yes</span>';
-        } else if (s.matches_candidate_other_seasons) {
-          matchIcon = '<span class="text-warning"><i class="fa fa-check-circle"></i> Other season</span>';
-        } else {
-          matchIcon = '<span class="text-danger"><i class="fa fa-times-circle"></i> No</span>';
-        }
-        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ' / Badge ID: ' + bt.badge_id + ')'; }).join(', ') || '<strong class="text-danger">NO BADGE</strong>';
-        var otherTeams = (s.other_season_badges || []).map(function(ob) { return ob.team_name + ' (ID: ' + ob.team_id + ' / S: ' + ob.season_id + ' / B: ' + ob.badge_id + ')'; }).join('<br>') || '<em>None</em>';
-        html += '<tr><td>' + s.name + '</td><td>' + s.swimmer_id + '</td><td>' + teams + '</td><td><small>' + otherTeams + '</small></td><td>' + matchIcon + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    } else {
-      html += '<div class="text-muted"><em>No matched swimmers found for this team in Phase 3.</em></div>';
-    }
-    return html;
-  }
+                                              per_page: @per_page, param_name: :teams_page, extra_params: page_params))

@@ -1,135 +1,39 @@
-- toggles = { show_unlinked: (1 if @show_unlinked), show_done: (1 if @show_done) }.compact
 - checked_at = @board.snapshot_checked_at
-.wrapper-body
-  .spacer-left
+= render(Shell::PageHeaderComponent.new(title: t('season_board.title'), count: nil,
+                                        subtitle: t('season_board.header.season', description: @season.description))) do |header|
+  - header.with_actions do
+    = button_to(season_board_prepare_all_path,
+                method: :post, class: 'btn btn-sm btn-outline-primary', form_class: 'd-inline', id: 'btn-season-board-prepare-all',
+                disabled: !DataFix::Automation.enabled?(:auto_prepare), title: t('pipeline_automation.board.prepare_all_tooltip')) do
+      %i.fa-solid.fa-wand-magic-sparkles{ 'aria-hidden' => 'true' }
+      = t('pipeline_automation.board.prepare_all')
+    = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-outline-secondary',
+                form_class: 'd-inline', id: 'btn-season-board-check') do
+      %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+      = t('federnuoto_watch.check.now')
 
-  .main-content
-    %section.my-2#season-board
-      .container-fluid.pt-3.shadow-box
-        .d-flex.justify-content-between.align-items-start.flex-wrap
-          %div
-            %h4.mb-1
-              %i.fa.fa-th-list{ 'aria-hidden' => 'true' }
-              = t('season_board.title')
-            %p.mb-2
-              %b= t('season_board.header.season', description: @season.description)
-              %br
-              %small.text-muted
-                - if checked_at
-                  = t('season_board.header.last_checked', time: l(checked_at.in_time_zone, format: :short))
-                - else
-                  = t('season_board.header.never_checked')
-              - if @board.pending_board_sql_paths.any?
-                %br
-                %small#season-board-sql-pending{ title: t('season_board.header.board_sql_pending_tooltip') }
-                  %span.badge.badge-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
-                  = link_to(t('season_board.header.board_sql_pending_link'), push_index_path)
-          %div
-            = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-outline-secondary',
-                        form_class: 'd-inline', id: 'btn-season-board-check') do
-              %i.fa.fa-refresh{ 'aria-hidden' => 'true' }
-              = t('federnuoto_watch.check.now')
+%section#season-board
+  %p.small.text-body-secondary.mb-2
+    - if checked_at
+      = t('season_board.header.last_checked', time: l(checked_at.in_time_zone, format: :short))
+    - else
+      = t('season_board.header.never_checked')
+    %br
+    - paused = DataFix::Automation.paused?
+    %details.d-inline-block#season-board-automation{ open: (true if DataFix::Automation.env_off?) }
+      %summary
+        %span.badge{ class: paused ? 'text-bg-warning' : 'text-bg-success' }
+          = t(paused ? 'pipeline_automation.board.paused' : 'pipeline_automation.board.on')
+        = t('pipeline_automation.board.switches')
+      .border.rounded.bg-body-tertiary.px-3.py-2.mt-1
+        = render('automation/switches', return_to: 'season_board')
+    - if @board.pending_board_sql_paths.any?
+      %br
+      %span#season-board-sql-pending{ title: t('season_board.header.board_sql_pending_tooltip') }
+        %span.badge.text-bg-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
+        = link_to(t('season_board.header.board_sql_pending_link'),
+                  SeasonBoard::ActionPaths.outbox_focus_path(@board.pending_board_sql_paths.min_by { |path| File.basename(path.to_s) }))
 
-        %div{ data: { controller: 'season-board', 'season-board-interval-value': 20_000,
-                      'season-board-ping-id-value': 'season-board-ping' } }
-          = turbo_frame_tag('season-board-rows', target: '_top', data: { 'season-board-target': 'frame' }) do
-            %span.d-none{ data: { 'season-board-busy': @board.active_activities.any?.to_s } }
-            = render(SeasonBoard::ActivityStripComponent.new(activities: @board.active_activities,
-                                                             names: @board.rows.to_h { |r| [r.fin_event_id.to_s, r.name] }))
-
-            - if @board.warnings.any? && @board.rows.any?
-              .alert.alert-warning.py-2.mb-2#season-board-warnings
-                %b= t('season_board.header.warnings')
-                %ul.mb-0.small
-                  - @board.warnings.each do |warning|
-                    %li= warning
-
-            - if @board.rows.empty?
-              .alert.alert-info#season-board-empty
-                = t('season_board.empty.no_rows')
-                = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-primary ml-2',
-                            form_class: 'd-inline') do
-                  %i.fa.fa-refresh{ 'aria-hidden' => 'true' }
-                  = t('season_board.empty.check_now')
-            - else
-              .mb-2#season-board-filters
-                = link_to(t('season_board.filters.all', count: @board.rows.size), season_board_path(toggles),
-                          class: "badge badge-pill mr-1 #{@state_filter ? 'badge-light border' : 'badge-dark'}")
-                - @state_counts.each do |state, count|
-                  = link_to("#{state == :in_review ? t('season_board.states.in_review_chip') : t("season_board.states.#{state}")} (#{count})",
-                            season_board_path(toggles.merge(state: state)),
-                            class: "badge badge-pill mr-1 #{@state_filter == state.to_s ? 'badge-dark' : 'badge-light border'}",
-                            title: t("season_board.state_tooltips.#{state}"), data: { state_chip: state })
-                %br
-                %small
-                  - if @unlinked_count.positive? || @show_unlinked
-                    - if @show_unlinked
-                      = link_to(t('season_board.filters.hide_unlinked'), season_board_path(toggles.except(:show_unlinked)), class: 'mr-3')
-                    - else
-                      = link_to(t('season_board.filters.show_unlinked', count: @unlinked_count),
-                                season_board_path(toggles.merge(show_unlinked: 1)), class: 'mr-3')
-                  - if @done_count.positive? || @show_done
-                    - if @show_done
-                      = link_to(t('season_board.filters.hide_done'), season_board_path(toggles.except(:show_done)))
-                    - else
-                      = link_to(t('season_board.filters.show_done', count: @done_count),
-                                season_board_path(toggles.merge(show_done: 1)))
-
-              .table-responsive
-                %table.table.table-sm.table-hover.mb-3#season-board-table
-                  %thead.thead-light
-                    %tr
-                      %th= t('season_board.columns.date')
-                      %th= t('season_board.columns.name')
-                      %th= t('season_board.columns.place')
-                      %th= t('season_board.columns.local')
-                      %th= t('season_board.columns.state')
-                      %th= t('season_board.columns.activity')
-                      %th= t('season_board.columns.action')
-                  %tbody
-                    - @rows.each do |row|
-                      = render(SeasonBoard::RowComponent.new(row:, orphans: @board.link_candidates, csrf_token: form_authenticity_token))
-                    - if @rows.empty?
-                      %tr
-                        %td.text-center.text-muted{ colspan: 7 }= t('season_board.filters.none_visible')
-
-            .mb-2#season-board-orphans
-              %a{ href: '#orphans-collapse', data: { toggle: 'collapse' }, 'aria-expanded' => 'false',
-                  'aria-controls' => 'orphans-collapse' }
-                %i.fa.fa-caret-right{ 'aria-hidden' => 'true' }
-                = t('season_board.orphans.title', count: @board.orphans.size)
-              #orphans-collapse.collapse.mt-2
-                - if @board.orphans.empty?
-                  %small.text-muted= t('season_board.orphans.empty')
-                - else
-                  %table.table.table-sm.mb-0
-                    %thead
-                      %tr
-                        %th= t('season_board.columns.id')
-                        %th= t('season_board.columns.code')
-                        %th= t('season_board.columns.name')
-                        %th= t('season_board.columns.date')
-                        %th= t('season_board.columns.meeting_id')
-                        %th= t('season_board.columns.fin_event_id')
-                    %tbody
-                      - @board.orphans.each do |orphan|
-                        %tr{ data: { orphan_id: orphan.id } }
-                          %td= orphan.id
-                          %td= orphan.meeting_code
-                          %td= orphan.meeting_name
-                          %td= orphan.scheduled_date
-                          %td= orphan.meeting_id
-                          %td
-                            - if orphan.fin_event_id
-                              = orphan.fin_event_id
-                              %span.badge.badge-warning{ title: t('season_board.orphans.not_on_calendar_tooltip') }
-                                = t('season_board.orphans.not_on_calendar')
-
-            - if @board.unmatched_sources.any?
-              %p.small.text-muted.mb-0#season-board-unmatched
-                = t('season_board.unmatched.text', count: @board.unmatched_sources.size)
-                = link_to(t('season_board.unmatched.link'), pull_result_files_path, data: { turbo_frame: '_top' })
-    .row.mb-3
-      &nbsp;
-
-  .spacer-right
+  %div{ data: { controller: 'season-board', 'season-board-interval-value': 20_000,
+                'season-board-ping-id-value': 'season-board-ping' } }
+    = render(partial: 'season_board/rows_frame', locals: rows_frame_locals)

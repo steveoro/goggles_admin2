@@ -1,0 +1,31 @@
+-#
+  The season-start checklist entry page (Maintenance::SeasonStartController#index): pick the season to prepare.
+- header_title = t('maintenance.season_start.index_title')
+= render(Shell::PageHeaderComponent.new(title: header_title, subtitle: t('maintenance.season_start.index_subtitle'))) do |header|
+  - header.with_actions do
+    = link_to(t('maintenance.season_start.back'), operations_path, class: 'btn btn-sm btn-outline-secondary')
+
+.row.g-3#season-start-index
+  .col-12.col-lg-6
+    %section.card
+      .card-body
+        = form_with(url: season_start_index_path, method: :get, class: 'row g-2 align-items-end', id: 'frm-season-start') do
+          .col
+            = label_tag(:season_id, t('maintenance.season_start.season_id'), class: 'form-label small mb-0')
+            = number_field_tag(:season_id, @next_id, class: 'form-control form-control-sm', min: 1, step: 1, required: true)
+          .col-auto
+            = button_tag(type: 'submit', class: 'btn btn-sm btn-primary', name: nil) do
+              %i.fa-solid.fa-list-check{ 'aria-hidden' => 'true' }
+              = t('maintenance.season_start.open')
+  .col-12.col-lg-6
+    %section.card
+      .card-header.h6.mb-0= t('maintenance.season_start.latest')
+      %ul.list-group.list-group-flush.small
+        - if @next_id
+          %li.list-group-item
+            = link_to(t('maintenance.season_start.next', id: @next_id), season_start_path(@next_id))
+            - unless GogglesDb::Season.exists?(id: @next_id)
+              %span.text-body-secondary= t('maintenance.season_start.local_missing')
+        - @latest.each do |season|
+          %li.list-group-item
+            = link_to("#{season.id} - #{season.description}", season_start_path(season.id))

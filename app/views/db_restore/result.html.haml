@@ -1,0 +1,63 @@
+-#
+  Guided local DB restore, step 8 (DbRestoreController#result): outcome of a finished, failed or abandoned run,
+  the post-step results, the DB sync verdict of the post-restore check, and the terminal command to load the safety
+  snapshot when something went wrong.
+:ruby
+  outcome = @run.outcome.to_h
+  pending = Array(outcome['pending_migrations'])
+  scripts = Array(@run.inspection.to_h['scripts_after_dump'])
+  success = @run.finished?
+  source = t("db_restore.result.loaded_from.#{outcome['loaded_from'].presence || 'none'}")
+  headline = t("db_restore.result.headline.#{@run.status}", default: t('db_restore.result.headline.other', status: @run.status), source:)
+= render(Shell::PageHeaderComponent.new(title: t('db_restore.result.title', id: @run.id), subtitle: @run.dump_basename)) do |header|
+  - header.with_actions do
+    .d-flex.flex-wrap.gap-2
+      = link_to(t('db_restore.result.db_sync'), db_sync_path, class: 'btn btn-sm btn-primary')
+      = link_to(t('db_restore.result.new'), new_db_restore_path, class: 'btn btn-sm btn-outline-secondary')
+
+.alert#db-restore-result{ class: success ? 'alert-success' : 'alert-danger', role: 'status', data: { status: @run.status } }
+  %p.mb-0= headline
+  - if @run.error.present?
+    %pre.small.mb-0.mt-2.text-wrap= @run.error
+
+.card.mb-3
+  .card-body
+    = render(partial: 'db_restore/run_facts', locals: { run: @run })
+    %dl.row.mb-0.mt-2#db-restore-outcome
+      %dt.col-sm-3= t('db_restore.fields.duration')
+      %dd.col-sm-9
+        - if @run.started_at && @run.finished_at
+          = distance_of_time_in_words(@run.started_at, @run.finished_at)
+        - else
+          = '-'
+      - if success
+        %dt.col-sm-3= t('db_restore.fields.drift')
+        %dd.col-sm-9#db-restore-drift
+          - if @fingerprint
+            = render(Drift::IndicatorComponent.new(fingerprint: @fingerprint, details: true))
+          - else
+            = t('db_restore.result.drift_unknown')
+        %dt.col-sm-3= t('db_restore.fields.api_url')
+        %dd.col-sm-9= t("db_restore.result.api_url.#{outcome['api_url'].presence || 'none'}", url: @run.preserved.to_h['api_url'].to_s)
+        %dt.col-sm-3= t('db_restore.fields.jwt')
+        %dd.col-sm-9= t("db_restore.result.jwt.#{outcome['jwt'].presence || 'none'}")
+        %dt.col-sm-3= t('db_restore.fields.staging')
+        %dd.col-sm-9= t('db_restore.result.staging', count: outcome['staging_purged'].to_i)
+        %dt.col-sm-3= t('db_restore.fields.queues')
+        %dd.col-sm-9= Array(outcome['queues_resumed']).join(', ').presence || '-'
+
+- if success && pending.any?
+  .alert.alert-warning#db-restore-pending-migrations{ role: 'alert' }
+    %p.mb-1= t('db_restore.result.pending_migrations', count: pending.size, versions: pending.first(10).join(', '))
+    %pre.small.mb-0.text-wrap= DbRestore::TerminalCommand.migrate
+
+- if success && scripts.any? && outcome['loaded_from'] != 'snapshot'
+  .alert.alert-warning#db-restore-scripts-after-dump{ role: 'alert' }
+    = t('db_restore.result.scripts_after_dump', count: scripts.size, files: scripts.first(10).join(', '))
+
+- if !success && @run.snapshot_path.present?
+  .alert.alert-info#db-restore-rollback{ role: 'status' }
+    %p.mb-1= t('db_restore.result.rollback', path: @run.snapshot_path)
+    %pre.small.mb-0.text-wrap= DbRestore::TerminalCommand.rebuild(@run.snapshot_path)
+
+= render(partial: 'db_restore/log', locals: { run: @run, open: !success })

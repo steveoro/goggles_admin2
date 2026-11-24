@@ -110,8 +110,8 @@ RSpec.describe DataFixController do
       def expect_no_phase5_issues!
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
         expect(response).to be_successful
-        expect(response.body).to include('All results are valid!')
-        expect(response.body).to include('No unresolved required links detected.')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.all_valid'))
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.all_valid_hint'))
       end
 
       before(:each) do
@@ -186,9 +186,8 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('program(s) with issues detected')
-        expect(response.body).to include('missing program gender')
-        expect(response.body).to include('unresolved required links')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.issues_found', count: '').strip)
+        expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_fix.wizard.results.issues_help')))
       end
 
       it 'does not flag nil meeting_program_id as issue when links are coherent and key has gender' do
@@ -438,7 +437,7 @@ RSpec.describe DataFixController do
       end
     end
 
-    describe 'DELETE /data_fix/purge' do
+    describe 'DELETE /data_fix/sessions/purge (per source)' do
       before(:each) do
         GogglesDb::DataImportMeetingIndividualResult.create!(
           import_key: 'purge-mir',
@@ -469,16 +468,15 @@ RSpec.describe DataFixController do
         )
       end
 
-      it 'clears all temp tables and redirects with a notice' do
-        delete data_fix_purge_path
+      it "clears the source's rows from all five temp tables and redirects to the sessions list with a notice" do
+        delete data_fix_sessions_purge_path, params: { source_path: source_file_a }
 
-        expect(response).to redirect_to(home_index_path)
-        expect(flash[:notice]).to include(I18n.t('data_import.data_fix.clean_slate_done', total: 0, tables: 0, sessions: 0).split(':').first)
-        expect(GogglesDb::DataImportMeetingIndividualResult.count).to eq(0)
-        expect(GogglesDb::DataImportLap.count).to eq(0)
-        expect(GogglesDb::DataImportMeetingRelayResult.count).to eq(0)
-        expect(GogglesDb::DataImportMeetingRelaySwimmer.count).to eq(0)
-        expect(GogglesDb::DataImportRelayLap.count).to eq(0)
+        expect(response).to redirect_to(data_fix_sessions_path)
+        expect(flash[:notice]).to eq(I18n.t('data_import.data_fix.discard_source_done', total: 5, source: source_file_a))
+        [
+          GogglesDb::DataImportMeetingIndividualResult, GogglesDb::DataImportLap, GogglesDb::DataImportMeetingRelayResult,
+          GogglesDb::DataImportMeetingRelaySwimmer, GogglesDb::DataImportRelayLap
+        ].each { |table| expect(table.where(phase_file_path: source_file_a).count).to eq(0) }
       end
     end
 
@@ -582,8 +580,8 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include('program(s) with issues detected')
-        expect(response.body).to include('Show All Programs')
+        expect(response.body).to include(I18n.t('data_fix.wizard.results.issues_found', count: '').strip)
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.show_all_programs'))
       end
 
       it 'keeps the issue filter off when explicitly disabled' do
@@ -592,27 +590,26 @@ RSpec.describe DataFixController do
         get review_results_path(file_path: source_file_a, phase5_v2: 1, filter_issues: 0)
 
         expect(response).to be_successful
-        expect(response.body).to include('Show Only Issues')
-        expect(response.body).not_to include('Show All Programs')
+        expect(response.body).to include(I18n.t('data_fix.wizard.buttons.show_only_issues'))
+        expect(response.body).not_to include(I18n.t('data_fix.wizard.buttons.show_all_programs'))
       end
     end
 
-    describe 'Phase 5 redirect to legacy' do
-      it 'redirects to legacy controller when phase5_v2 param is absent' do
+    describe 'Phase 5 without the phase5_v2 flag' do
+      it 'renders the v2 review page (the phase5_v2 flag is optional)' do
         get review_results_path(file_path: source_file_a)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_results')
+        expect(response).to be_successful
+        expect(response.body).to include('Step 5: Results')
       end
 
-      it 'redirects without resolving the source path (no category normalization side effects)' do
+      it 'resolves the canonical source path like the flagged request' do
         allow(DataFix::SourceResolver).to receive(:new).and_call_original
 
         get review_results_path(file_path: source_file_a)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_results')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
+        expect(response).to be_successful
+        expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
       end
     end
   end

@@ -1,0 +1,12 @@
+// = Links =
+//
+// The app's links are not underlined (Bootstrap 5 underlines them by default); a plain text link gets the
+// underline on hover. Components that style their own links (buttons, nav and page links, dropdown items,
+// badges, list-group actions) are left alone; `.link-underline` & co. (Bootstrap utilities) still apply.
+a {
+  text-decoration: none;
+}
+
+a:not(.btn, .nav-link, .dropdown-item, .navbar-brand, .page-link, .badge, .list-group-item-action):hover {
+  text-decoration: underline;
+}

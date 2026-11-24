@@ -1,0 +1,10 @@
+-#
+  Sticky notice shown on every page while the local ops DB is not ready (see Ops::Database).
+  Locals: state (one of Ops::Database::STATES, except :ready)
+.flash-alert.alert.alert-warning.flash-sticky#ops-setup-notice{ role: 'alert', data: { 'ops-state' => state } }
+  %h5.alert-heading
+    %i.fa.fa-2x.fa-database.text-warning{ 'aria-hidden' => 'true' }
+    = t('ops.setup_notice.title')
+  %p.flash-body.mb-0
+    = t("ops.setup_notice.states.#{state}")
+    = t('ops.setup_notice.body', command: 'bin/rails ops:prepare')

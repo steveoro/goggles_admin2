@@ -9,7 +9,9 @@
 # from the UI ("Check now", with manual: true).
 #
 # When the check detects a change, the changed rows not crawled yet are queued for an automatic
-# crawl (SeasonBoard::CrawlPlanner); planning failures never fail the check.
+# crawl (SeasonBoard::CrawlPlanner); the structure-committed rows FIN now lists with results are re-crawled
+# (CrawlPlanner#plan_recrawl, at most once per 20 h each), then a PipelinePlannerJob pass is enqueued (phase 10).
+# Nothing is queued while the automation master switch is off. Planning failures never fail the check.
 #
 class FedernuotoWatchJob < ApplicationJob
   queue_as :default
@@ -32,9 +34,14 @@ class FedernuotoWatchJob < ApplicationJob
     change = FedernuotoWatch::StateStore.new.pending_change
     return if change.blank?
 
-    fin_ids = SeasonBoard::CrawlPlanner.new(season: SeasonBoard::Builder.latest_season).call(change)
+    planner = SeasonBoard::CrawlPlanner.new(season: SeasonBoard::Builder.latest_season)
+    fin_ids = planner.call(change)
     Rails.logger.info("[FedernuotoWatchJob] automatic crawls queued: #{fin_ids.join(', ')}") if fin_ids.present?
+    recrawls = planner.plan_recrawl(change)
+    Rails.logger.info("[FedernuotoWatchJob] results published, re-crawls queued: #{recrawls.join(', ')}") if recrawls.present?
   rescue StandardError => e
     Rails.logger.error("[FedernuotoWatchJob] crawl planning failed: #{e.class}: #{e.message}")
+  ensure
+    PipelinePlannerJob.enqueue_after(self.class.name)
   end
 end

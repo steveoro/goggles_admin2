@@ -1,0 +1,183 @@
+it:
+  data_fix:
+    steps:
+      label: 'Step %{number} • %{name}'
+      sessions: Sessions
+      teams: Teams
+      swimmers: Swimmers
+      events: Events
+      results: Results
+    stepper:
+      rescan: Ricostruisci questa fase dall'origine
+      rescan_confirm: "Ricostruire la Fase %{number} dall'origine?"
+      rescan_confirm_edited: "La Fase %{number} contiene modifiche manuali: ricostruirla dall'origine le scarta. Continuare?"
+      stale: 'Questo step non è aggiornato: %{what} è cambiato dopo la sua costruzione.'
+      rebuild: Ricostruisci
+      adopted: Modificato (file preesistente, protetto dalle ricostruzioni automatiche).
+      edited: Contiene modifiche manuali (protetto dalle ricostruzioni automatiche).
+      source_changed: "Il file sorgente è cambiato sotto le tue modifiche: le fasi %{phases} sono state mantenute e non vi corrispondono più."
+      discard_edits: Ricostruisci (scarta le modifiche)
+      discard_edits_confirm: "Eliminare le fasi %{phases} (di ognuna resta un backup .orig) e ricostruirle dalla sorgente cambiata? Le modifiche in esse andranno perse."
+      recompute_discards_edits: 'Le fasi %{phases} contengono modifiche: vengono scartate anche loro (di ognuna resta un backup .orig).'
+      inputs:
+        source_file: il file sorgente
+        season: la stagione
+        meeting_and_sessions: lo Step 1 (meeting e sessioni)
+        team_ids: lo Step 2 (ID squadre)
+        swimmer_and_badge_ids: lo Step 3 (ID atleti e tessere)
+        events: lo Step 4 (eventi)
+        db_changed: il DB locale (nuovi commit da quando sono stati calcolati gli abbinamenti)
+    verdicts:
+      statuses:
+        unbuilt: Da costruire
+        clean: OK
+        review: Da verificare
+        blocked: Bloccato
+        stale: Non aggiornato
+        failed: Costruzione fallita
+      issues:
+        stale: Non aggiornato
+        edited_stale: Non aggiornato, con modifiche
+        structure_invalid: Struttura del meeting non valida
+        retry_needed: Va ripetuto il crawl
+        fin_link_conflict: Evento FIN collegato a un altro meeting
+        meeting_not_fin_matched: Meeting non abbinato per ID FIN
+        source_warnings: Avvisi di estrazione
+        new_session_in_existing_meeting: Nuova sessione in un meeting esistente
+        teams_review: Squadre da verificare
+        too_many_new_teams: Troppe squadre nuove
+        new_swimmer_incomplete: Nuovi atleti senza sesso, anno o categoria
+        badge_team_missing: Tessere senza squadra dello Step 2
+        swimmers_review: Atleti da verificare
+        too_many_new_swimmers: Troppi atleti nuovi
+        relay_enrichment: Frazionisti da completare
+        event_type_unresolved: Tipi evento sconosciuti
+        session_missing: Eventi in una sessione assente dallo Step 1
+        session_order_mismatch: Eventi con un ordine di sessione diverso
+        unmatched_events: Eventi non abbinati in un meeting esistente
+        populate_errors: Errori di staging
+        collisions: Risultati già in staging per un'altra sorgente
+        parity: Le righe in staging differiscono dalla sorgente
+        nothing_staged: Nessun risultato in staging
+        result_issues: Programmi con problemi
+        overwrite_selected: Risultati esistenti selezionati per l'eliminazione
+        partial_duplicates: Possibili duplicati (tempo diverso)
+        preflight_fin_link_conflict: Evento FIN collegato a un altro meeting
+        preflight_existing_team_name: Squadre nuove già presenti nel DB
+        preflight_existing_swimmer_name: Atleti nuovi già presenti nel DB
+        preflight_program_event_missing: Programmi senza evento
+        preflight_category_unresolved: Categorie sconosciute
+        preflight_relay_category_unresolved: Categorie staffetta da calcolare
+        preflight_gender_unresolved: Sesso sconosciuto
+        preflight_overwrite_snapshot_invalid: Selezione di sovrascrittura non aggiornata
+        preflight_team_score_without_team: Punteggi di squadra senza squadra
+        preflight_preflight_failed: Preflight fallito
+    pipeline:
+      phase5_auto_rebuilt: Fase 5 ricostruita automaticamente (uno step precedente è cambiato).
+      lease_busy: 'Questa sorgente è in costruzione da parte di un''altra richiesta o di un job: riprova tra poco.'
+      edits_discarded: 'Fasi %{phases} eliminate (backup mantenuti): vengono ricostruite dalla sorgente cambiata.'
+      matches_refreshed: 'Abbinamenti aggiornati: %{teams} squadre e %{swimmers} atleti trovati nel DB.'
+      verify_all_done: 'Verificati %{checked} risultati in staging: %{verified} abbinati a un risultato esistente.'
+    commit_summary:
+      title: Riepilogo commit
+      subtitle: Controlla cosa farà il commit, poi conferma.
+      back_to_step5: Torna allo Step 5
+      meeting: Meeting
+      matched_by: Abbinato tramite
+      matched_by_fin: ID evento FIN
+      matched_by_operator: Scelto dall'operatore
+      matched_by_other: Abbinato per nome
+      new_meeting: Nuovo meeting
+      entity: Entità
+      existing: Esistenti
+      new: Nuovi
+      sessions: Sessioni
+      teams: Squadre
+      swimmers: Atleti
+      badges: Tessere
+      events: Eventi
+      results: Risultati da creare
+      results_update: Risultati da aggiornare
+      relay_results: Risultati staffetta
+      overwrite_deletions: Risultati esistenti da eliminare
+      team_scores: Punteggi di squadra
+      new_teams: Squadre nuove
+      new_swimmers: Atleti nuovi
+      none: Nessuno
+      more: '…e altri %{count}'
+      preflight: Preflight
+      preflight_ok: Nessun problema bloccante.
+      preflight_errors: Problemi bloccanti
+      preflight_warnings: Avvisi
+      refresh_matches: Aggiorna abbinamenti
+      create_anyway: Crea comunque (ho controllato questi nomi)
+      not_ready: 'Non pronto per il commit: %{stage}.'
+      ready: Pronto per il commit.
+      commit: Commit
+      commit_confirm: "Eseguire ora il commit di questa sorgente sul DB locale? Lo script SQL viene aggiunto all'Outbox."
+      ops_missing: 'Il DB ops non è pronto: esegui "bin/rails ops:prepare" per il commit (il report del commit è salvato lì).'
+      drift_ack: So che il DB locale differisce dalla destinazione e voglio procedere comunque
+      drift_warning: Il controllo di allineamento chiede una conferma prima del commit.
+      structure_only: Commit della sola struttura (meeting e sessioni, senza risultati).
+      link: Riepilogo commit
+      stages:
+        new: ancora nulla di costruito
+        needs_review: alcuni step vanno verificati
+        blocked: uno step è bloccato
+        failed: una costruzione è fallita
+        ready_to_commit: pronto
+        committed: già confermato
+        committing: commit in corso
+        preparing: in preparazione
+    commit:
+      refused_preflight: 'Il commit non è partito: correggi prima i problemi bloccanti qui sotto.'
+      refused_ops: 'Il commit non è partito: il DB ops non è pronto (esegui "bin/rails ops:prepare").'
+      refused_guard: 'Il commit non è partito: %{reason}'
+      refused_guard_link: Apri l'allineamento DB
+      queued: Commit in coda.
+      not_queued: 'Impossibile mettere in coda il commit: %{error}'
+      job_refused_state: Il report non è più in coda (già avviato o concluso).
+      job_refused_user: Il report non ha un operatore richiedente.
+      job_refused_guard: 'Rifiutato dai controlli: %{reason}'
+      job_refused_preflight: 'Rifiutato dal preflight: %{errors}'
+      job_failed: 'Il job di commit è fallito: %{error}'
+    commit_report:
+      title: Report del commit
+      subtitle: '%{source}'
+      statuses:
+        queued: In coda
+        running: Commit in corso
+        committed: Completato
+        committed_archive_failed: Completato, archiviazione fallita
+        failed: Fallito
+        refused: Rifiutato
+      queued_text: In attesa del worker della pipeline…
+      running_text: Commit in corso…
+      committed_text: "Il DB locale è aggiornato e lo script SQL è nell'Outbox."
+      failed_text: 'Il commit è fallito: non è stato salvato nulla.'
+      refused_text: Il commit non è partito.
+      requested: Richiesto
+      started: Avviato
+      finished: Concluso
+      first_error_step: Step da rivedere
+      log_file: File di log
+      sql_file: Script SQL
+      archived_to: Archiviato in
+      open_outbox: "Apri l'Outbox"
+      stats: Statistiche del commit
+      inserts: Inserimenti
+      updates: Aggiornamenti
+      total: Totale
+      errors: Errori
+      season_checks: Controlli di stagione
+      season_checks_none: Nessun controllo di stagione in coda.
+      season_checks_pending: In coda o in esecuzione…
+      season_checks_link: Apri lo stato di salute della stagione
+      group: Gruppo
+      status: Stato
+      findings: Segnalazioni
+      back_to_files: Torna alle Sorgenti
+      back_to_board: Torna al Season board
+      reports: Report dei commit
+      not_found: Report del commit non trovato.
+      legacy_checks: Controlli di integrità post-commit

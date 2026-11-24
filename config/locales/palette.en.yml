@@ -1,0 +1,23 @@
+en:
+  shell:
+    # (phase 15) Command palette (Ctrl+K / Cmd+K): Shell::PaletteComponent, palette_controller.js, Shell::PaletteSearch
+    palette:
+      title: 'Command palette'
+      trigger: 'Search'
+      trigger_title: 'Go to a page, a meeting, a team, a swimmer or a Data-Fix session (Ctrl+K)'
+      label: 'Go to'
+      placeholder: 'Page, meeting, team, swimmer or Data-Fix session...'
+      results: 'Results'
+      no_results: 'Nothing matches: try another word, or an id.'
+      searching: 'Searching the local DB...'
+      offline: 'API-offline session: only the pages reachable offline are listed.'
+      hint_move: 'to move'
+      hint_open: 'to open'
+      hint_close: 'to close'
+      meeting_detail: '%{date} · season %{season}'
+      session_detail: 'season %{season} · step %{phase}'
+      kinds:
+        meeting: 'Meeting'
+        team: 'Team'
+        swimmer: 'Swimmer'
+        data_fix_session: 'Data-Fix session'

@@ -28,9 +28,26 @@ RSpec.describe APISwimmersController do
         ).and_return(DummyResponse.new(body: GogglesDb::Swimmer.first(25).to_json))
       end
 
+      it 'links each swimmer to its badges (phase 15 drill-down link)' do
+        swimmer = GogglesDb::Swimmer.first
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: [swimmer].to_json))
+        get(api_swimmers_path)
+        link = response.parsed_body.at_css('table.datagrid-table tbody tr td[data-column="drill"] a[data-drill="badges"]')
+        expect(link['href']).to eq(api_badges_path(badges_grid: { swimmer_id: swimmer.id }))
+        expect(link['data-bs-title']).to eq(I18n.t('datagrid.drill.badges'))
+      end
+
       it 'returns http success' do
         get(api_swimmers_path)
         expect(response).to have_http_status(:success)
+      end
+    end
+
+    it_behaves_like('an API grid index showing an API error in place', 'swimmers') do
+      let(:index_path) { api_swimmers_path }
+      let(:api_params) do
+        { name: anything, year_of_birth: anything, year_guessed: anything, gender_type_id: anything,
+          page: anything, per_page: anything }
       end
     end
   end

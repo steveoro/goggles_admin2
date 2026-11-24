@@ -21,9 +21,11 @@ module Import
     class Phase1Solver # rubocop:disable Metrics/ClassLength
       include SessionHashBuilder
 
-      def initialize(season:, logger: Rails.logger)
+      # (+progress+ is accepted for a uniform solver interface: the Phase 1 build reports no progress)
+      def initialize(season:, logger: Rails.logger, progress: nil)
         @season = season
         @logger = logger
+        @progress = progress || Import::Progress::Null.new
       end
 
       # Build and persist phase1 file

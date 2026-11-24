@@ -1,0 +1,1841 @@
+{
+  "phase1": {
+    "season_id": 242,
+    "name": "Trofeo Fixture Pipeline",
+    "code": "fixturepipeline",
+    "header_year": "2024/2025",
+    "header_date": "2025-03-08",
+    "id": 19001,
+    "meetingURL": "https://www.federnuoto.it/x.html#/risultati/990001:trofeo-fixture.html",
+    "meeting_session": [
+      {
+        "id": 50001,
+        "session_order": 1,
+        "description": "Session 1",
+        "scheduled_date": "2025-03-08"
+      }
+    ],
+    "meeting_match": {
+      "source": "fin_event_id",
+      "meeting_id": 19001
+    }
+  },
+  "phase2": {
+    "season_id": 242,
+    "teams": [
+      {
+        "key": "Fixture Team 001",
+        "name": "Fixture Team 001",
+        "editable_name": "Fixture Team 001",
+        "team_id": 900001,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900001,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 002",
+        "name": "Fixture Team 002",
+        "editable_name": "Fixture Team 002",
+        "team_id": 900002,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900002,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 003",
+        "name": "Fixture Team 003",
+        "editable_name": "Fixture Team 003",
+        "team_id": 900003,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900003,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 004",
+        "name": "Fixture Team 004",
+        "editable_name": "Fixture Team 004",
+        "team_id": 900004,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900004,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 005",
+        "name": "Fixture Team 005",
+        "editable_name": "Fixture Team 005",
+        "team_id": 900005,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900005,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 006",
+        "name": "Fixture Team 006",
+        "editable_name": "Fixture Team 006",
+        "team_id": 900006,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900006,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 007",
+        "name": "Fixture Team 007",
+        "editable_name": "Fixture Team 007",
+        "team_id": 900007,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900007,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 008",
+        "name": "Fixture Team 008",
+        "editable_name": "Fixture Team 008",
+        "team_id": 900008,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900008,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 009",
+        "name": "Fixture Team 009",
+        "editable_name": "Fixture Team 009",
+        "team_id": 900009,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900009,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 010",
+        "name": "Fixture Team 010",
+        "editable_name": "Fixture Team 010",
+        "team_id": 900010,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900010,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 011",
+        "name": "Fixture Team 011",
+        "editable_name": "Fixture Team 011",
+        "team_id": 900011,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900011,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 012",
+        "name": "Fixture Team 012",
+        "editable_name": "Fixture Team 012",
+        "team_id": 900012,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900012,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 013",
+        "name": "Fixture Team 013",
+        "editable_name": "Fixture Team 013",
+        "team_id": 900013,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900013,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 014",
+        "name": "Fixture Team 014",
+        "editable_name": "Fixture Team 014",
+        "team_id": 900014,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900014,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 015",
+        "name": "Fixture Team 015",
+        "editable_name": "Fixture Team 015",
+        "team_id": 900015,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900015,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 016",
+        "name": "Fixture Team 016",
+        "editable_name": "Fixture Team 016",
+        "team_id": 900016,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900016,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 017",
+        "name": "Fixture Team 017",
+        "editable_name": "Fixture Team 017",
+        "team_id": 900017,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900017,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 018",
+        "name": "Fixture Team 018",
+        "editable_name": "Fixture Team 018",
+        "team_id": 900018,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900018,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 019",
+        "name": "Fixture Team 019",
+        "editable_name": "Fixture Team 019",
+        "team_id": 900019,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900019,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 020",
+        "name": "Fixture Team 020",
+        "editable_name": "Fixture Team 020",
+        "team_id": 900020,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900020,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 021",
+        "name": "Fixture Team 021",
+        "editable_name": "Fixture Team 021",
+        "team_id": 900021,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900021,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 022",
+        "name": "Fixture Team 022",
+        "editable_name": "Fixture Team 022",
+        "team_id": 900022,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900022,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 023",
+        "name": "Fixture Team 023",
+        "editable_name": "Fixture Team 023",
+        "team_id": 900023,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900023,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 024",
+        "name": "Fixture Team 024",
+        "editable_name": "Fixture Team 024",
+        "team_id": 900024,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900024,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 025",
+        "name": "Fixture Team 025",
+        "editable_name": "Fixture Team 025",
+        "team_id": 900025,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900025,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 026",
+        "name": "Fixture Team 026",
+        "editable_name": "Fixture Team 026",
+        "team_id": 900026,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900026,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 027",
+        "name": "Fixture Team 027",
+        "editable_name": "Fixture Team 027",
+        "team_id": 900027,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900027,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 028",
+        "name": "Fixture Team 028",
+        "editable_name": "Fixture Team 028",
+        "team_id": 900028,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900028,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 029",
+        "name": "Fixture Team 029",
+        "editable_name": "Fixture Team 029",
+        "team_id": 900029,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900029,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 030",
+        "name": "Fixture Team 030",
+        "editable_name": "Fixture Team 030",
+        "team_id": 900030,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900030,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 031",
+        "name": "Fixture Team 031",
+        "editable_name": "Fixture Team 031",
+        "team_id": 900031,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900031,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 032",
+        "name": "Fixture Team 032",
+        "editable_name": "Fixture Team 032",
+        "team_id": 900032,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900032,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 033",
+        "name": "Fixture Team 033",
+        "editable_name": "Fixture Team 033",
+        "team_id": 900033,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900033,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 034",
+        "name": "Fixture Team 034",
+        "editable_name": "Fixture Team 034",
+        "team_id": 900034,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900034,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 035",
+        "name": "Fixture Team 035",
+        "editable_name": "Fixture Team 035",
+        "team_id": 900035,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900035,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 036",
+        "name": "Fixture Team 036",
+        "editable_name": "Fixture Team 036",
+        "team_id": 900036,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900036,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 037",
+        "name": "Fixture Team 037",
+        "editable_name": "Fixture Team 037",
+        "team_id": 900037,
+        "match_percentage": 100.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": [
+          {
+            "id": 900037,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "Fixture Team 038",
+        "name": "Fixture Team 038",
+        "editable_name": "Fixture Team 038",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 039",
+        "name": "Fixture Team 039",
+        "editable_name": "Fixture Team 039",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 040",
+        "name": "Fixture Team 040",
+        "editable_name": "Fixture Team 040",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 041",
+        "name": "Fixture Team 041",
+        "editable_name": "Fixture Team 041",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 042",
+        "name": "Fixture Team 042",
+        "editable_name": "Fixture Team 042",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 043",
+        "name": "Fixture Team 043",
+        "editable_name": "Fixture Team 043",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 044",
+        "name": "Fixture Team 044",
+        "editable_name": "Fixture Team 044",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 045",
+        "name": "Fixture Team 045",
+        "editable_name": "Fixture Team 045",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 046",
+        "name": "Fixture Team 046",
+        "editable_name": "Fixture Team 046",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 047",
+        "name": "Fixture Team 047",
+        "editable_name": "Fixture Team 047",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 048",
+        "name": "Fixture Team 048",
+        "editable_name": "Fixture Team 048",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 049",
+        "name": "Fixture Team 049",
+        "editable_name": "Fixture Team 049",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fixture Team 050",
+        "name": "Fixture Team 050",
+        "editable_name": "Fixture Team 050",
+        "team_id": null,
+        "match_percentage": 0.0,
+        "similar_affiliated": false,
+        "fuzzy_matches": []
+      }
+    ],
+    "team_affiliations": []
+  },
+  "phase3": {
+    "season_id": 242,
+    "swimmers": [
+      {
+        "key": "M|FIXTUREZQ001|PIPELINE|1980",
+        "last_name": "FIXTUREZQ001",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ001 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800001,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800001,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ002|PIPELINE|1980",
+        "last_name": "FIXTUREZQ002",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ002 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800002,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800002,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ003|PIPELINE|1980",
+        "last_name": "FIXTUREZQ003",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ003 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800003,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800003,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ004|PIPELINE|1980",
+        "last_name": "FIXTUREZQ004",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ004 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800004,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800004,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ005|PIPELINE|1980",
+        "last_name": "FIXTUREZQ005",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ005 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800005,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800005,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ006|PIPELINE|1980",
+        "last_name": "FIXTUREZQ006",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ006 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800006,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800006,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ007|PIPELINE|1980",
+        "last_name": "FIXTUREZQ007",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ007 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800007,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800007,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ008|PIPELINE|1980",
+        "last_name": "FIXTUREZQ008",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ008 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800008,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800008,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ009|PIPELINE|1980",
+        "last_name": "FIXTUREZQ009",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ009 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800009,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800009,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ010|PIPELINE|1980",
+        "last_name": "FIXTUREZQ010",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ010 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800010,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800010,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ011|PIPELINE|1980",
+        "last_name": "FIXTUREZQ011",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ011 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800011,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800011,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ012|PIPELINE|1980",
+        "last_name": "FIXTUREZQ012",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ012 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800012,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800012,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ013|PIPELINE|1980",
+        "last_name": "FIXTUREZQ013",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ013 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800013,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800013,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ014|PIPELINE|1980",
+        "last_name": "FIXTUREZQ014",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ014 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800014,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800014,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ015|PIPELINE|1980",
+        "last_name": "FIXTUREZQ015",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ015 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800015,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800015,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ016|PIPELINE|1980",
+        "last_name": "FIXTUREZQ016",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ016 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800016,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800016,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ017|PIPELINE|1980",
+        "last_name": "FIXTUREZQ017",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ017 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800017,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800017,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ018|PIPELINE|1980",
+        "last_name": "FIXTUREZQ018",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ018 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800018,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800018,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ019|PIPELINE|1980",
+        "last_name": "FIXTUREZQ019",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ019 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800019,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800019,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ020|PIPELINE|1980",
+        "last_name": "FIXTUREZQ020",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ020 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800020,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800020,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ021|PIPELINE|1980",
+        "last_name": "FIXTUREZQ021",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ021 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800021,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800021,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ022|PIPELINE|1980",
+        "last_name": "FIXTUREZQ022",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ022 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800022,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800022,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ023|PIPELINE|1980",
+        "last_name": "FIXTUREZQ023",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ023 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800023,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800023,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ024|PIPELINE|1980",
+        "last_name": "FIXTUREZQ024",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ024 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800024,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800024,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ025|PIPELINE|1980",
+        "last_name": "FIXTUREZQ025",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ025 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800025,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800025,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ026|PIPELINE|1980",
+        "last_name": "FIXTUREZQ026",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ026 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800026,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800026,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ027|PIPELINE|1980",
+        "last_name": "FIXTUREZQ027",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ027 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800027,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800027,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ028|PIPELINE|1980",
+        "last_name": "FIXTUREZQ028",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ028 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800028,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800028,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ029|PIPELINE|1980",
+        "last_name": "FIXTUREZQ029",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ029 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800029,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800029,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ030|PIPELINE|1980",
+        "last_name": "FIXTUREZQ030",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ030 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800030,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800030,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ031|PIPELINE|1980",
+        "last_name": "FIXTUREZQ031",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ031 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800031,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800031,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ032|PIPELINE|1980",
+        "last_name": "FIXTUREZQ032",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ032 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800032,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800032,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ033|PIPELINE|1980",
+        "last_name": "FIXTUREZQ033",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ033 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800033,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800033,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ034|PIPELINE|1980",
+        "last_name": "FIXTUREZQ034",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ034 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800034,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800034,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ035|PIPELINE|1980",
+        "last_name": "FIXTUREZQ035",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ035 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800035,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800035,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ036|PIPELINE|1980",
+        "last_name": "FIXTUREZQ036",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ036 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800036,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800036,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ037|PIPELINE|1980",
+        "last_name": "FIXTUREZQ037",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ037 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800037,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800037,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ038|PIPELINE|1980",
+        "last_name": "FIXTUREZQ038",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ038 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800038,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800038,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ039|PIPELINE|1980",
+        "last_name": "FIXTUREZQ039",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ039 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800039,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800039,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ040|PIPELINE|1980",
+        "last_name": "FIXTUREZQ040",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ040 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800040,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800040,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ041|PIPELINE|1980",
+        "last_name": "FIXTUREZQ041",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ041 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800041,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800041,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ042|PIPELINE|1980",
+        "last_name": "FIXTUREZQ042",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ042 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800042,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800042,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ043|PIPELINE|1980",
+        "last_name": "FIXTUREZQ043",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ043 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800043,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800043,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ044|PIPELINE|1980",
+        "last_name": "FIXTUREZQ044",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ044 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800044,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800044,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ045|PIPELINE|1980",
+        "last_name": "FIXTUREZQ045",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ045 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800045,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800045,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ046|PIPELINE|1980",
+        "last_name": "FIXTUREZQ046",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ046 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800046,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800046,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ047|PIPELINE|1980",
+        "last_name": "FIXTUREZQ047",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ047 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800047,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800047,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ048|PIPELINE|1980",
+        "last_name": "FIXTUREZQ048",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ048 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800048,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800048,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ049|PIPELINE|1980",
+        "last_name": "FIXTUREZQ049",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ049 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800049,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800049,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ050|PIPELINE|1980",
+        "last_name": "FIXTUREZQ050",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ050 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800050,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800050,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ051|PIPELINE|1980",
+        "last_name": "FIXTUREZQ051",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ051 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800051,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800051,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ052|PIPELINE|1980",
+        "last_name": "FIXTUREZQ052",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ052 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800052,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800052,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ053|PIPELINE|1980",
+        "last_name": "FIXTUREZQ053",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ053 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800053,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800053,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ054|PIPELINE|1980",
+        "last_name": "FIXTUREZQ054",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ054 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800054,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800054,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ055|PIPELINE|1980",
+        "last_name": "FIXTUREZQ055",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ055 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800055,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800055,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ056|PIPELINE|1980",
+        "last_name": "FIXTUREZQ056",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ056 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800056,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800056,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ057|PIPELINE|1980",
+        "last_name": "FIXTUREZQ057",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ057 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800057,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800057,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ058|PIPELINE|1980",
+        "last_name": "FIXTUREZQ058",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ058 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800058,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800058,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ059|PIPELINE|1980",
+        "last_name": "FIXTUREZQ059",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ059 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800059,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800059,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ060|PIPELINE|1980",
+        "last_name": "FIXTUREZQ060",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ060 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800060,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800060,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ061|PIPELINE|1980",
+        "last_name": "FIXTUREZQ061",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ061 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800061,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800061,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ062|PIPELINE|1980",
+        "last_name": "FIXTUREZQ062",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ062 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800062,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800062,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "key": "M|FIXTUREZQ063|PIPELINE|1980",
+        "last_name": "FIXTUREZQ063",
+        "first_name": "PIPELINE",
+        "complete_name": "FIXTUREZQ063 PIPELINE",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "swimmer_id": 800063,
+        "match_percentage": 100.0,
+        "category_type_id": 1234,
+        "fuzzy_matches": [
+          {
+            "id": 800063,
+            "percentage": 100.0,
+            "weight": 1.0
+          }
+        ]
+      }
+    ],
+    "badges": []
+  }
+}

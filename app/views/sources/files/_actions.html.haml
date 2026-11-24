@@ -1,0 +1,25 @@
+-# File actions of a Files tab row (only the ones Sources::FilePolicy allows). Locals: entry, return_to
+:ruby
+  edit = sources_file_allowed?(:edit, entry)
+  rename = sources_file_allowed?(:rename, entry)
+  delete = sources_file_allowed?(:delete, entry)
+  button = lambda do |action|
+    label = t("sources.files.actions.#{action}")
+    { class: 'btn btn-sm btn-outline-secondary', title: label, 'aria-label' => label }
+  end
+  delete_options = { method: :delete, params: { path: entry.relative_path, return_to: }, form_class: 'd-inline',
+                     class: 'btn btn-sm btn-outline-danger', title: t('sources.files.actions.delete'), 'aria-label' => t('sources.files.actions.delete'),
+                     form: { data: { turbo_confirm: t('sources.files.delete_confirm', name: entry.name) } } }
+- if edit || rename || delete
+  .d-inline-flex.gap-1
+    - if edit
+      = link_to(sources_file_edit_path(path: entry.relative_path, return_to:), **button.call(:edit)) do
+        %i.fa-solid.fa-pen-to-square{ 'aria-hidden' => 'true' }
+    - if rename
+      = link_to(sources_file_rename_path(path: entry.relative_path, return_to:), **button.call(:rename)) do
+        %i.fa-solid.fa-i-cursor{ 'aria-hidden' => 'true' }
+    - if delete
+      = button_to(sources_file_delete_path, **delete_options) do
+        %i.fa-solid.fa-trash-can{ 'aria-hidden' => 'true' }
+- else
+  %span.small.text-body-secondary= t('sources.files.no_actions')

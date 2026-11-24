@@ -1,0 +1,21 @@
+en:
+  remote_writes:
+    nav: 'Remote writes'
+    title: 'Remote writes'
+    subtitle: 'API calls made from here that may have changed the remote data (payload keys only, never the values)'
+    ops_unavailable: 'The local ops DB is not ready: the remote-write log is not available (run bin/rails ops:prepare).'
+    statuses:
+      success: 'Done'
+      failed: 'Failed'
+      unreachable: 'Unreachable'
+    acknowledge:
+      button: 'Acknowledge'
+      confirm: 'Mark every remote write logged so far as reviewed? The DB sync check stops warning about them.'
+      done: 'Remote writes acknowledged.'
+      failed: 'Cannot acknowledge: the local ops DB is not available (run bin/rails ops:prepare).'
+    drift:
+      title: 'DB sync'
+      help: 'Successful remote-only writes since the last green DB sync check (or acknowledgement) turn the verdict amber: counts and max ids cannot see remote UPDATEs.'
+      open: 'Open DB sync'
+      acknowledged_at: 'Last acknowledgement: %{time}.'
+      never_acknowledged: 'Never acknowledged.'

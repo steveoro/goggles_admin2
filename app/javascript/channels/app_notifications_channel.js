@@ -9,8 +9,10 @@ import consumer from 'channels/rails_consumer'
  *
  * Payload: { dom_id: String, html: String }
  * - the element with the same DOM ID gets replaced (or removed, when html is empty);
- * - otherwise the alert is prepended to the flash messages container;
- * - non-sticky alerts fade out automatically;
+ * - sticky payloads (root element with the "flash-sticky" class) go to #sticky-alerts, which
+ *   turbo-stream flash updates never touch;
+ * - any other payload is prepended to #flash-messages as a toast (toast_controller shows it,
+ *   auto-hides it and removes it);
  * - every payload is also dispatched as an "app-notification" document event (detail: the payload),
  *   so that page controllers can react to it (e.g. the Season board "season-board-ping", which has
  *   an empty html and no matching element, so it's a no-op here).
@@ -28,6 +30,10 @@ function flashContainer() {
   return container
 }
 
+function stickyContainer() {
+  return document.getElementById('sticky-alerts') || document.querySelector('.app-content') || document.body
+}
+
 function buildElement(html, domId) {
   const template = document.createElement('template')
   template.innerHTML = html.trim()
@@ -36,8 +42,9 @@ function buildElement(html, domId) {
   return element
 }
 
+// Fallback for non-toast, non-sticky payloads only (toasts are handled by toast_controller)
 function scheduleAutoHide(element) {
-  if (element.classList.contains('flash-sticky')) return
+  if (element.classList.contains('flash-sticky') || element.classList.contains('toast')) return
 
   setTimeout(() => {
     element.style.transition = 'opacity 0.6s'
@@ -62,6 +69,8 @@ consumer.subscriptions.create('AppNotificationsChannel', {
 
     if (existing) {
       existing.replaceWith(element)
+    } else if (element.classList.contains('flash-sticky')) {
+      stickyContainer().prepend(element)
     } else {
       flashContainer().prepend(element)
     }

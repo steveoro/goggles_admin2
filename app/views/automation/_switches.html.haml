@@ -1,0 +1,28 @@
+-#
+  Pipeline automation kill switches (phase 10, DataFix::Automation): one row per switch with its state and a toggle
+  (POST automation/switch). Locals: return_to ('dashboard' or 'season_board'). Shown in the dashboard system column
+  and on the Season board header. Every toggle writes an 'automation.switched' event.
+:ruby
+  env_off = DataFix::Automation.env_off?
+  ops_ready = Ops.available?
+  state_css = { 'on' => 'text-bg-success', 'paused' => 'text-bg-warning', 'off' => 'text-bg-secondary' }
+.automation-switches{ id: "automation-switches-#{return_to}" }
+  - if env_off
+    .alert.alert-warning.small.py-1.px-2.mb-2{ data: { automation_env_off: 'true' } }
+      = t('pipeline_automation.switches.env_off', key: DataFix::Automation::ENV_KEY)
+  - elsif !ops_ready
+    .alert.alert-secondary.small.py-1.px-2.mb-2= t('pipeline_automation.switches.ops_unavailable')
+  %ul.list-unstyled.mb-0
+    - DataFix::Automation.switches.each do |switch|
+      - state = switch.state
+      %li.d-flex.align-items-center.gap-2.py-1{ data: { automation_switch: switch.key, automation_state: state } }
+        %span.badge{ class: state_css[state] }
+          = t("pipeline_automation.switches.states.#{state}")
+        %span.flex-grow-1.small{ title: t("pipeline_automation.switches.#{switch.key}.help") }
+          = t("pipeline_automation.switches.#{switch.key}.label")
+        - if ops_ready
+          = button_to(t(switch.stored ? 'pipeline_automation.switches.turn_off' : 'pipeline_automation.switches.turn_on'),
+                      automation_switch_path,
+                      method: :post, params: { switch: switch.key, value: switch.stored ? 0 : 1, return_to: },
+                      class: "btn btn-sm #{switch.stored ? 'btn-outline-secondary' : 'btn-outline-primary'}",
+                      form_class: 'd-inline', data: { turbo_frame: '_top' })

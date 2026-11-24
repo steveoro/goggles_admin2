@@ -1,0 +1,37 @@
+= render(Shell::PageHeaderComponent.new(title: t('dashboard.activity.title'), count: @events&.total_count,
+                                        subtitle: t('dashboard.activity.subtitle')))
+
+- if !@ops_available || @events.nil?
+  .alert.alert-warning#activity-unavailable{ role: 'alert' }= t('dashboard.activity.ops_unavailable')
+- elsif @events.empty?
+  %p.text-body-secondary#activity-empty= t('dashboard.activity.empty')
+- else
+  = paginate(@events)
+  .table-responsive
+    %table.table.table-sm.table-hover.align-middle#activity-events
+      %thead.table-body-tertiary
+        %tr
+          %th= t('dashboard.activity.columns.time')
+          %th= t('dashboard.activity.columns.event')
+          %th= t('dashboard.activity.columns.actor')
+          %th= t('dashboard.activity.columns.season')
+          %th= t('dashboard.activity.columns.subject')
+          %th= t('dashboard.activity.columns.details')
+      %tbody
+        - @events.each do |event|
+          - icon, css = Dashboard::ActivityFeedComponent.level_style(event.level)
+          %tr{ data: { event_kind: event.kind, event_level: event.level } }
+            %td.text-nowrap.font-monospace.small= l(event.occurred_at.localtime, format: :short)
+            %td
+              %i.fa-solid.fa-fw{ class: [icon, css], title: event.level, 'aria-hidden' => 'true' }
+              - if event.link_path.present?
+                = link_to(event.title, event.link_path)
+              - else
+                = event.title
+            %td.small= event.actor
+            %td.small= event.season_id
+            %td.small.text-break{ title: event.subject_key }= Dashboard::ActivityFeedComponent.subject_label(event)
+            %td.small.text-break.text-body-secondary
+              - data = event.data.is_a?(Hash) ? event.data : {}
+              = data.map { |key, value| "#{key}: #{value.is_a?(Hash) ? value.to_json : value}" }.join(' · ').truncate(200)
+  = paginate(@events)

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
+import { Collapse } from 'bootstrap'
 
 // Handles the GogglesCup season/team/cup selection page:
 // - submits the GET selection form when the season or managed-team changes;
@@ -239,7 +240,8 @@ export default class extends Controller {
     if (!panel) {
       return
     }
-    panel.classList.add('show')
+    // (through Bootstrap, so that #btn-show-precomputed stays in sync)
+    Collapse.getOrCreateInstance(panel, { toggle: false }).show()
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 

@@ -1,0 +1,25 @@
+it:
+  ops:
+    setup_notice:
+      title: "DB ops locale non pronto"
+      body: "Esegui '%{command}' nella cartella del progetto (oppure 'bin/rails solid:prepare'), poi ricarica la pagina."
+      states:
+        not_configured: "Manca la voce 'ops:' in config/database.yml: copiala da config/database.example.yml (fino ad allora il registro eventi e gli altri strumenti locali restano disattivati)."
+        missing: "Il file del DB ops locale (db/ops/) non esiste ancora."
+        needs_migration: "Il DB ops locale ha delle migrazioni in sospeso."
+    events:
+      datafix:
+        committed: "Commit Data-Fix completato"
+        commit_failed: "Commit Data-Fix fallito"
+        purged: "Dati di staging Data-Fix eliminati"
+      push:
+        uploaded: "Script SQL inviato all'API"
+        failed: "Invio dello script SQL fallito"
+      board:
+        crawl_finished: "Crawl del meeting terminato"
+        crawl_failed: "Crawl del meeting fallito"
+        extract_finished: "Estrazione del manifesto terminata"
+        extract_failed: "Estrazione del manifesto fallita"
+        calendar_linked: "Calendario collegato a un evento FIN"
+      fin:
+        watch_changed: "Pagina eventi FIN cambiata"

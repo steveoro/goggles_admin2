@@ -2,8 +2,6 @@ en:
   season_board:
     title: 'Season board'
     nav: 'Season board'
-    home_button: 'Season board'
-    home_button_tooltip: 'Weekly flow for the latest MASFIN season: check, crawl, review and push, one row per FIN meeting'
     back_to_board: 'Back to Season board'
     header:
       season: 'Season %{description}'
@@ -13,8 +11,8 @@ en:
       board_sql_pending:
         one: '1 SQL script awaiting push'
         other: '%{count} SQL scripts awaiting push'
-      board_sql_pending_tooltip: 'Calendar link / backfill scripts written by the Season board'
-      board_sql_pending_link: 'Open the Push page'
+      board_sql_pending_tooltip: 'Scripts of this season other than the Data-Fix commits (calendar links, backfill, team managers, merges, ...)'
+      board_sql_pending_link: 'Open the Outbox'
     empty:
       no_rows: 'The FIN calendar snapshot is empty: the watcher has not stored any meeting row yet.'
       check_now: 'Check now'
@@ -124,7 +122,7 @@ en:
       link_secondary: 'Link to meeting...'
       link_select_prompt: 'Select a calendar row...'
       no_link_candidates: 'no unlinked calendar to link to'
-      busy_tooltip: 'A crawl or extraction is already queued or running for this meeting'
+      busy_tooltip: 'A crawl, extraction or preparation is already queued or running for this meeting'
       no_url: 'No FIN link available'
     orphans:
       title: 'Calendar rows not on the FIN list (%{count})'

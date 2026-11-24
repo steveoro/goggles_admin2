@@ -1,0 +1,158 @@
+it:
+  pipeline_automation:
+    run:
+      building: 'Costruzione del passo %{phase}'
+      done: 'Preparato: %{stage}'
+      done_with_reason: 'Preparato: %{stage} (%{reason})'
+      failed: 'Fallito al passo %{phase}: %{reason}'
+      refused: 'Rifiutato: %{reason}'
+      yielded: 'Sospeso al passo %{phase} per un commit in coda'
+      drift_warning: 'Avviso sincronizzazione DB: %{warning}'
+    reasons:
+      automation_paused: 'automazione in pausa'
+      ops_unavailable: 'il DB locale ops non è disponibile'
+      drift_red: 'la sincronizzazione DB è rossa'
+      db_restore: 'è in corso un ripristino del DB'
+      source_missing: 'il file sorgente non è più in results.new'
+      source_needs_review: "la sorgente va prima rivista dall'operatore (la sua copia di lavoro verrebbe riscritta)"
+      commit_pending: 'un commit di questa sorgente è in attesa'
+      edited: "la sorgente contiene modifiche dell'operatore (usa il pulsante Prepara della riga)"
+      lease_busy: "la sorgente è in costruzione da parte di un'altra richiesta o di un job"
+      deadline: 'ha superato la scadenza prevista'
+      error: 'errore'
+      interrupted: 'interrotto'
+      commit_queued: 'un commit è in coda'
+      source_changed: 'la sorgente è cambiata durante la preparazione'
+    stages:
+      new: 'Non costruita'
+      preparing: 'In preparazione'
+      needs_review: 'Da rivedere'
+      blocked: 'Bloccata'
+      ready_to_commit: 'Pronta per il commit'
+      committing: 'Commit in corso'
+      committed: 'Commit eseguito'
+      failed: 'Fallita'
+    switches:
+      title: 'Automazione'
+      env_off: "%{key}=0 è impostato: ogni interruttore dell'automazione è forzato su spento (rimuovilo e riavvia il server per riprendere)."
+      ops_unavailable: 'Gli interruttori richiedono il DB locale ops (esegui bin/rails ops:prepare).'
+      turn_on: 'Accendi'
+      turn_off: 'Spegni'
+      states:
+        'on': 'Acceso'
+        paused: 'In pausa'
+        'off': 'Spento'
+      enabled:
+        label: 'Automazione (interruttore generale)'
+        help: 'Crawl, estrazioni dei manifest e preparazioni Data-Fix automatici. Spento: nulla viene accodato automaticamente.'
+      auto_extract:
+        label: 'Estrazione automatica dei manifest'
+        help: 'Estrazione non presidiata dei PDF dei manifest (motore LLM): al massimo 3 tentativi per PDF, ad almeno 20 ore di distanza.'
+      auto_prepare:
+        label: 'Preparazione automatica (passi Data-Fix 1-5)'
+        help: 'Preparazione Data-Fix non presidiata fino a "pronta per il commit" o "da rivedere". Non esegue mai commit né push.'
+    worker_mode:
+      puma: 'I job girano dentro Puma (predefinito).'
+      separate: 'I job girano in un processo bin/jobs separato (SOLID_QUEUE_IN_PUMA=false).'
+    board:
+      prepare_all: 'Prepara tutto'
+      prepare_all_tooltip: "Esegue subito il pianificatore dell'automazione: prepara ogni riga che ne ha bisogno (stesse regole e interruttori del passaggio ogni 15 minuti)"
+      'on': 'Automazione accesa'
+      paused: 'Automazione in pausa'
+      switches: 'interruttori'
+    row:
+      prepare: 'Prepara'
+      prepare_tooltip: 'Costruisce in background i passi Data-Fix mancanti e obsoleti (un passo modificato non viene mai ricostruito; nessun commit)'
+      hold: "Sospendi l'automazione"
+      hold_tooltip: 'Non preparare mai automaticamente questo meeting (i pulsanti continuano a funzionare)'
+      release: 'Rimuovi la sospensione'
+      release_tooltip: "Permetti di nuovo all'automazione di preparare questo meeting"
+    review:
+      being_prepared: 'Preparazione in corso in background: i verdetti si aggiornano alla fine del job. Nel frattempo le modifiche sono rifiutate.'
+      edit_refused: 'Questa sorgente è in preparazione in background: riprova tra un momento.'
+    flash:
+      prepare_queued: "Preparazione accodata per l'evento FIN %{fin_event_id}."
+      prepare_busy: "L'evento FIN %{fin_event_id} è già in preparazione (o un suo commit è in attesa)."
+      no_source: "L'evento FIN %{fin_event_id} non ha una sorgente Data-Fix da preparare."
+      held: "Automazione sospesa per l'evento FIN %{fin_event_id}: non verrà mai preparato automaticamente."
+      released: "Sospensione dell'automazione rimossa per l'evento FIN %{fin_event_id}."
+      hold_failed: "Impossibile cambiare la sospensione dell'evento FIN %{fin_event_id}."
+      planner_queued: "Pianificatore dell'automazione accodato: le righe che ne hanno bisogno vengono preparate in background."
+      planner_failed: "Impossibile accodare il pianificatore dell'automazione: %{error}"
+      paused: "L'automazione è in pausa (o la preparazione automatica è spenta): accendila prima."
+      unknown_switch: 'Interruttore di automazione sconosciuto: %{switch}'
+      ops_unavailable: "Gli interruttori dell'automazione richiedono il DB locale ops (esegui bin/rails ops:prepare)."
+      switch_on: '%{switch}: acceso.'
+      switch_off: '%{switch}: spento.'
+      env_override: "ADMIN2_AUTOMATION=0 è impostato: l'automazione resta spenta finché non viene rimosso (e il server riavviato)."
+  season_board:
+    states:
+      prepare_failed: 'Preparazione fallita'
+      needs_review: 'Da rivedere'
+      ready_to_commit: 'Pronto per il commit'
+    state_tooltips:
+      prepare_failed: "L'ultima preparazione in background è fallita: riprova dopo averne risolto la causa"
+      needs_review: 'Preparato: un passo richiede una tua decisione (si apre con il filtro di revisione attivo)'
+      ready_to_commit: "Preparato e pulito: apri il riepilogo del commit, esegui il commit, poi il push dall'Outbox"
+    state_details:
+      prepare_failed: 'Preparazione fallita al passo %{phase}'
+      prepare_failed_no_phase: 'Preparazione fallita'
+      needs_review: 'Da rivedere al passo %{step}'
+      blocked: 'Bloccato al passo %{step}'
+      issues:
+        one: '1 problema'
+        other: '%{count} problemi'
+      ready_to_commit: 'Pronto per il commit · %{entities}'
+      new_teams:
+        one: '+1 squadra'
+        other: '+%{count} squadre'
+      new_swimmers:
+        one: '+1 nuotatore'
+        other: '+%{count} nuotatori'
+      no_new_entities: 'niente di nuovo da creare'
+    actions:
+      prepare: 'Riprova'
+      commit: 'Commit'
+    flags:
+      prepare_held: 'sospeso'
+    flag_tooltips:
+      prepare_held: "L'automazione non prepara mai questo meeting (sospeso dall'operatore)"
+    activity:
+      prepare_queued: 'Preparazione in coda'
+      prepare_running: 'In preparazione dalle %{time}'
+      prepare_stuck: 'La preparazione sembra bloccata dalle %{time}'
+      kinds:
+        prepare: 'preparazione'
+    strip:
+      kinds:
+        prepare: 'preparazione'
+  inbox:
+    sources:
+      ready_to_commit: 'pronti per il commit'
+      needs_review: 'da rivedere'
+      prepare_failed: 'preparazioni fallite'
+      extraction_gave_up: 'estrazioni abbandonate'
+      automation_paused: 'automazione'
+    pipeline_rows:
+      title: '%{name}: %{state}'
+    needs_review:
+      action: 'Rivedi il passo %{step}'
+    extraction_gave_up:
+      title: "%{name}: estrazione automatica abbandonata dopo %{count} tentativi"
+      detail: 'Manifest %{pdf}: controlla il motore LLM o il PDF, poi estrailo a mano.'
+      action: 'Estrai a mano'
+    automation_paused:
+      title: 'Automazione in pausa'
+      detail_switch: "L'interruttore generale dell'automazione è spento: nulla viene scaricato, estratto o preparato automaticamente."
+      detail_env: "%{key}=0 è impostato: ogni interruttore dell'automazione è forzato su spento."
+      action: 'Apri gli interruttori'
+  ops:
+    events:
+      automation:
+        switched: "Interruttore dell'automazione modificato"
+        row_held: 'Riga della Season board sospesa (nessuna preparazione automatica)'
+        row_released: 'Sospensione della riga della Season board rimossa'
+      pipeline:
+        prepare_done: 'Preparazione Data-Fix terminata'
+        prepare_failed: 'Preparazione Data-Fix fallita'
+        prepare_refused: 'Preparazione Data-Fix rifiutata'

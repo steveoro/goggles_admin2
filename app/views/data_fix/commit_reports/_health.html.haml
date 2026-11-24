@@ -1,0 +1,42 @@
+-#
+  Lazy frame of the season health runs queued after the commit ('results' and 'badges', Health::SeasonRunJob), then
+  (phase 11) the Fix links of the open badge / duplicate findings once the runs are over.
+  Locals: report (Ops::CommitReport), runs (Ops::HealthRun list), findings (Ops::HealthFinding list, optional).
+%turbo-frame#commit-report-health
+  .card.mb-3{ data: { live_busy: runs.any?(&:pending?).to_s } }
+    .card-header.d-flex.align-items-center
+      %strong= t('data_fix.commit_report.season_checks')
+      - if report.season_id
+        = link_to(t('data_fix.commit_report.season_checks_link'), health_season_path(report.season_id), class: 'ms-auto small',
+                                                                                                        data: { turbo_frame: '_top' })
+    .card-body
+      - if runs.empty?
+        %p.mb-0.text-body-secondary= t('data_fix.commit_report.season_checks_none')
+      - else
+        %table.table.table-sm.mb-0
+          %thead
+            %tr
+              %th= t('data_fix.commit_report.group')
+              %th= t('data_fix.commit_report.status')
+              %th.text-end= t('data_fix.commit_report.findings')
+          %tbody
+            - runs.each do |run|
+              %tr{ data: { health_run: run.group_key } }
+                %td= t("health.groups.#{run.group_key}", default: run.group_key.humanize)
+                %td= render(Health::BadgeComponent.new(kind: :run, value: run.status))
+                %td.text-end= run.finished? ? run.findings_count.to_i : '…'
+      - fix_findings = local_assigns.fetch(:findings, [])
+      - if runs.any? && runs.none?(&:pending?)
+        %section.mt-3#commit-report-fixes
+          %h3.h6= t('maintenance.commit_report.fixes')
+          - if fix_findings.empty?
+            %p.small.text-body-secondary.mb-0= t('maintenance.commit_report.fixes_none')
+          - else
+            %ul.list-group.small
+              - fix_findings.each do |finding|
+                %li.list-group-item.d-flex.flex-wrap.align-items-center.gap-2{ data: { finding_id: finding.id, check_key: finding.check_key } }
+                  = render(Health::BadgeComponent.new(kind: :severity, value: finding.severity))
+                  = link_to(finding.display_title, health_finding_path(finding), class: 'me-auto text-break', data: { turbo_frame: '_top' })
+                  = render(Maintenance::FixButtonComponent.new(finding:, compact: false))
+            - more_options = { class: 'small', data: { turbo_frame: '_top' } }
+            = link_to(t('maintenance.commit_report.more'), health_season_path(report.season_id), **more_options) if report.season_id

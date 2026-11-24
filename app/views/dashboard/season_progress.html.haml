@@ -1,0 +1,2 @@
+= turbo_frame_tag('dashboard-season-progress', target: '_top') do
+  = render(Dashboard::SeasonProgressComponent.new(summary: @summary, season: @season))

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require 'kaminari'
 
 #
 # = Local Data-integrity helper tasks
@@ -15,12 +14,11 @@ require 'kaminari'
 #-- ---------------------------------------------------------------------------
 #++
 
+# Since phase 13 the report tasks are thin callers of the read-only inspectors (Maintenance::Inspectors, also on
+# /operations) and 'check:dup_mir_swimmers' of the 'results.dedupe' operation (Maintenance::RakeRunner): same texts,
+# prompt and exits. 'check:results' and 'check:events' keep their two queries; their default season is the latest FIN
+# Masters season (SeasonDefaults); the data health report (/health) covers both checks for every season.
 namespace :check do # rubocop:disable Metrics/BlockLength
-  # Default Goggles::Season#id value for most tasks
-  DEFAULT_SEASON_ID = 262 unless defined? DEFAULT_SEASON_ID
-  #-- ---------------------------------------------------------------------------
-  #++
-
   desc <<~DESC
     Given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE MIRs or MRRs associated.
 
@@ -29,7 +27,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     (MIRs should always be there for a Meeting that has occurred, whereas MRRs may not have been
      set at all, depending by the organization hosting it.)
 
-    Options: [season=season#id|<nil=#{DEFAULT_SEASON_ID}>]
+    Options: [season=season#id|<nil=latest FIN Masters season>]
              [mrr=true|<nil=false>]
              [presence=true|<nil=false>]
 
@@ -44,7 +42,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
     puts("\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***")
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
+    season_id = ENV.include?('season') ? ENV['season'].to_i : SeasonDefaults.default_season_id
     puts "\r\n"
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(includee)
@@ -62,7 +60,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     Similarly to check:results, given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE
     MeetingEvents associated.
 
-    Options: [season=season#id|<nil=#{DEFAULT_SEASON_ID}>]
+    Options: [season=season#id|<nil=latest FIN Masters season>]
              [presence=true|<nil=false>]
 
       - season: season ID
@@ -74,7 +72,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
     puts("\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} MeetingEvent rows ***")
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
+    season_id = ENV.include?('season') ? ENV['season'].to_i : SeasonDefaults.default_season_id
     puts "\r\n"
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(:meeting_events)
@@ -100,17 +98,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(team: [:environment]) do
-    puts("\r\n*** Task: check:team ***")
-    source = GogglesDb::Team.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Team.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need both 'src' & 'dest' IDs to proceed.")
-      exit
-    end
-
-    checker = Merge::TeamChecker.new(source:, dest:)
-    checker.run
-    checker.display_report
+    status = Maintenance::RakeRunner.call('check:team', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -137,17 +126,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(swimmer: [:environment]) do
-    puts("\r\n*** Task: check:swimmer ***")
-    source = GogglesDb::Swimmer.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Swimmer.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need both 'src' & 'dest' IDs to proceed.")
-      exit
-    end
-
-    checker = Merge::SwimmerChecker.new(source:, dest:)
-    checker.run
-    checker.display_report
+    status = Maintenance::RakeRunner.call('check:swimmer', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -172,32 +152,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(season: [:environment]) do
-    puts("\r\n*** Task: check:season - season #{ENV.fetch('season', nil)} ***")
-    season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
-    if season.nil?
-      puts("You need a valid 'season' ID to proceed.")
-      exit
-    end
-    list_teams = ENV['list_teams'] == '1'
-
-    puts('--> LIST TEAMS for sure & possible badge merges: ✔') if list_teams
-
-    checker = Merge::BadgeSeasonChecker.new(season:)
-    checker.run
-    checker.display_report
-    exit unless list_teams || (checker.sure_badge_merges.blank? && checker.possible_badge_merges.blank?)
-
-    %i[possible_badge_merges sure_badge_merges].each do |method_name|
-      puts("\r\n\033[1;33;37m#{method_name.upcase} candidates w/ badge details:\033[0m (tot. #{checker.send(method_name).size})")
-      puts("#{'SWIMMER'.center(40)} #{'BADGE ID DETAILS'.center(90)}")
-      checker.send(method_name).each do |swimmer_id, badge_list|
-        deco_list = badge_list.map do |badge|
-          "[\033[1;33;33m#{badge.id.to_s.rjust(6)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(90)
-        end
-        swimmer_name = GogglesDb::Swimmer.find(swimmer_id).complete_name
-        puts("- #{swimmer_id.to_s.rjust(5)}, #{swimmer_name.ljust(30)}#{deco_list.join(' ')}")
-      end
-    end
+    status = Maintenance::RakeRunner.call('check:season', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -230,17 +186,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(badge: [:environment]) do
-    puts("\r\n*** Task: check:badge ***")
-    source = GogglesDb::Badge.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Badge.find_by(id: ENV['dest'].to_i)
-    if source.nil?
-      puts("You need at least the 'src' ID to proceed.")
-      exit
-    end
-
-    checker = Merge::BadgeChecker.new(source:, dest:)
-    checker.run
-    checker.display_report
+    status = Maintenance::RakeRunner.call('check:badge', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -265,35 +212,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(map_team_badges: [:environment]) do
-    puts("\r\n*** Task: check:map_team_badges - season #{ENV.fetch('season', nil)}, team #{ENV.fetch('team', nil)} ***")
-    season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
-    team = GogglesDb::Team.find_by(id: ENV['team'].to_i)
-    if season.nil? || team.nil?
-      puts("You need both a valid 'season' & team IDs to proceed.")
-      exit
-    end
-
-    page_idx = ENV['page'].to_i
-    badges = GogglesDb::Badge.where(season_id: season.id, team_id: team.id)
-    puts("\r\n--> Found #{badges.size} badges => showing page #{page_idx} (/#{(badges.size / 10) - 1})")
-    exit if badges.empty?
-
-    badges_page = Kaminari.paginate_array(badges).page(page_idx).per(10)
-    exit if badges_page.empty?
-
-    GogglesDb::BadgeDecorator.decorate_collection(badges_page).each do |badge|
-      categories_x_seasons = Merge::BadgeChecker.map_categories_x_seasons(season.season_type_id, badge.swimmer_id)
-      curr_hash = categories_x_seasons.find { |h| h[:season_id] == season.id }
-      Merge::BadgeChecker.badge_report_header(
-        src_badge: badge,
-        computed_category_type_id: curr_hash[:computed_category_type_id],
-        computed_category_type_code: curr_hash[:computed_category_type_code]
-      ).each { |header_line| puts(header_line) }
-
-      categories_x_seasons.map do |categories_map|
-        puts(Merge::BadgeChecker.decorate_categories_map(categories_map))
-      end
-    end
+    status = Maintenance::RakeRunner.call('check:map_team_badges', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -310,25 +230,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(dup_mir_badges: [:environment]) do
-    puts("\r\n*** Task: check:dup_mir_badges - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
-    meeting_id = ENV.fetch('meeting_id', nil)
-    unless GogglesDb::Meeting.exists?(id: meeting_id)
-      puts('You need a valid meeting_id to proceed.')
-      exit
-    end
-
-    badge_ids = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
-                                                  .where(meetings: { id: meeting_id })
-                                                  .group(:badge_id, 'meeting_programs.id')
-                                                  .having('COUNT(meeting_individual_results.id) > 1')
-                                                  .pluck(:badge_id)
-
-    puts("\r\n--> Found #{badge_ids.size} badges with > 1 MIR for the *SAME* MeetingProgram.")
-    if badge_ids.size.positive?
-      puts(badge_ids.join(', '))
-    else
-      puts("THAT'S GOOD! No duplicates!")
-    end
+    status = Maintenance::RakeRunner.call('check:dup_mir_badges', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -353,68 +256,9 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     - index:      Override the default progressive file index (default: auto)
 
   DESC
-  task(dup_mir_swimmers: ['merge:check_needed_dirs']) do # rubocop:disable Metrics/BlockLength
-    puts("\r\n*** Task: check:dup_mir_swimmers ***")
-    meeting_id = ENV.fetch('meeting_id', nil)
-    season_id = ENV.fetch('season_id', nil)
-    autofix = ENV['autofix'] == '1'
-    simulate = ENV['simulate'] != '0'
-
-    meeting = GogglesDb::Meeting.find_by(id: meeting_id) if meeting_id.present?
-    season = GogglesDb::Season.find_by(id: season_id) if season_id.present?
-
-    if meeting.nil? && season.nil?
-      puts('You need a valid meeting_id or season_id to proceed.')
-      puts('  meeting_id: Check a single meeting')
-      puts('  season_id:  Check all meetings in a season')
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-
-    puts("\r\n- Meeting.......: #{meeting.id} - #{meeting.decorate.display_label}") if meeting
-    puts("- Season........: #{season.id} - #{season.description}") if season && meeting.nil?
-    puts("- autofix.......: #{autofix}")
-    puts("- simulate......: #{simulate}")
-    puts("- dest. folder..: #{SCRIPT_OUTPUT_DIR}\r\n") if autofix
-
-    begin
-      cleaner = if meeting.present?
-                  Merge::DuplicateResultCleaner.new(meeting: meeting, autofix: autofix)
-                else
-                  Merge::DuplicateResultCleaner.new(season: season, autofix: autofix)
-                end
-    rescue ArgumentError => e
-      puts("\r\n*** ERROR: #{e.message}")
-      exit
-    end
-
-    cleaner.display_report
-
-    # If autofix is enabled, generate and optionally execute the script
-    if autofix
-      cleaner.prepare
-      sql_log = cleaner.single_transaction_sql_log
-
-      if sql_log.empty? || sql_log.size <= 5 # Only transaction wrapper, no actual deletions
-        puts("\r\nNo duplicates found requiring deletion.")
-      else
-        # Ask for confirmation
-        print "\r\nProceed with generating fix script? [y/N] "
-        response = $stdin.gets&.chomp&.downcase
-        unless response == 'y'
-          puts('Aborted.')
-          exit
-        end
-
-        target_id = meeting&.id || "season_#{season.id}"
-        file_name = "#{format('%04d', file_index)}-fix_dup_results-#{target_id}"
-        process_sql_file(file_name: file_name, sql_log_array: sql_log, simulate: simulate)
-        puts('Done.')
-      end
-    else
-      puts("\r\nRun with autofix=1 to generate deletion script.")
-    end
+  task(dup_mir_swimmers: ['merge:check_needed_dirs']) do
+    status = Maintenance::RakeRunner.call('check:dup_mir_swimmers', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -435,55 +279,9 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       - page: optional page number to display (0-based); when missing, outputs all rows.
 
   DESC
-  # rubocop:disable-next Layout/LineLength
-  task(map_swimmer_mirs: [:environment]) do # rubocop:disable Metrics/BlockLength
-    puts("\r\n*** Task: check:map_swimmer_mirs - swimmer #{ENV.fetch('swimmer', nil)} ***")
-    swimmer = GogglesDb::Swimmer.find_by(id: ENV['swimmer'].to_i)
-    if swimmer.nil?
-      puts("You need a valid 'swimmer' ID to proceed.")
-      exit
-    end
-
-    last7 = %w[1 true].include?(ENV.fetch('last7', '').to_s.downcase)
-    per_page = 50
-    paginate = ENV['page'].present?
-    page_idx = ENV['page'].to_i
-    page_number = page_idx + 1
-
-    mirs = GogglesDb::MeetingIndividualResult.includes(:meeting, :season)
-                                             .joins(:season, :meeting)
-                                             .where(swimmer_id: swimmer.id)
-
-    if last7
-      min_season_id = GogglesDb::LastSeasonId.last.id - 70 # (season IDs are fixed and increased by 10 each championship)
-      mirs = mirs.where('seasons.id >= ?', min_season_id) # rubocop:disable Rails/WhereRange
-    end
-
-    mirs = mirs.order('seasons.id ASC, meetings.header_date ASC, meeting_individual_results.id ASC')
-    mirs_count = mirs.count
-    max_page_idx = [(mirs_count.to_f / per_page).ceil - 1, 0].max
-    puts("\r\n--> Swimmer ID #{swimmer.id}")
-    if paginate
-      puts("--> Found #{mirs_count} MIRs => showing page #{page_idx} (/#{max_page_idx})")
-    else
-      puts("--> Found #{mirs_count} MIRs => showing all rows")
-    end
-    exit if mirs.empty?
-
-    mirs_page = paginate ? mirs.page(page_number).per(per_page) : mirs
-    exit if paginate && mirs_page.empty?
-
-    puts("--> Swimmer: #{swimmer.decorate.display_label}")
-    curr_season = 0
-    puts('MIR'.ljust(12) + ' | Season'.ljust(10) + ' | Badge'.ljust(12) + ' | Team'.ljust(12) + ' | Team Aff.'.ljust(12) + ' | Team Name'.ljust(38) + ' | Header Date'.ljust(12) + ' | Meeting'.ljust(50))
-    mirs_page.map do |mir|
-      if curr_season != mir.season.id
-        puts(''.center(154, '-'))
-        curr_season = mir.season.id
-      end
-      puts("#{mir.id.to_s.rjust(12)} | #{mir.season.id.to_s.rjust(7)} | #{mir.badge_id.to_s.rjust(9)} | #{mir.team_id.to_s.rjust(9)} | #{mir.team_affiliation_id.to_s.rjust(9)} | #{mir.team.name.truncate(35).ljust(35)} | #{mir.meeting.header_date.to_s.ljust(11)} | #{mir.meeting.description.ljust(50)}")
-    end
-    puts("\r\n")
+  task(map_swimmer_mirs: [:environment]) do
+    status = Maintenance::RakeRunner.call('check:map_swimmer_mirs', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -509,16 +307,8 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(dup_badges_for_team: [:environment]) do
-    puts("\r\n*** Task: check:dup_badges_for_team - team #{ENV.fetch('team', nil)} ***")
-    team = GogglesDb::Team.find_by(id: ENV['team'].to_i)
-    if team.nil?
-      puts('You need a valid team ID to proceed.')
-      exit
-    end
-
-    checker = Merge::DupBadgesForTeamChecker.new(team:)
-    checker.run
-    checker.display_report
+    status = Maintenance::RakeRunner.call('check:dup_badges_for_team', data_root: Outbox.data_root)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

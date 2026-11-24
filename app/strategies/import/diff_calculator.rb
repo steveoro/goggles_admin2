@@ -7,7 +7,7 @@ module Import
   # Utility class for calculating differences between model instances and their
   # database counterparts. Returns only the attributes that have changed.
   #
-  # Extracted from MacroCommitter for reusability across import strategies.
+  # Extracted from the retired legacy committer for reusability across import strategies.
   #
   # @author Steve A.
   #

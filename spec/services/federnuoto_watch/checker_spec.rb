@@ -79,7 +79,7 @@ RSpec.describe FedernuotoWatch::Checker do
 
       it 'broadcasts a transient info message for manual checks' do
         expect { run_check(manual: true) }.to have_broadcasted_to(stream).with(
-          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('alert-info', '10 meeting'))
+          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('text-bg-info', '10 meeting'))
         )
       end
     end
@@ -151,7 +151,7 @@ RSpec.describe FedernuotoWatch::Checker do
 
       it 'broadcasts an error message for manual checks' do
         expect { run_check(manual: true) }.to have_broadcasted_to(stream).with(
-          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('alert-danger', 'site down'))
+          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('text-bg-danger', 'site down'))
         )
       end
     end
@@ -163,6 +163,30 @@ RSpec.describe FedernuotoWatch::Checker do
         expect(run_check('<html><body>Maintenance</body></html>')).to eq(:error)
         expect(store.read).to include('digest' => digest, 'last_error' => a_string_including('ParseError'))
       end
+    end
+  end
+
+  describe 'ops event log' do
+    it 'records one fin.watch_changed event per detected change' do
+      expect { run_check }.not_to change(Ops::Event, :count) # (baseline)
+      expect { run_check(changed_html) }.to change(Ops::Event, :count).by(1)
+      event = Ops::Event.last
+      expect(event).to have_attributes(kind: 'fin.watch_changed', level: 'warning', actor: 'job', subject_type: 'fin_watch',
+                                       subject_key: store.read['digest'])
+      expect(event.data).to include('added' => 1, 'removed' => 1, 'with_results' => 1, 'updated' => 0)
+      expect { run_check(changed_html) }.not_to change(Ops::Event, :count) # (unchanged)
+    end
+
+    it 'marks the manual checks as operator events' do
+      run_check
+      run_check(changed_html, manual: true)
+      expect(Ops::Event.last).to have_attributes(kind: 'fin.watch_changed', actor: 'operator')
+    end
+
+    it 'returns :changed all the same when the event write fails' do
+      run_check
+      allow(Ops::Event).to receive(:create!).and_raise(ArgumentError, 'kaboom')
+      expect(run_check(changed_html)).to eq(:changed)
     end
   end
 end

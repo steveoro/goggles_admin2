@@ -3,7 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Phase5::DataIntegrator, type: :service do
-  let(:season) { FactoryBot.create(:season) }
+  # A non-FIN season type, so that the YOB fallback ages swimmers at the meeting year.
+  # (FIN Master seasons use the season's end year instead - see the 2026-27 context below -
+  # and the bare :season factory picks a random season type.)
+  let(:season) { FactoryBot.create(:season, season_type_id: GogglesDb::SeasonType::MAS_CSI_ID) }
 
   let(:source_data) { { 'dates' => '2023-01-29' } }
   let(:phase3_data) do

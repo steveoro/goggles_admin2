@@ -1,180 +1,152 @@
-.card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "swimmer-card-#{swimmer_index}" }
-  .card-header.d-flex.justify-content-between.align-items-center{ id: "swimmer-header-#{swimmer_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#swimmer-panel-#{swimmer_index}" } }
-    .d-flex.align-items-center
-      %span.mr-2
-        %i.fa{ class: icon_class, title: icon_title }
-      %strong
-        = swimmer_hash['complete_name']
-      %small.ml-2.fw-bold
+-#
+  One Step 3 swimmer card (rendered by data_fix/_swimmer_card_frame, inside its key-based Turbo frame).
+  Positional ids (swimmer-card-N, swimmer-header-N, swimmer-panel-N, swimmer_N_*, fuzzy_select_N) are kept for the
+  anchors, the specs and the swimmer-card controller.
+:ruby
+  issue_codes = Array(local_assigns[:issue_codes])
+  fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
+  selected_match = fuzzy_matches.find { |m| m['id'] == swimmer_id }
+  xref_top = ((swimmer_hash.dig('team_cross_ref', 'candidates') || []).find { |c| c['id'] != swimmer_id } if similar_on_team)
+  xref_team_id = xref_top&.dig('matching_team_id')
+  xref_title = 'Similar swimmer detected but no alternative candidate - likely a false positive'
+  xref_title = 'Similar swimmer on same team - please verify' if xref_top
+  xref_title = "Similar swimmer on team ID #{xref_team_id} - please verify" if xref_team_id
+  # (restored by swimmer-card#selectMatch when no fuzzy match is selected)
+  baseline_data = { id: nil, complete_name: swimmer_hash['complete_name'], last_name: swimmer_hash['last_name'],
+                    first_name: swimmer_hash['first_name'], year_of_birth: swimmer_hash['year_of_birth'],
+                    gender_type_code: swimmer_hash['gender_type_code'] }
+  keep_params = %i[swimmers_page swimmers_per_page q filter_state unmatched needs_review name_differs]
+  card_data = { controller: 'swimmer-card', swimmer_card_index_value: swimmer_index,
+                swimmer_card_baseline_value: baseline_data.to_json, issue: data_fix_issue_marker(issue_codes) }
+.card.mb-2.data-fix-card{ class: "#{card_bg} #{border_color} #{border_width}", id: "swimmer-card-#{swimmer_index}", data: card_data }
+  .card-header.d-flex.justify-content-between.align-items-center.gap-2{ id: "swimmer-header-#{swimmer_index}", role: 'button',
+                                                                        aria: { expanded: 'false', controls: "swimmer-panel-#{swimmer_index}" },
+                                                                        data: { bs_toggle: 'collapse', bs_target: "#swimmer-panel-#{swimmer_index}" } }
+    .d-flex.flex-wrap.align-items-center.gap-2
+      %i.fa{ class: icon_class, title: icon_title }
+      %strong= swimmer_hash['complete_name']
+      %small.fw-bold
         (#{swimmer_hash['year_of_birth']}, #{swimmer_hash['gender_type_code']})
-        &nbsp;
-        .fa.fa-key.text-warning
-        #{swimmer_key}
-        - if defined?(swimmer_team_key) && swimmer_team_key.present?
-          &nbsp;
-          %i.fa.fa-users.text-info{ title: 'Associated team key' }
+        %i.fa.fa-key.text-warning.ms-1{ 'aria-hidden': 'true' }
+        = swimmer_key
+        - if swimmer_team_key.present?
+          %i.fa.fa-users.text-info.ms-1{ title: 'Associated team key' }
           = swimmer_team_key
-      - if defined?(has_badge_duplicates) && has_badge_duplicates && defined?(badge_duplicate_summary) && badge_duplicate_summary.present?
-        %small.ml-2.text-muted
-          = badge_duplicate_summary
-      &nbsp;
+      - if has_badge_duplicates && badge_duplicate_summary.present?
+        %small.text-body-secondary= badge_duplicate_summary
       - if has_match
-        - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
-        - selected_match = fuzzy_matches.find { |m| m['id'] == swimmer_id }
-        - fallback_badge_color = 'badge-success'
-        - color_class = selected_match&.[]('color_class')
-        - badge_color = color_class.present? ? "badge-#{color_class}" : fallback_badge_color
-        %small.ml-2.badge{ class: badge_color }
-          ID: #{swimmer_id}
-        - if defined?(gender_guessed) && gender_guessed
-          %small.ml-1.badge.badge-warning{ title: 'Gender inferred from high-confidence fuzzy match - please verify' }
-            %i.fa.fa-question-circle
+        %small.badge{ class: "text-bg-#{selected_match&.[]('color_class').presence || 'success'}" }= t('data_fix.wizard.badges.id', id: swimmer_id)
+        - if gender_guessed
+          %small.badge.text-bg-warning{ title: 'Gender inferred from high-confidence fuzzy match - please verify' }
+            %i.fa.fa-question-circle{ 'aria-hidden': 'true' }
             GENDER GUESSED
-        - if defined?(similar_on_team) && similar_on_team
-          - xref_top = (swimmer_hash.dig('team_cross_ref', 'candidates') || []).find { |c| c['id'] != swimmer_id }
-          - xref_badge = (selected_match&.dig('percentage').to_f >= 100.0) ? 'badge-light' : 'badge-warning'
-          - if xref_top
-            - xref_team_id = xref_top['matching_team_id']
-            - xref_title = xref_team_id ? "Similar swimmer on team ID #{xref_team_id} - please verify" : 'Similar swimmer on same team - please verify'
-            %small.ml-1.badge{ class: xref_badge, title: xref_title }
-              %i.fa.fa-exclamation-triangle
+        - if similar_on_team
+          %small.badge{ class: selected_match&.dig('percentage').to_f >= 100.0 ? 'text-bg-light' : 'text-bg-warning', title: xref_title }
+            %i.fa.fa-exclamation-triangle{ 'aria-hidden': 'true' }
+            - if xref_top
               SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
-          - else
-            %small.ml-1.badge{ class: xref_badge, title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
-              %i.fa.fa-exclamation-triangle
+            - else
               SIMILAR NAME ON SAME TEAM
-      - if defined?(has_badge_duplicates) && has_badge_duplicates
-        %small.ml-1.badge.badge-danger{ title: 'Duplicate badges found for same swimmer+season on different teams - manual merge recommended' }
-          %i.fa.fa-clone
+      - if has_badge_duplicates
+        %small.badge.text-bg-danger{ title: 'Duplicate badges found for same swimmer+season on different teams - manual merge recommended' }
+          %i.fa.fa-clone{ 'aria-hidden': 'true' }
           DUPLICATE BADGES
       - elsif has_missing_data
-        %small.ml-2.badge.badge-danger
-          MISSING DATA
+        %small.badge.text-bg-danger= t('data_fix.wizard.badges.missing_data')
         - if missing_name
-          %small.ml-1.badge.badge-danger
-            No Name
+          %small.badge.text-bg-danger No Name
         - if missing_yob
-          %small.ml-1.badge.badge-danger
-            No YOB
+          %small.badge.text-bg-danger No YOB
         - if missing_gender
-          %small.ml-1.badge.badge-danger
-            No Gender
-      - else
-        - if defined?(similar_on_team) && similar_on_team
-          - xref_top = (swimmer_hash.dig('team_cross_ref', 'candidates') || []).find { |c| c['id'] != swimmer_id }
+          %small.badge.text-bg-danger No Gender
+      - elsif similar_on_team && !has_match
+        %small.badge.text-bg-warning{ title: xref_title }
+          %i.fa.fa-exclamation-triangle{ 'aria-hidden': 'true' }
           - if xref_top
-            - xref_team_id = xref_top['matching_team_id']
-            - xref_title = xref_team_id ? "Similar swimmer on team ID #{xref_team_id} - please verify" : 'Similar swimmer on same team - please verify'
-            %small.ml-2.badge.badge-warning{ title: xref_title }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
+            SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
           - else
-            %small.ml-2.badge.badge-warning{ title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
-              %i.fa.fa-exclamation-triangle
-              SIMILAR NAME ON SAME TEAM
-        - elsif !swimmer_id # Show the "NEW" additional badge only for truly new swimmers (ones without a matched/selected ID)
-          %small.ml-2.badge.badge-primary
-            NEW
+            SIMILAR NAME ON SAME TEAM
+      - elsif !swimmer_id
+        -# (the NEW badge only for truly new swimmers: no matched/selected ID)
+        %small.badge.text-bg-primary= t('data_fix.wizard.badges.new')
+      - if swimmer_hash['confirmed'] == true
+        %small.badge.text-bg-secondary.data-fix-confirmed-badge
+          %i.fa-solid.fa-check{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.badges.confirmed')
+      - if issue_codes.any?
+        %small.badge.text-bg-warning.data-fix-issue-badge{ title: data_fix_issue_title(issue_codes) }
+          %i.fa-solid.fa-hand-point-right{ 'aria-hidden': 'true' }
+          = t('data_fix.wizard.card_issue')
     .d-flex.align-items-center
-      = form_tag(data_fix_delete_swimmer_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete swimmer #{swimmer_hash['complete_name']}?');") do
+      -# (full-page redirect: the delete form targets the page, not the card frame)
+      = form_tag(data_fix_delete_swimmer_path, method: :delete, class: 'd-inline',
+                 data: { turbo_frame: '_top', turbo_confirm: t('data_fix.wizard.confirm.delete_swimmer', name: swimmer_hash['complete_name']) }) do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :swimmer_key, swimmer_key
-        = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
-        = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
-        = hidden_field_tag :q, params[:q] if params[:q].present?
-        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
-        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
-        = hidden_field_tag :needs_review, params[:needs_review] if params[:needs_review].present?
-        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
-        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete swimmer', onclick: 'event.stopPropagation();' }
-          %i.fa.fa-trash
+        - keep_params.each do |key|
+          = hidden_field_tag(key, params[key]) if params[key].present?
+        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => t('data_fix.wizard.buttons.delete'),
+                                       data: { action: 'click->swimmer-card#stop' } }
+          %i.fa.fa-trash{ 'aria-hidden': 'true' }
 
-  .collapse{ id: "swimmer-panel-#{swimmer_index}", 'aria-labelledby' => "swimmer-header-#{swimmer_index}", 'data-parent' => "#swimmer-card-#{swimmer_index}" }
-    .card-body.border-bottom.border-secondary
-      = form_tag(update_phase3_swimmer_path, method: :patch) do
+  .collapse{ id: "swimmer-panel-#{swimmer_index}", 'aria-labelledby': "swimmer-header-#{swimmer_index}", data: { issue_panel: true } }
+    .card-body.border-bottom
+      -# (saved in place: update_phase3_swimmer answers a Turbo stream replacing this card, the stepper and the toasts)
+      = form_tag(update_phase3_swimmer_path, method: :patch, id: "swimmer-form-#{swimmer_index}") do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :swimmer_key, swimmer_key
-        = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
-        = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
-        = hidden_field_tag :q, params[:q] if params[:q].present?
-        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
-        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
-        = hidden_field_tag :needs_review, params[:needs_review] if params[:needs_review].present?
-        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
+        = hidden_field_tag :card_index, swimmer_index
+        - keep_params.each do |key|
+          = hidden_field_tag(key, params[key]) if params[key].present?
 
-        .container-fluid
-          -# Row 0: Fuzzy matches dropdown (quick selection)
-          - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
-          - if fuzzy_matches.present?
-            .row
-              .col-12
-                .form-group
-                  = label_tag("fuzzy_select_#{swimmer_index}", 'Quick match selection (fuzzy matches)')
-                  :ruby
-                    baseline_data = {
-                      id: nil,
-                      complete_name: swimmer_hash['complete_name'],
-                      last_name: swimmer_hash['last_name'],
-                      first_name: swimmer_hash['first_name'],
-                      year_of_birth: swimmer_hash['year_of_birth'],
-                      gender_type_code: swimmer_hash['gender_type_code']
-                    }
-                    baseline_data_json = json_escape(baseline_data.to_json)
-                    onchange_event = "var swimmerId = this.value; if (swimmerId && swimmerId.toString().trim().length > 0) { document.getElementById('swimmer_#{swimmer_index}_swimmer_id').value = swimmerId; document.getElementById('swimmer_#{swimmer_index}_swimmer_id').dispatchEvent(new Event('change', { bubbles: true })); document.getElementById('swimmer_#{swimmer_index}_id_field').value = swimmerId; document.getElementById('swimmer[#{swimmer_index}]').value = swimmerId; document.getElementById('swimmer[#{swimmer_index}]').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetSwimmerFormToOriginal(#{baseline_data_json}, #{swimmer_index}); }"
-                  = select_tag("fuzzy_select_#{swimmer_index}",
-                               options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
-                               class: 'form-control', id: "fuzzy_select_#{swimmer_index}",
-                               onchange: onchange_event)
-                  %small.form-text.text-muted
-                    Select a match from the list to quickly populate swimmer fields via AutoComplete.
+        -# Row 0: Fuzzy matches dropdown (quick selection)
+        - if fuzzy_matches.present?
+          .mb-2
+            = label_tag("fuzzy_select_#{swimmer_index}", t('data_fix.wizard.swimmers.quick_match'), class: 'form-label')
+            = select_tag("fuzzy_select_#{swimmer_index}",
+                         options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
+                         class: 'form-select', id: "fuzzy_select_#{swimmer_index}",
+                         data: { action: 'change->swimmer-card#selectMatch' })
+            %small.form-text.text-body-secondary= t('data_fix.wizard.swimmers.quick_match_hint')
 
-          -# Row 1: Swimmer AutoComplete + complete_name + hidden ID field
-          .row
-            .col
-              = hidden_field_tag('swimmer[id]', swimmer_id, id: "swimmer_#{swimmer_index}_id_field")
-              = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
-                                                 base_dom_id: "swimmer[#{swimmer_index}]", base_api_url: api_url,
-                                                 default_value: swimmer_id,
-                                                 detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',
-                                                 search_endpoint: 'swimmers', search_column: 'complete_name',
-                                                 search2_dom_id: "swimmer_#{swimmer_index}_year_of_birth", search2_column: 'year_of_birth',
-                                                 search3_dom_id: "swimmer_#{swimmer_index}_gender_type_code", search3_column: 'gender_type_code',
-                                                 target3_dom_id: "swimmer_#{swimmer_index}_gender_type_code", target3_column: 'gender_code',
-                                                 target4_dom_id: "swimmer_#{swimmer_index}_last_name", target4_column: 'last_name',
-                                                 target5_dom_id: "swimmer_#{swimmer_index}_first_name", target5_column: 'first_name',
-                                                 target6_dom_id: "swimmer_#{swimmer_index}_complete_name", target6_column: 'complete_name',
-                                                 target7_dom_id: "swimmer_#{swimmer_index}_id_field", target7_column: 'id',
-                                                 jwt: current_user.jwt))
-              %small.form-text.text-muted Clear search to unmatch swimmer
-            .col-md-7
-              .form-group
-                %label Complete Name
-                = text_field_tag('swimmer[complete_name]', swimmer_hash['complete_name'],
-                                  class: 'form-control', id: "swimmer_#{swimmer_index}_complete_name")
-          -# Row 2: Last Name + First Name + Year of Birth + Gender
-          .row
-            .col-md-4
-              .form-group
-                %label Last Name
-                = text_field_tag('swimmer[last_name]', swimmer_hash['last_name'],
-                                  class: 'form-control', id: "swimmer_#{swimmer_index}_last_name")
-            .col-md-4
-              .form-group
-                %label First Name
-                = text_field_tag('swimmer[first_name]', swimmer_hash['first_name'],
-                                  class: 'form-control', id: "swimmer_#{swimmer_index}_first_name")
-            .col-md-2
-              .form-group
-                %label Year of Birth
-                = number_field_tag('swimmer[year_of_birth]', swimmer_hash['year_of_birth'],
-                                    class: 'form-control', id: "swimmer_#{swimmer_index}_year_of_birth")
-            .col-md-2
-              .form-group
-                %label Gender Type Code
-                = select_tag('swimmer[gender_type_code]', options_for_select([['M', 'M'], ['F', 'F']],
-                              swimmer_hash['gender_type_code']),
-                              include_blank: true, class: 'form-control', id: "swimmer_#{swimmer_index}_gender_type_code")
-          -# Submit button
-          .row
-            .col-12
-              = submit_tag('Save Swimmer', class: 'btn btn-primary')
+        -# Row 1: Swimmer AutoComplete + complete_name + hidden ID field
+        .row.g-2
+          .col-lg-5
+            = hidden_field_tag('swimmer[id]', swimmer_id, id: "swimmer_#{swimmer_index}_id_field")
+            = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
+                                                     base_dom_id: "swimmer[#{swimmer_index}]", base_api_url: api_url,
+                                                     default_value: swimmer_id,
+                                                     detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',
+                                                     search_endpoint: 'swimmers', search_column: 'complete_name',
+                                                     search2_dom_id: "swimmer_#{swimmer_index}_year_of_birth", search2_column: 'year_of_birth',
+                                                     search3_dom_id: "swimmer_#{swimmer_index}_gender_type_code", search3_column: 'gender_type_code',
+                                                     target3_dom_id: "swimmer_#{swimmer_index}_gender_type_code", target3_column: 'gender_code',
+                                                     target4_dom_id: "swimmer_#{swimmer_index}_last_name", target4_column: 'last_name',
+                                                     target5_dom_id: "swimmer_#{swimmer_index}_first_name", target5_column: 'first_name',
+                                                     target6_dom_id: "swimmer_#{swimmer_index}_complete_name", target6_column: 'complete_name',
+                                                     target7_dom_id: "swimmer_#{swimmer_index}_id_field", target7_column: 'id',
+                                                     jwt: current_user.jwt))
+            %small.form-text.text-body-secondary Clear search to unmatch swimmer
+          .col-lg-7
+            = label_tag("swimmer_#{swimmer_index}_complete_name", 'Complete Name', class: 'form-label')
+            = text_field_tag('swimmer[complete_name]', swimmer_hash['complete_name'],
+                             class: 'form-control', id: "swimmer_#{swimmer_index}_complete_name")
+        -# Row 2: Last Name + First Name + Year of Birth + Gender
+        .row.g-2.mt-1
+          .col-md-4
+            = label_tag("swimmer_#{swimmer_index}_last_name", 'Last Name', class: 'form-label')
+            = text_field_tag('swimmer[last_name]', swimmer_hash['last_name'], class: 'form-control', id: "swimmer_#{swimmer_index}_last_name")
+          .col-md-4
+            = label_tag("swimmer_#{swimmer_index}_first_name", 'First Name', class: 'form-label')
+            = text_field_tag('swimmer[first_name]', swimmer_hash['first_name'], class: 'form-control', id: "swimmer_#{swimmer_index}_first_name")
+          .col-md-2
+            = label_tag("swimmer_#{swimmer_index}_year_of_birth", 'Year of Birth', class: 'form-label')
+            = number_field_tag('swimmer[year_of_birth]', swimmer_hash['year_of_birth'],
+                               class: 'form-control', id: "swimmer_#{swimmer_index}_year_of_birth")
+          .col-md-2
+            = label_tag("swimmer_#{swimmer_index}_gender_type_code", 'Gender Type Code', class: 'form-label')
+            = select_tag('swimmer[gender_type_code]', options_for_select([%w[M M], %w[F F]], swimmer_hash['gender_type_code']),
+                         include_blank: true, class: 'form-select', id: "swimmer_#{swimmer_index}_gender_type_code")
+        .mt-3
+          = submit_tag(t('data_fix.wizard.buttons.save_swimmer'), class: 'btn btn-primary',
+                                                                  data: { turbo_submits_with: t('data_fix.wizard.buttons.saving') })

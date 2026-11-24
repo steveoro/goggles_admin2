@@ -1,9 +1,8 @@
 .flash-alert.alert.alert-warning.flash-sticky{ id: FedernuotoWatch::ALERT_DOM_ID, role: 'alert',
                                                data: { controller: 'federnuoto-watch',
                                                        'federnuoto-watch-ack-url-value': federnuoto_watch_acknowledge_path } }
-  %button.close{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
-                 title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
-    %span{ 'aria-hidden' => 'true' } ×
+  %button.btn-close.float-end{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
+                               title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
   %h5.alert-heading
     %i.fa.fa-2x.fa-bell.text-warning{ 'aria-hidden' => 'true' }
     = t('federnuoto_watch.alert.title')
@@ -30,12 +29,12 @@
           %li
             %em= t('federnuoto_watch.alert.more', count: rows.size - MAX_ITEMS)
   .d-flex.flex-wrap.mt-2
-    = link_to(season_board_path, class: 'btn btn-sm btn-primary mr-2 mb-1', data: { turbo: false },
+    = link_to(season_board_path, class: 'btn btn-sm btn-primary me-2 mb-1', data: { turbo: false },
               title: t('federnuoto_watch.alert.open_board_tooltip')) do
       %i.fa.fa-th-list{ 'aria-hidden' => 'true' }
       = t('federnuoto_watch.alert.open_board')
     = form_with(url: federnuoto_watch_check_path, method: :post, authenticity_token: false,
-                class: 'mr-2 mb-1', data: { turbo: false }) do
+                class: 'me-2 mb-1', data: { turbo: false }) do
       %button.btn.btn-sm.btn-outline-secondary{ type: 'submit' }
         %i.fa.fa-refresh{ 'aria-hidden' => 'true' }
         = t('federnuoto_watch.check.now')

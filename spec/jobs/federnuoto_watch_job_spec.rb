@@ -33,7 +33,7 @@ RSpec.describe FedernuotoWatchJob do
   describe 'automatic crawl planning' do
     let(:change) { { 'added' => [{ 'url' => 'https://www.federnuoto.it/x#/risultati/150091:m.html' }] } }
     let(:season) { FactoryBot.build_stubbed(:season, id: 262) }
-    let(:planner) { instance_double(SeasonBoard::CrawlPlanner, call: ['150091']) }
+    let(:planner) { instance_double(SeasonBoard::CrawlPlanner, call: ['150091'], plan_recrawl: []) }
     let(:store) { instance_double(FedernuotoWatch::StateStore, pending_change: change) }
 
     before(:each) do
@@ -47,6 +47,18 @@ RSpec.describe FedernuotoWatchJob do
       expect(described_class.perform_now).to eq(:changed)
       expect(SeasonBoard::CrawlPlanner).to have_received(:new).with(season:)
       expect(planner).to have_received(:call).with(change)
+    end
+
+    it 'then re-crawls the structure-committed rows FIN now lists with results, and queues a pipeline planner pass' do
+      allow(FedernuotoWatch::Checker).to receive(:call).and_return(:changed)
+      expect { described_class.perform_now }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'FedernuotoWatchJob')
+      expect(planner).to have_received(:plan_recrawl).with(change)
+    end
+
+    it 'queues no planner pass while the automation is off (ADMIN2_AUTOMATION=0)' do
+      allow(FedernuotoWatch::Checker).to receive(:call).and_return(:changed)
+      allow(DataFix::Automation).to receive(:env_off?).and_return(true)
+      expect { described_class.perform_now }.not_to have_enqueued_job(PipelinePlannerJob)
     end
 
     it 'does not plan anything when nothing changed' do

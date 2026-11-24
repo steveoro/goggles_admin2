@@ -10,7 +10,7 @@ RSpec.describe Grid::SelectionToggleButtonComponent, type: :component do
     expect(subject.css('button.btn').attr('onclick').value).to be_present
   end
   it 'includes a tooltip for the button' do
-    expect(subject.css('button.btn').attr('data-toggle').value).to eq('tooltip')
-    expect(subject.css('button.btn').attr('data-title').value).to be_present
+    expect(subject.css('button.btn').attr('data-bs-toggle').value).to eq('tooltip')
+    expect(subject.css('button.btn').attr('data-bs-title').value).to be_present
   end
 end

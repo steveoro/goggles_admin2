@@ -1,0 +1,2 @@
+= turbo_frame_tag('dashboard-health', target: '_top') do
+  = render(Health::DashboardCardComponent.new(board_season: @board_season, ops_available: @ops_available))

@@ -1,0 +1,15 @@
+-#
+  "Local DB restore in progress": the answer of every page while DbRestore::Lock is held (DbRestoreGuard, status
+  503, restore layout). Reads only the ops row of the run (@db_restore_run) and the session.
+- content_for(:title, t('db_restore.locked.title'))
+- step = t("db_restore.steps.#{@db_restore_run.step.presence || @db_restore_run.status}", default: @db_restore_run.status)
+.card.border-danger#db-restore-locked{ data: { run_id: @db_restore_run.id } }
+  .card-body
+    %h1.h4.card-title= t('db_restore.locked.title')
+    %p.mb-2= t('db_restore.locked.body', id: @db_restore_run.id, database: @db_restore_run.target_database.presence || '-')
+    %p.small.text-body-secondary.mb-3
+      = t('db_restore.locked.step', step:)
+    - if @db_restore_progress_path
+      = link_to(t('db_restore.locked.open_progress'), @db_restore_progress_path, class: 'btn btn-primary', id: 'btn-db-restore-progress')
+    - else
+      %p.small.mb-0= t('db_restore.locked.no_token')

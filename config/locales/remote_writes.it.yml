@@ -1,0 +1,21 @@
+it:
+  remote_writes:
+    nav: 'Scritture remote'
+    title: 'Scritture remote'
+    subtitle: 'Chiamate API fatte da qui che possono aver modificato i dati remoti (solo le chiavi del payload, mai i valori)'
+    ops_unavailable: 'Il DB ops locale non è pronto: il registro delle scritture remote non è disponibile (lancia bin/rails ops:prepare).'
+    statuses:
+      success: 'Eseguita'
+      failed: 'Fallita'
+      unreachable: 'Non raggiungibile'
+    acknowledge:
+      button: 'Presa visione'
+      confirm: 'Segnare come riviste tutte le scritture remote registrate finora? La verifica di sync DB smette di segnalarle.'
+      done: 'Presa visione delle scritture remote registrata.'
+      failed: 'Impossibile registrare la presa visione: il DB ops locale non è disponibile (lancia bin/rails ops:prepare).'
+    drift:
+      title: 'Sync DB'
+      help: "Le scritture solo remote riuscite dall'ultimo controllo sync DB verde (o presa visione) rendono giallo il verdetto: conteggi e id massimi non vedono gli UPDATE remoti."
+      open: 'Apri Sync DB'
+      acknowledged_at: 'Ultima presa visione: %{time}.'
+      never_acknowledged: 'Nessuna presa visione.'

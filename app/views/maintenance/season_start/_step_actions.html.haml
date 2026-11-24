@@ -1,0 +1,52 @@
+-#
+  The action forms of one checklist step (each one POSTs to Maintenance::SeasonStartController#step with +perform+);
+  disabled while the step is not ready (the controller refuses the POST anyway). Locals: checklist, step.
+:ruby
+  disabled = !step.ready? || (step.done? && step.from_data?)
+  path = season_start_step_path(checklist.season_id, step.key)
+  repair_source = step.operation&.dig('params', 'src_season_id')
+  operation_label = t('maintenance.season_start.actions.open_operation')
+  operation_label = t('maintenance.season_start.steps.category_types.repair', source: repair_source) if step.action == :repair
+- case step.action
+- when :confirm
+  - if step.finished?
+    = form_with(url: path, method: :post, class: 'd-inline') do
+      = hidden_field_tag(:perform, 'reopen', id: nil)
+      = button_tag(type: 'submit', class: 'btn btn-sm btn-outline-secondary', name: nil) do
+        %i.fa-solid.fa-rotate-left{ 'aria-hidden' => 'true' }
+        = t('maintenance.season_start.actions.reopen')
+  - else
+    = form_with(url: path, method: :post, class: 'row g-2 align-items-end') do
+      .col-12.col-md
+        = label_tag("note-#{step.key}", t('maintenance.season_start.note'), class: 'visually-hidden')
+        = text_field_tag(:note, nil, id: "note-#{step.key}", class: 'form-control form-control-sm', maxlength: 500,
+                                     placeholder: t('maintenance.season_start.note_placeholder'), disabled:)
+      .col-auto.d-flex.gap-1
+        = button_tag(type: 'submit', name: 'perform', value: 'confirm', class: 'btn btn-sm btn-success', disabled:) do
+          %i.fa-solid.fa-check{ 'aria-hidden' => 'true' }
+          = t('maintenance.season_start.actions.confirm')
+        = button_tag(type: 'submit', name: 'perform', value: 'skip', class: 'btn btn-sm btn-outline-secondary', disabled:) do
+          = t('maintenance.season_start.actions.skip')
+- when :upload
+  - unless step.done?
+    = form_with(url: path, method: :post, multipart: true, class: 'row g-2 align-items-end') do
+      = hidden_field_tag(:perform, 'upload', id: nil)
+      .col-12.col-md
+        = label_tag("file-#{step.key}", t('maintenance.season_start.steps.standard_timings_file.upload_label'), class: 'form-label small mb-0')
+        = file_field_tag(:file, id: "file-#{step.key}", accept: '.xlsx,.csv', class: 'form-control form-control-sm', disabled:)
+      .col-auto
+        = button_tag(type: 'submit', class: 'btn btn-sm btn-primary', name: nil, disabled:) do
+          %i.fa-solid.fa-upload{ 'aria-hidden' => 'true' }
+          = t('maintenance.season_start.actions.upload')
+- when :check_remote
+  = form_with(url: path, method: :post, class: 'd-inline') do
+    = hidden_field_tag(:perform, 'check_remote', id: nil)
+    = button_tag(type: 'submit', class: 'btn btn-sm btn-primary', name: nil, disabled:) do
+      %i.fa-solid.fa-cloud-arrow-down{ 'aria-hidden' => 'true' }
+      = t('maintenance.season_start.actions.check_remote')
+- when :operation, :repair
+  = form_with(url: path, method: :post, class: 'd-inline') do
+    = hidden_field_tag(:perform, step.action.to_s, id: nil)
+    = button_tag(type: 'submit', class: 'btn btn-sm btn-outline-primary', name: nil, disabled:) do
+      %i.fa-solid.fa-screwdriver-wrench{ 'aria-hidden' => 'true' }
+      = operation_label

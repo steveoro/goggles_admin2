@@ -15,13 +15,13 @@
 - card_id = "phase#{phase_number}-metadata-card"
 - collapse_id = "phase#{phase_number}-metadata-collapse"
 
-.card{ id: card_id }
-  .card-header{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{collapse_id}" }, 'aria-expanded' => 'false', 'aria-controls' => collapse_id }
-    %strong
-      Phase #{phase_number} Metadata
-      - if extra_info.present?
-        %bold.ml-2.text-muted= extra_info
-    %i.fa.fa-chevron-down.float-right.mt-1
+.card.mb-2{ id: card_id }
+  .card-header.d-flex.align-items-center.gap-2{ role: 'button', aria: { expanded: 'false', controls: collapse_id },
+                                                data: { bs_toggle: 'collapse', bs_target: "##{collapse_id}" } }
+    %strong= t('data_fix.wizard.metadata', number: phase_number)
+    - if extra_info.present?
+      %span.text-body-secondary.text-truncate= extra_info
+    %i.fa.fa-chevron-down.ms-auto{ 'aria-hidden': 'true' }
   .collapse{ id: collapse_id }
     .card-body
-      %pre= JSON.pretty_generate(metadata)
+      %pre.mb-0= JSON.pretty_generate(metadata)

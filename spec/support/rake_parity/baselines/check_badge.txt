@@ -1,0 +1,115 @@
+## exit: nil
+## output
+
+*** Task: check:badge ***
+
+	*** Badge Checker ***
+
+🔹[Src  BADGE:  <BADGE_COPY>] FIN 2018/2019: Hauck Omer 56493 (2000) ➡ Lake Elveraton Swimming Club ASD, Cat. 1248 M30 (computed cat. 1263 U25)
+🔹[Dest BADGE:  115299] FIN 2018/2019: Hauck Omer 56493 (2000) ➡ Lake Elveraton Swimming Club ASD, Cat. 1248 M30
+
+Latest 12 categories found for this same swimmer (38933):
+  - Season 152, age: 15, cat: ~  (    ) computed / found  -> 
+  - Season 162, age: 16, cat: ~ U25 (1082) computed / found  -> 
+  - Season 172, age: 17, cat: ~ U25 (1133) computed / found  -> 
+  - Season 182, age: 18, cat: ~ U25 (1263) computed / found M30 -> {1292 => "'Lake Elveraton Swimming Club ASD' (B: 115299)"}: , {1292 => "'Lake Elveraton Swimming Club ASD' (B: <BADGE_COPY>)"}: 
+  - Season 192, age: 19, cat: ~ U25 (1304) computed / found  -> 
+  - Season 202, age: 20, cat: ~ U25 (123315) computed / found  -> 
+  - Season 212, age: 21, cat: ~ U25 (123379) computed / found  -> 
+  - Season 222, age: 22, cat: ~ U25 (159976) computed / found  -> 
+  - Season 232, age: 23, cat: ~ M20 (169276) computed / found  -> 
+  - Season 242, age: 24, cat: ~ M20 (184369) computed / found  -> 
+  - Season 252, age: 25, cat: ~ M25 (187012) computed / found  -> 
+  - Season 262, age: 26, cat: ~ M25 (200291) computed / found  -> 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MIR (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+>> NO source-only MIR (from parent MEvent)s.
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+|           DEST (MeetingEvent ID, MIR count) x [115299: MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD]            |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+18794: 1, 18798: 1, 19373: 1, 19374: 1, 19560: 1, 19566: 1, 19670: 1, 19674: 1
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
++                                                               - Dest.-only parent rows: -                                                                +
+- Parent ID 18794 => Domain row IDs: [789915], Meeting 18219 '2° Trofeo Citta` tra i due mari'
+- Parent ID 18798 => Domain row IDs: [790104], Meeting 18219 '2° Trofeo Citta` tra i due mari'
+- Parent ID 19373 => Domain row IDs: [837541], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19374 => Domain row IDs: [838214], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19560 => Domain row IDs: [819431], Meeting 18265 'Campionati Regionali Calabria'
+- Parent ID 19566 => Domain row IDs: [819197], Meeting 18265 'Campionati Regionali Calabria'
+- Parent ID 19670 => Domain row IDs: [819759], Meeting 18289 'Campionati Regionali Basilicata'
+- Parent ID 19674 => Domain row IDs: [819715], Meeting 18289 'Campionati Regionali Basilicata'
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+>> NO shared MIR (from parent MEvent)s.
+
+>> WARNING: 4 MIRs with nil badge_id are present:
+- 
+- 
+- 
+- 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MRS (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+>> NO source-only MRS (from parent MEvent)s.
+>> NO destination-only MRS (from parent MEvent)s.
+>> NO shared MRS (from parent MEvent)s.
+
+
+
+************************************************************************************************************************************************************
+**                                                                          MRES                                                                          **
+************************************************************************************************************************************************************
+>> NO source-only MRESs.
+>> NO destination-only MRESs.
+>> NO shared MRESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MEV_RES                                                                         **
+************************************************************************************************************************************************************
+>> NO source-only MEV_RESs.
+>> NO destination-only MEV_RESs.
+>> NO shared MEV_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MREL_RES                                                                        **
+************************************************************************************************************************************************************
+>> NO source-only MREL_RESs.
+>> NO destination-only MREL_RESs.
+>> NO shared MREL_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                              M_ENTRY (from parent MEvent)                                                              **
+************************************************************************************************************************************************************
+>> NO source-only M_ENTRY (from parent MEvent)s.
+>> NO destination-only M_ENTRY (from parent MEvent)s.
+>> NO shared M_ENTRY (from parent MEvent)s.
+
+>> WARNING: 8 MEntries with nil badge_id are present:
+- [MEntry 1103, M.Progr. 7115] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1135, M.Progr. 7107] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1186, M.Progr. 7112] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1190, M.Progr. 7114] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1299, M.Progr. 7129] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1309, M.Progr. 7145] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1338, M.Progr. 7111] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+- [MEntry 1376, M.Progr. 7145] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+
+
+*** WARNINGS: ***
+4 (possibly unrelated) MIRs with nil badge_id
+8 (possibly unrelated) MEntries with nil badge_id
+
+RESULT: ✅

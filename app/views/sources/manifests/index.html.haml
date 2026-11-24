@@ -1,0 +1,26 @@
+:ruby
+  engines = PdfManifests::ClientFactory::ENGINES.map { |name| [t("sources.manifests.engines.#{name}"), name] }
+= render(partial: 'sources/header', locals: { tab: :manifests, path: sources_manifests_path, count: @rows.size })
+
+.card#sources-manifests
+  .card-header.d-flex.flex-wrap.align-items-center.gap-2
+    %span.small.text-body-secondary.me-auto= t('sources.manifests.counts', pending: @rows.size, done: @done_count)
+    = form_with(url: sources_manifests_path, method: :get, class: 'd-flex align-items-center gap-2', id: 'frm-sources-manifests-engine',
+                data: { controller: 'sources-season' }) do
+      = hidden_field_tag(:season_id, season_id, id: nil)
+      = label_tag('sources-manifests-engine', t('sources.manifests.engine'), class: 'form-label small mb-0')
+      = select_tag(:engine, options_for_select(engines, @engine), id: 'sources-manifests-engine', class: 'form-select form-select-sm w-auto',
+                                                                  data: { action: 'change->sources-season#submit' })
+    = form_with(url: sources_manifests_extract_path, method: :post, class: 'd-inline', id: 'frm-sources-manifests-batch',
+                data: { turbo_confirm: t('sources.manifests.batch_confirm', count: sources_manifest_batch_size) }) do
+      = hidden_field_tag(:season_id, season_id, id: nil)
+      = hidden_field_tag(:batch, 1)
+      = hidden_field_tag(:engine, @engine, id: nil)
+      = button_tag(type: 'submit', class: 'btn btn-sm btn-outline-primary', id: 'btn-sources-manifests-batch', disabled: @rows.empty?) do
+        %i.fa-solid.fa-wand-magic-sparkles{ 'aria-hidden' => 'true' }
+        = t('sources.manifests.batch', count: [@rows.size, sources_manifest_batch_size].min)
+  .card-body
+    %p.small.text-body-secondary= t('sources.manifests.intro')
+    = sources_file_table(rows: @rows, empty_text: t('sources.manifests.empty', season: season_id),
+                         return_to: sources_manifests_path(season_id:), focus: params[:focus],
+                         table_id: 'sources-manifests-table')

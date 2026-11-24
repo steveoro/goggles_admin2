@@ -1,0 +1,25 @@
+-# The last DB sync checks (locals: history, fingerprint = the one shown).
+%section.mb-4#db-sync-history
+  %h2.h5= t('db_sync.sections.history')
+  - if history.empty?
+    %p.text-body-secondary= t('db_sync.never')
+  - else
+    .table-responsive
+      %table.table.table-sm.table-hover.align-middle
+        %thead
+          %tr
+            %th= t('db_sync.columns.when')
+            %th= t('db_sync.columns.verdict')
+            %th= t('db_sync.fields.trigger')
+            %th= t('db_sync.fields.mode')
+            %th= t('db_sync.columns.reason')
+        %tbody.table-group-divider
+          - history.each do |row|
+            - first = row.reasons.first
+            %tr{ class: row.id == fingerprint&.id ? 'table-active' : nil, data: { db_fingerprint_id: row.id } }
+              %td.small.text-nowrap= link_to(l(row.taken_at.localtime, format: :short), db_sync_path(id: row.id))
+              %td
+                %span.badge{ class: Drift::IndicatorComponent::VERDICT_CSS.fetch(row.verdict) }= t("db_sync.verdicts.#{row.verdict}")
+              %td.small= t("db_sync.triggers.#{row.trigger}")
+              %td.small= t("db_sync.modes.#{row.mode}")
+              %td.small= first ? Drift::ReasonText.call(first) : '-'

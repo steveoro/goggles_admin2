@@ -1,0 +1,90 @@
+## exit: nil
+## output
+
+*** Task: check:map_team_badges - season 182, team 54 ***
+
+--> Found 6 badges => showing page 0 (/-1)
+
+🔹[Src  BADGE:  110785] FIN 2018/2019: Lockman Ivonne 41790 (1992) ➡ West Shari Swimming Club ASD, Cat. 1254 M60 (computed cat. 1247 M25)
+  - Season 152, age: 23, cat: ~ U25 ( 924) computed / found  -> 
+  - Season 162, age: 24, cat: ~ U25 (1082) computed / found M60 -> {54 => "'West Shari Swimming Club ASD' (B: 57667)"}: 
+  - Season 172, age: 25, cat: ~ M25 (1117) computed / found M60 -> {54 => "'West Shari Swimming Club ASD' (B: 91728)"}: 
+  - Season 182, age: 26, cat: ~ M25 (1247) computed / found M60 -> {54 => "'West Shari Swimming Club ASD' (B: 110785)"}: 
+  - Season 192, age: 27, cat: ~ M25 (1288) computed / found M60 -> {231 => "'Lake Noahview Swimming Club ASD' (B: 125824)"}: 
+  - Season 202, age: 28, cat: ~ M25 (123299) computed / found  -> 
+  - Season 212, age: 29, cat: ~ M25 (123363) computed / found  -> 
+  - Season 222, age: 30, cat: ~ M30 (159961) computed / found  -> 
+  - Season 232, age: 31, cat: ~ M30 (169226) computed / found  -> 
+  - Season 242, age: 32, cat: ~ M30 (184371) computed / found  -> 
+  - Season 252, age: 33, cat: ~ M30 (187013) computed / found  -> 
+  - Season 262, age: 34, cat: ~ M30 (200292) computed / found  -> 
+
+🔹[Src  BADGE:  112511] FIN 2018/2019: Auer Lenard 25786 (1998) ➡ West Shari Swimming Club ASD, Cat. 1254 M60 (computed cat. 1263 U25)
+  - Season 152, age: 17, cat: ~ U25 ( 924) computed / found  -> 
+  - Season 162, age: 18, cat: ~ U25 (1082) computed / found M60 -> {329 => "'North Donovanshire Swimming Club ASD' (B: 76483)"}: 
+  - Season 172, age: 19, cat: ~ U25 (1133) computed / found M60 -> {54 => "'West Shari Swimming Club ASD' (B: 92995)"}: 
+  - Season 182, age: 20, cat: ~ U25 (1263) computed / found M60 -> {54 => "'West Shari Swimming Club ASD' (B: 112511)"}: 
+  - Season 192, age: 21, cat: ~ U25 (1304) computed / found  -> 
+  - Season 202, age: 22, cat: ~ U25 (123315) computed / found  -> 
+  - Season 212, age: 23, cat: ~ U25 (123379) computed / found  -> 
+  - Season 222, age: 24, cat: ~ U25 (159976) computed / found  -> 
+  - Season 232, age: 25, cat: ~ M25 (169225) computed / found  -> 
+  - Season 242, age: 26, cat: ~ M25 (184370) computed / found  -> 
+  - Season 252, age: 27, cat: ~ M25 (187012) computed / found  -> 
+  - Season 262, age: 28, cat: ~ M25 (200291) computed / found  -> 
+
+🔹[Src  BADGE:  112524] FIN 2018/2019: Roob Kina 21845 (1945) ➡ West Shari Swimming Club ASD, Cat. 1251 M45 (computed cat. 1256 M70)
+  - Season 152, age: 70, cat: ~ M70 ( 917) computed / found  -> 
+  - Season 162, age: 71, cat: ~ M70 (1075) computed / found M40 -> {329 => "'North Donovanshire Swimming Club ASD' (B: 76497)"}: 
+  - Season 172, age: 72, cat: ~ M70 (1126) computed / found M40 -> {54 => "'West Shari Swimming Club ASD' (B: 93173)"}: 
+  - Season 182, age: 73, cat: ~ M70 (1256) computed / found M45 -> {54 => "'West Shari Swimming Club ASD' (B: 112524)"}: 
+  - Season 192, age: 74, cat: ~ M70 (1297) computed / found  -> 
+  - Season 202, age: 75, cat: ~ M75 (123309) computed / found  -> 
+  - Season 212, age: 76, cat: ~ M75 (123373) computed / found  -> 
+  - Season 222, age: 77, cat: ~ M75 (159970) computed / found  -> 
+  - Season 232, age: 78, cat: ~ M75 (169235) computed / found  -> 
+  - Season 242, age: 79, cat: ~ M75 (184380) computed / found  -> 
+  - Season 252, age: 80, cat: ~ M80 (187023) computed / found  -> 
+  - Season 262, age: 81, cat: ~ M80 (200302) computed / found  -> 
+
+🔹[Src  BADGE:  113300] FIN 2018/2019: Brown Mitzi 17011 (1980) ➡ West Shari Swimming Club ASD, Cat. 1252 M50 (computed cat. 1249 M35)
+  - Season 152, age: 35, cat: ~ M35 ( 910) computed / found  -> 
+  - Season 162, age: 36, cat: ~ M35 (1068) computed / found  -> 
+  - Season 172, age: 37, cat: ~ M35 (1119) computed / found M50 -> {54 => "'West Shari Swimming Club ASD' (B: 93909)"}: 
+  - Season 182, age: 38, cat: ~ M35 (1249) computed / found M50 -> {54 => "'West Shari Swimming Club ASD' (B: 113300)"}: 
+  - Season 192, age: 39, cat: ~ M35 (1290) computed / found  -> 
+  - Season 202, age: 40, cat: ~ M40 (123302) computed / found  -> 
+  - Season 212, age: 41, cat: ~ M40 (123366) computed / found  -> 
+  - Season 222, age: 42, cat: ~ M40 (159963) computed / found  -> 
+  - Season 232, age: 43, cat: ~ M40 (169228) computed / found  -> 
+  - Season 242, age: 44, cat: ~ M40 (184373) computed / found  -> 
+  - Season 252, age: 45, cat: ~ M45 (187016) computed / found  -> 
+  - Season 262, age: 46, cat: ~ M45 (200295) computed / found  -> 
+
+🔹[Src  BADGE:  114229] FIN 2018/2019: Lindgren Easter 8159 (1992) ➡ West Shari Swimming Club ASD, Cat. 1253 M55 (computed cat. 1247 M25)
+  - Season 152, age: 23, cat: ~ U25 ( 924) computed / found M55 -> {766 => "'West Reed Swimming Club ASD' (B: 55296)"}: 
+  - Season 162, age: 24, cat: ~ U25 (1082) computed / found M55 -> {766 => "'West Reed Swimming Club ASD' (B: 89660)"}: 
+  - Season 172, age: 25, cat: ~ M25 (1117) computed / found  -> 
+  - Season 182, age: 26, cat: ~ M25 (1247) computed / found M55 -> {54 => "'West Shari Swimming Club ASD' (B: 114229)"}: 
+  - Season 192, age: 27, cat: ~ M25 (1288) computed / found  -> 
+  - Season 202, age: 28, cat: ~ M25 (123299) computed / found  -> 
+  - Season 212, age: 29, cat: ~ M25 (123363) computed / found  -> 
+  - Season 222, age: 30, cat: ~ M30 (159961) computed / found  -> 
+  - Season 232, age: 31, cat: ~ M30 (169226) computed / found  -> 
+  - Season 242, age: 32, cat: ~ M30 (184371) computed / found  -> 
+  - Season 252, age: 33, cat: ~ M30 (187013) computed / found  -> 
+  - Season 262, age: 34, cat: ~ M30 (200292) computed / found  -> 
+
+🔹[Src  BADGE:  119131] FIN 2018/2019: Ward Mabel 49195 (1941) ➡ West Shari Swimming Club ASD, Cat. 1253 M55 (computed cat. 1257 M75)
+  - Season 152, age: 74, cat: ~ M70 ( 917) computed / found M50 -> {272 => "'Port Jesseniamouth Swimming Club ASD' (B: 41858)"}: 
+  - Season 162, age: 75, cat: ~ M75 (1076) computed / found  -> 
+  - Season 172, age: 76, cat: ~ M75 (1127) computed / found M50 -> {54 => "'West Shari Swimming Club ASD' (B: 104966)"}: 
+  - Season 182, age: 77, cat: ~ M75 (1257) computed / found M55 -> {54 => "'West Shari Swimming Club ASD' (B: 119131)"}: 
+  - Season 192, age: 78, cat: ~ M75 (1298) computed / found  -> 
+  - Season 202, age: 79, cat: ~ M75 (123309) computed / found  -> 
+  - Season 212, age: 80, cat: ~ M80 (123374) computed / found  -> 
+  - Season 222, age: 81, cat: ~ M80 (159971) computed / found  -> 
+  - Season 232, age: 82, cat: ~ M80 (169236) computed / found  -> 
+  - Season 242, age: 83, cat: ~ M80 (184381) computed / found  -> 
+  - Season 252, age: 84, cat: ~ M80 (187023) computed / found  -> 
+  - Season 262, age: 85, cat: ~ M85 (200303) computed / found  -> 

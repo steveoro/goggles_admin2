@@ -31,6 +31,12 @@ development:
     <<: *default_sqlt3
     database: storage/development_cable.sqlite3
     migrations_paths: db/cable_migrate
+  ops:
+    <<: *default_sqlt3
+    database: db/ops/development.sqlite3
+    migrations_paths: db/ops_migrate
+    schema_dump: false
+    database_tasks: false
 
 test:
   primary:
@@ -44,6 +50,12 @@ test:
     <<: *default_sqlt3
     database: storage/test_queue.sqlite3
     migrations_paths: db/queue_migrate
+  ops:
+    <<: *default_sqlt3
+    database: db/ops/test.sqlite3
+    migrations_paths: db/ops_migrate
+    schema_dump: false
+    database_tasks: false
 
 production:
   primary:
@@ -59,3 +71,9 @@ production:
     database: goggles_cable
     migrations_paths: db/cable_migrate
     schema_format: :ruby
+  ops:
+    <<: *default_sqlt3
+    database: db/ops/production.sqlite3
+    migrations_paths: db/ops_migrate
+    schema_dump: false
+    database_tasks: false

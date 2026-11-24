@@ -19,7 +19,7 @@ module Switch
   # - green/red background: use +'red'+ to override green default
   # - namespaced fields inside forms (i.e.: input name: 'namespace[field_name]' => form ID 'namespace_field_name')
   #
-  # === Usage as a collapse toggle:
+  # === Usage as a toggle for a collapsible element:
   # Use <tt>target_id</tt> (DOM) with default options.
   #
   # === Usage for "boolean" form values:

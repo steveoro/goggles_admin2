@@ -1,0 +1,6 @@
+-#
+  Progress page access refused (not a local request, unknown run or wrong token): restore layout, no MySQL access.
+- content_for(:title, t('db_restore.progress.refused_title'))
+.alert.alert-danger#db-restore-refused{ role: 'alert' }
+  %h1.h5= t('db_restore.progress.refused_title')
+  %p.mb-0= @refusal

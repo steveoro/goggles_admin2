@@ -1,0 +1,82 @@
+-#
+  The maintenance operations (OperationsController#index): what each one fixes and how it is confirmed, plus the run
+  history (OperationRunsGrid, ops DB). Every fix starts from its form: a dry run first, then the apply.
+= render(Shell::PageHeaderComponent.new(title: t('maintenance.title'), count: @assets&.total_count, subtitle: t('maintenance.subtitle'))) do |header|
+  - header.with_actions do
+    = link_to(season_start_index_path, class: 'btn btn-sm btn-outline-secondary', id: 'operations-season-start-link') do
+      %i.fa-solid.fa-list-check{ 'aria-hidden' => 'true' }
+      = t('maintenance.index.season_start')
+    = link_to(t('health.title'), health_path, class: 'btn btn-sm btn-outline-secondary')
+    = link_to(t('outbox.nav'), outbox_path, class: 'btn btn-sm btn-outline-primary')
+
+- unless @enabled
+  .alert.alert-warning#operations-disabled{ role: 'alert' }= t('maintenance.disabled')
+
+%section.card.mb-4#operations-list
+  .card-header.d-flex.align-items-center.gap-2
+    %i.fa-solid.fa-screwdriver-wrench{ 'aria-hidden' => 'true' }
+    %h2.h6.mb-0= t('maintenance.index.available')
+  .table-responsive
+    %table.table.table-sm.align-middle.mb-0
+      %thead
+        %tr
+          %th= t('grids.operation_runs.operation')
+          %th= t('maintenance.index.fixes')
+          %th= t('maintenance.index.confirmation')
+          %th
+      %tbody
+        - @operations.each do |klass|
+          %tr{ data: { operation_key: klass.key } }
+            %td
+              .fw-semibold= klass.title
+              .small.text-body-secondary= klass.description
+              %code.small= klass.key
+            %td.small
+              - if klass.fixes.any?
+                %ul.list-unstyled.mb-0
+                  - klass.fixes.each do |check_key|
+                    %li= Health::Registry.find(check_key)&.title || check_key
+              - else
+                %span.text-body-secondary= t('maintenance.index.follow_up_only')
+            %td.small.text-nowrap= t("maintenance.confirmations.#{klass.confirmation}")
+            %td.text-end
+              - form_link = @enabled && @ops_available
+              - if klass.checklist_only?
+                %span.small.text-body-secondary= t('maintenance.index.checklist_only')
+              - elsif form_link
+                = link_to(t('maintenance.index.open_form'), new_operation_path(key: klass.key), class: 'btn btn-sm btn-outline-primary')
+
+%section.card.mb-4#operations-inspectors
+  .card-header.d-flex.align-items-center.gap-2
+    %i.fa-solid.fa-magnifying-glass{ 'aria-hidden' => 'true' }
+    %h2.h6.mb-0= t('maintenance.index.inspectors')
+  .card-body.py-2
+    %p.small.text-body-secondary.mb-0= t('maintenance.index.inspectors_hint')
+  .table-responsive
+    %table.table.table-sm.align-middle.mb-0
+      %tbody
+        - @inspectors.each do |klass|
+          %tr{ data: { operation_key: klass.key } }
+            %td
+              .fw-semibold= klass.title
+              .small.text-body-secondary= klass.description
+              %code.small= klass.key
+            %td.text-end
+              = link_to(t('maintenance.index.open_form'), new_operation_path(key: klass.key), class: 'btn btn-sm btn-outline-secondary') if @ops_available
+
+- if @ops_available
+  %section.card#operations-history
+    .card-header.d-flex.align-items-center.gap-2
+      %i.fa-solid.fa-clock-rotate-left{ 'aria-hidden' => 'true' }
+      %h2.h6.mb-0= t('maintenance.index.history')
+    .card-body
+      = datagrid_form_with(model: @grid, method: :get, url: operations_path)
+      - if @assets.any?
+        = paginate(@assets)
+        .table-responsive
+          = datagrid_table(@grid, @assets, html: { class: 'table table-sm table-hover align-middle mb-1' })
+        = paginate(@assets)
+      - else
+        %p.text-body-secondary.mb-0#operations-no-runs= t('maintenance.index.no_runs')
+- else
+  .alert.alert-warning#operations-ops-unavailable{ role: 'alert' }= t('maintenance.ops_unavailable')

@@ -65,6 +65,104 @@ LT4 copy (`<base>-lt4.json`) is superseded by the LT4 rebuilt from the results
 (see AGENTS.md, *DataFix V2 canonical source handling*, exception 2).
 The whole weekly flow is driven from the Season board (`docs/season_board.md`).
 
+### Runner, verdicts and the commit job (phase 09)
+
+The review actions no longer orchestrate the builds themselves: `DataFix::Pipeline` (see TECHNICAL.md, *Pipeline
+runner*) builds each phase through one recipe, stamps it, checks it and stores a verdict.
+
+- **Stepper.** Each step tab shows the phase verdict and its issue count: *clean*, *needs review*, *blocked* (the
+  commit would fail), *stale* (an earlier step changed after the build), *build failed*, *not built*. The active step
+  shows a banner when it is stale (with a Rebuild button, see *Review pages* below), and a note when it holds edits
+  ("edited (pre-existing)" for the files that existed before this release).
+- **Operator edits win.** Every save marks its phase as edited (`_meta.operator_edit`); an automatic rebuild never
+  rewrites or deletes an edited phase. Only the operator's rebuilds (the step menu's rescan, or the stale banner with
+  force), both with a confirmation, rebuild an edited phase.
+- **Stale steps.** A Phase 4 event edit makes Phase 5 stale. Opening Step 5 then rebuilds it by itself when it holds
+  no edits, fixes or overwrite selections; otherwise the step asks first (Rebuild button).
+- **Source changed under edits.** When the category normalization or a manifest supersede would delete phase files
+  holding edits, nothing is deleted: the step header shows "the source file changed under your edits" with a
+  "Rebuild (discard edits)" button (POST, with a confirmation; `.orig` backups are kept).
+- **Review filter.** Saving a team or swimmer card confirms it (`confirmed: true`), so it leaves the "review" filter.
+  Gender-guessed swimmers are now in the filter (the 89.9 % value no longer hides them). The rules are in
+  `DataFix::ReviewRules`; confidently-new teams and swimmers do not send a step to review, they are listed by the
+  commit summary.
+- **Commit summary.** Step 5 links to `GET data_fix/commit_summary`: how the meeting was matched, existing / new
+  counts per entity, the new teams and swimmers, overwrite deletions, team scores, a fresh preflight
+  (`Import::CommitPreflight`) and one Commit button. Step 5 keeps its own Commit button (same POST).
+- **Commit job.** The Commit click creates a queued `Ops::CommitReport` and enqueues `DataFixCommitJob` on the
+  `pipeline` worker; the report page (`GET data_fix/commit_reports/:id`) refreshes until the job ends and can be
+  reopened from its URL. It links the Outbox script and shows the season checks of the triggered health runs.
+  "Committed, archiving failed" keeps its own state and its "Retry archiving" button. Without the ops DB the commit
+  is refused with the `bin/rails ops:prepare` notice.
+
+### Review pages (phase 12)
+
+Every step is a native Bootstrap 5 page (light and dark themes) driven by Stimulus controllers only: no inline
+handler, no inline script, no `window.DataFix` global (the card controllers `meeting_card`, `session_card`,
+`team_card`, `swimmer_card`, `event_card`, plus `verify_team`, share the DOM helpers of
+`app/javascript/lib/form_fields.js`).
+
+- **Page header and stepper.** Each step opens with the page header (title, source name, "Sources" (back to the Sources Results tab) and the next
+  step) and the stepper (`DataFix::StepperComponent`, `#data-fix-stepper`): one tab per phase with its verdict pill
+  and issue count, the "being prepared" state (spinner, run progress) while a prepare job holds the lease, the crawl
+  retry banner, and the active step's menu with "Rebuild this phase from the source" (its confirmation names the
+  edits it discards, e.g. "team saved ×3"). Below the md breakpoint the inactive tabs show only their number.
+- **Stale banner.** A stale step says which input changed and offers **Rebuild**: `POST data_fix/rebuild_phase`
+  (`phase=N`), one click for an unedited phase; an edited one asks first and passes `force=1` (the action refuses an
+  edited phase without it). Step 4 shows it when the Step 1 sessions changed; Step 5 keeps its automatic rebuild
+  (unedited, no fixes or overwrite selections), so its banner appears only when it holds edits or is result-free.
+- **Needs you only.** Steps 2 and 3 open on the "Needs you" filter (`filter_state=review`) when no filter is
+  remembered; an explicit "Unfiltered" (`filter_state=none`) wins and is remembered in the per-file cookie. Steps 1
+  and 4 have a "Needs you only" switch (`issues_only=1|0`), on by default when a card needs the operator (Step 1
+  always keeps the meeting card: its id feeds "rescan sessions"). Step 5 keeps its issue filter, on by default.
+- **Next / previous issue.** The toolbar under the stepper (`#data-fix-issue-nav`) jumps between the cards needing
+  the operator (markers `data-issue`, from `DataFix::IssueMarkers`: the verdict issues for Steps 1 and 4,
+  `DataFix::ReviewRules` for Steps 2-3, the issue programs for Step 5): it scrolls to the card, expands it and
+  focuses it; past the page it opens the previous / next page holding an issue on that card (anchor). Keys `j` / `k`
+  (ignored while typing in a field).
+- **Saved in place (Steps 2 and 3).** A team or swimmer card is saved without a page reload: the update answers a
+  Turbo stream replacing the card (its key-based frame, same position), the stepper (fresh verdicts) and the toasts;
+  Step 2 also replaces the team ranking card. The phase file is the one a full-page save writes, and the edit marker
+  is stamped the same way. The swimmer cards a team save cascades to are on Step 3 and show the new badges when it
+  opens. Deletes and additions keep the full-page redirect.
+- **Verify all (Step 5).** Matches every new staged result having exactly one identical existing result (same event,
+  category, team and timing; never a merge target) and reports the counts: matched, possible duplicates left to
+  review, without a match. It never commits.
+
+### Unattended preparation (phase 10)
+
+`DataFixPrepareJob` (queue `pipeline`, priority 10: a queued commit, priority 0, runs first) runs
+`DataFix::Pipeline#prepare!` on one source without an operator: it builds the missing and stale steps (1-5, or only
+Phase 1 for a result-free source), computes the verdicts and stores the stage, so the Season board and the dashboard
+inbox show **Ready to commit** or **Needs review at step N** without a click (see `docs/season_board.md`, *Pipeline
+automation*). It never commits and never pushes: the Phase 6 commit stays the operator's click on the commit summary,
+the push a click in the Outbox (`spec/automation_boundary_spec.rb` checks that no job, planner or inbox source names
+the commit or push entry points).
+
+- **Who queues it.** `SeasonBoard::PipelinePlanner` (origin `auto`: results ready, structure / header ready, stale or
+  outdated verdicts, new-entity matches behind a commit, a phase 5 collision cleared by the other source's commit, a
+  failed source whose file changed) and the board's **Prepare** / **Retry** buttons (origin `operator`), always through
+  `SeasonBoard::Scheduler.prepare!`, which writes the queued `Ops::PipelineRun` and refuses a busy source.
+- **Edits win.** An automatic run refuses a source holding ANY edited phase (`Pipeline#any_edited?`, pre-0.10.88 files
+  adopted as edited included); `prepare!` never rebuilds an edited phase, and an automatic build never lets the
+  harmonizer write an edited phase 2. An edited phase file is byte-identical after any prepare run.
+- **Lease.** The whole run holds the `pipeline_sources` lease as `job:<job id>` (`Pipeline#hold_lease!`, TTL = the
+  20-minute soft deadline + 5 minutes); the review pages show "being prepared" and the edit actions are refused meanwhile.
+- **Outcome.** `pipeline_runs` row `done` / `failed` (stage `failed` + `failed_source_sha256`: re-queued only after the
+  source changes) / `refused` (automation off, ops DB missing, red DB sync, source gone, commit pending, edits, lease) /
+  `yielded` (a commit was queued between two steps); deadline exceeded = `failed: deadline`; source changed during the
+  run = the verdicts are recomputed (stale). Events `pipeline.prepare_done|failed|refused`.
+- **Source resolution.** An automatic run computes the working copy without side effects, takes the lease and checks the
+  edits first; on a source that already has phase files it never runs the rewriting branches of
+  `SourceResolver#resolve_working_source_path` (LT2 payload under `-lt4`, manifest supersede, category normalization):
+  it is refused `source_needs_review`. `Pipeline#invalidate!` deletes nothing (even forced) while another owner holds
+  the lease.
+- **Boundary.** No remote write; the only API call reachable is the light, read-only `tools/db_fingerprint` GET of
+  `Drift::Gate` (through `DataFix::Guards`). Automatic paths fail closed on unreadable ops data.
+- **Switches.** `DataFix::Automation` (`automation.enabled`, `automation.auto_prepare`, `automation.auto_extract`;
+  `ADMIN2_AUTOMATION=0` forces them off): checked by the planner before every enqueue and by the job at start for an
+  automatic run. A row hold (`pipeline_sources.auto_prepare = false`) stops the automatic preparation of one source.
+
 ---
 
 ## Phase 1: Meeting & Sessions
@@ -145,6 +243,11 @@ The Phase 1 action reads the canonical LT4 source `swimmers` array and recalcula
 - **Normalized name matching** (v2.1): strips common Italian abbreviations (A.S.D., S.S.D., etc.) for secondary fuzzy search
 - **Affiliation cross-reference** (v2.1): flags fuzzy match candidates already affiliated for the current season (`similar_affiliated` flag + "SIMILAR TEAM IN SEASON" UI badge)
 - Creates phase2.json with team_id and team_affiliation_id
+- **Team rankings** (PDF-derived sources only): `Import::TeamScoreExtractor` copies the overall team ranking
+  (LT4 `teamRankings`, or the LT2 `ranking` sections; an older LT4 working copy without `teamRankings` falls back
+  to its LT2 sibling) into `data.team_scores`. Every ranked team gets a team entry, even when it has no results.
+  The review page shows a collapsed "Team rankings (N)" card (rank, source key, matched team, points) with a
+  warning badge on keys whose team entry is missing or new. Rebuilding Phase 2 rebuilds the list from the source.
 
 ### Pre-Matching Pattern
 **Match Key**: `(season_id, team_id)`  
@@ -174,9 +277,18 @@ TeamAffiliation.create\!(...)  # Only create if missing
     "team_id": 123,
     "season_id": 242,
     "team_affiliation_id": 456  // Pre-matched\!
+  }],
+  "team_scores": [{             // only when the source carries an overall team ranking
+    "team_key": "CSI OBER FERRARI",
+    "rank": 1,
+    "ind_score": 35209.93,      // Float (Parser::Score), 0.0 when missing
+    "overall_score": 35209.93
   }]
 }
 ```
+
+`team_scores` is deduplicated on the legacy key `"<rank>-<team_key>"` (first row wins) and sorted by rank.
+Phase 2 files without the key are valid: Phase 6 simply commits no team scores.
 
 ---
 
@@ -328,11 +440,17 @@ end
 **Status**: Individual ✅ Complete
 **Purpose**: Populate temporary DB tables for result review  
 **Populator**: `app/strategies/import/phase5_populator.rb`  
-**Solver**: `app/strategies/import/solvers/result_solver.rb`
+**Solver**: `app/strategies/import/solvers/result_solver.rb` (no longer part of the build since phase 09: the
+populator always rewrote its output)
 
 ### What It Does
-- **ResultSolver**: Builds phase5.json summary (event/result counts)
-- **Phase5Populator**: Populates `data_import_*` DB tables with detailed data
+- **Phase5Populator**: Populates `data_import_*` DB tables with detailed data and writes the phase5.json program
+  list (keeping the existing `_meta`: overwrite snapshot, edit markers, build stamp)
+- Truncate + insert run in one transaction; a key already staged by **another** source is reported as a collision
+  (Phase 5 blocked until that source is committed) instead of reusing its row; a parity check compares the source
+  rows with a category with the staged rows, per program
+- After each populate, `DataFix::ResultVerifier` binds the staged results having exactly one perfect duplicate in the
+  DB (never an overwrite merge target); `POST data_fix/verify_all_results` runs it again
 - Loads phases 1-4 to resolve all entity IDs
 - Matches existing MeetingIndividualResults for UPDATE vs INSERT decision
 
@@ -388,9 +506,12 @@ Created in goggles_db gem v0.8.11+:
 - Expandable lap details
 - Match status badges (green = matched, yellow = new)
 
-**Relay Results** 🟡:
-- UI partials not yet created
+**Relay Results** ✅:
+- Card-based UI (`_relay_program_card.html.haml`), with the relay swimmers and laps of each result
 - See [RELAY_IMPLEMENTATION.md](./RELAY_IMPLEMENTATION.md)
+
+Both card kinds carry the "needs you" marker of the programs in the issue list (next / previous issue, see
+*Review pages*); "Verify all" sits in the step toolbar.
 
 ### Individual-result overwrite mode
 
@@ -407,11 +528,14 @@ The toggle stores the candidate snapshot in Phase 5 metadata. Candidates are dis
 **Committer**: `app/strategies/import/committers/main.rb`
 
 ### What It Does
+- Runs in `DataFixCommitJob` (`DataFix::CommitRunner`), queued by the Commit click; the outcome is an
+  `Ops::CommitReport` (see *Runner, verdicts and the commit job* above)
 - Reads JSON files (phases 1-4) and DB tables (phase 5)
 - Commits all entities in dependency order
-- Generates SQL log for remote sync
+- Generates SQL log for remote sync, registered in the Outbox inside the local transaction
 - All operations in single transaction (rollback on error)
-- Moves source files to `results.done/` folder
+- Moves source files to `results.done/` folder; bumps `data_fix.db_generation` (matches of the other prepared
+  sources become stale: "Refresh matches")
 
 ### Structure-only commits
 
@@ -450,6 +574,18 @@ For result-free sources (see *Structure-only (result-free) sources* above):
 14. MeetingRelaySwimmer (requires meeting_relay_result_id, swimmer_id)
 15. RelayLap (requires meeting_relay_swimmer_id)
 ```
+
+**Team scores** (last, after the overwrite merge and before the `results_acquired` flag):
+```
+16. MeetingTeamScore (requires meeting_id, team_id, team_affiliation_id, season_id) - from phase2 `team_scores`
+```
+`Import::Committers::MeetingTeamScore` maps each score as the legacy solver did: `sum_individual_points` =
+`meeting_points` = `ind_score`; `sum_relay_points` = `meeting_relay_points` = `overall_score - ind_score`;
+`sum_team_points` = `meeting_team_points` = `overall_score`; `season_*` = 0.0. An existing row is found by
+`(meeting_id, team_id)` and updated (changed columns only), otherwise inserted; both are logged in the SQL script.
+A score whose team has no Phase 2 entry (or whose team/affiliation can't be resolved) is skipped: counted in
+`team_scores_skipped`, logged as `team_score_skipped`, and the commit goes on. The report lists
+"Team Scores" (created / updated) and, when any, "Team scores skipped".
 
 ### Relay Category/Gender Auto-Computation (v3.0)
 

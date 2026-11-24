@@ -19,7 +19,7 @@ RSpec.describe SeasonBoard::ActivityLog do
   end
 
   it 'returns empty results when the file is missing' do
-    expect(log.for('150091')).to eq(crawl: nil, extract: nil)
+    expect(log.for('150091')).to eq(crawl: nil, extract: nil, prepare: nil)
     expect(log.busy?('150091')).to be false
     expect(log.active).to eq([])
     expect(log.last_attempt_at('150091', :crawl)).to be_nil
@@ -28,7 +28,7 @@ RSpec.describe SeasonBoard::ActivityLog do
   it 'tolerates an invalid file' do
     FileUtils.mkdir_p(File.dirname(log_path))
     File.write(log_path, '{nope')
-    expect(log.for('150091')).to eq(crawl: nil, extract: nil)
+    expect(log.for('150091')).to eq(crawl: nil, extract: nil, prepare: nil)
   end
 
   describe 'the queue! -> start! -> finish! lifecycle' do
@@ -165,6 +165,89 @@ RSpec.describe SeasonBoard::ActivityLog do
       travel_to(now) { log.queue!('1', kind: :extract, origin: :manual) }
       expect(log.last_attempt_at('1', :extract)).to eq(now)
       expect(log.last_attempt_at('1', :crawl)).to be_nil
+    end
+  end
+
+  describe 'file reads' do
+    let(:store) { FedernuotoWatch::StateStore.new(path: log_path) }
+
+    before(:each) do
+      described_class.new(path: log_path).queue!('1', kind: :crawl, origin: :auto)
+      allow(FedernuotoWatch::StateStore).to receive(:new).and_return(store)
+      allow(store).to receive(:read).and_call_original
+    end
+
+    it 'reads the file once for any number of lookups' do
+      10.times { |i| log.for(i.to_s) }
+      log.active
+      log.busy?('1')
+      expect(store).to have_received(:read).once
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+    end
+
+    it 'sees its own writes' do
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      log.start!('1', kind: :crawl)
+      expect(log.entry('1', :crawl)).to have_attributes(status: :running)
+    end
+
+    it 'sees the writes of other instances after #reload!' do
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      described_class.new(path: log_path).finish!('1', kind: :crawl, status: :done)
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      expect(log.reload!.entry('1', :crawl)).to have_attributes(status: :done)
+    end
+  end
+
+  # Phase 15: the Sources crawls & extractions (key 'src:<sha1>', label, heartbeat).
+  describe 'source entries' do
+    let(:key) { described_class.source_key('crawl:microplus', 'https://fin2025.microplustiming.com/x.php') }
+
+    it 'builds a stable src: key that is never a FIN id' do
+      expect(key).to match(/\Asrc:\h{40}\z/)
+      expect(key).to eq(described_class.source_key('crawl:microplus', 'https://fin2025.microplustiming.com/x.php'))
+      expect(key).not_to eq(described_class.source_key('crawl:ficr', 'https://fin2025.microplustiming.com/x.php'))
+      expect(described_class.source_key?(key)).to be true
+      expect(described_class.source_key?('150091')).to be false
+    end
+
+    it 'keeps the label through queue! -> start! -> finish!' do
+      log.queue!(key, kind: :crawl, origin: :manual, url: 'u', label: 'Microplus: x.php')
+      expect(log.entry(key, :crawl)).to have_attributes(label: 'Microplus: x.php', source?: true)
+      log.start!(key, kind: :crawl)
+      log.finish!(key, kind: :crawl, status: :done, message: 'ok')
+      expect(log.entry(key, :crawl)).to have_attributes(status: :done, label: 'Microplus: x.php', message: 'ok')
+    end
+
+    it 'writes no label key for the FIN entries (old files stay the same)' do
+      log.queue!('150091', kind: :crawl, origin: :auto)
+      log.start!('150091', kind: :crawl)
+      expect(JSON.parse(File.read(log_path)).dig('entries', '150091', 'crawl')).not_to have_key('label')
+      expect(log.entry('150091', :crawl)).to have_attributes(label: nil, heartbeat_at: nil, source?: false)
+    end
+
+    it 'reads the entries written before phase 15 (no label, no heartbeat)' do
+      FileUtils.mkdir_p(File.dirname(log_path))
+      File.write(log_path, { 'entries' => { '1' => { 'crawl' => { 'origin' => 'auto', 'status' => 'done' } } } }.to_json)
+      expect(log.entry('1', :crawl)).to have_attributes(status: :done, label: nil, heartbeat_at: nil)
+    end
+
+    it 'writes the heartbeat of a running entry only' do
+      log.queue!(key, kind: :crawl, origin: :manual)
+      expect(log.heartbeat!(key, kind: :crawl)).to be_nil
+      log.start!(key, kind: :crawl)
+      travel_to(now) { expect(log.heartbeat!(key, kind: :crawl).heartbeat_at).to eq(now) }
+    end
+
+    it 'keeps a running entry with a recent heartbeat busy past RUNNING_STALE_AFTER' do
+      travel_to(now) { log.start!(key, kind: :crawl) }
+      late = now + described_class::RUNNING_STALE_AFTER + 20.minutes
+      travel_to(late - 1.minute) { log.heartbeat!(key, kind: :crawl) }
+      travel_to(late) do
+        expect(log.reload!.busy?(key, kind: :crawl)).to be true
+        expect(log.active.map(&:fin_event_id)).to eq([key])
+      end
+      travel_to(late + described_class::HEARTBEAT_STALE_AFTER + 1.minute) { expect(log.reload!.busy?(key, kind: :crawl)).to be false }
     end
   end
 end

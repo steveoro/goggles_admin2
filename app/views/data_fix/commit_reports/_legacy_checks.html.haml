@@ -1,0 +1,85 @@
+-#
+  Legacy DataFix::PostCommitChecks report stored on an older Ops::CommitReport (symbol keys). Locals: checks.
+  (New reports show the season health runs instead, see _health.) Phase 11: each badge merge candidate and each
+  meeting with duplicate results gets a Fix link (the prefilled 'badge.merge' / 'results.dedupe' form, dry run first).
+:ruby
+  status_map = { 'ok' => ['ALL GREEN', 'success'], 'warning' => %w[WARNING warning], 'error' => %w[ERROR danger] }
+  overall_label, overall_css = status_map.fetch(checks[:overall_status], status_map['warning'])
+  badge_check = checks[:badge_season_check] || {}
+  duplicate_check = checks[:duplicate_results_check] || {}
+  badge_label, badge_css = status_map.fetch(badge_check[:status], status_map['warning'])
+  dup_label, dup_css = status_map.fetch(duplicate_check[:status], status_map['warning'])
+  dup_totals = duplicate_check[:totals] || {}
+  dup_keys = %i[mirs laps mrss relay_laps mrrs]
+  badge_counts = %i[sure_badge_merges_count possible_badge_merges_count multi_badges_count possible_team_merges_count relay_badges_count]
+  merge_lists = [[:sure_badge_merges, 'Sure Badge Merge Candidates (Errors)', 'danger'],
+                 [:possible_badge_merges, 'Possible Badge Merge Candidates (Warnings)', 'warning']]
+.card.mb-3
+  .card-header
+    %strong Post-Commit Integrity Checks
+  .card-body
+    - if checks[:error].present?
+      .alert.alert-danger.mb-0
+        %strong Check runner error:
+        = checks[:error]
+    - else
+      .alert{ class: "alert-#{overall_css}" }
+        %strong Overall status:
+        #{overall_label} (Season #{checks[:season_id]})
+      .row
+        .col-md-6.mb-3
+          .border.rounded.p-3
+            %h6.mb-2
+              Badge Season Check
+              %span.badge.ms-2{ class: "text-bg-#{badge_css}" }= badge_label
+            %ul.mb-0
+              - badge_counts.each do |key|
+                %li
+                  %strong #{key.to_s.delete_suffix('_count').humanize}:
+                  = badge_check[key].to_i
+        .col-md-6.mb-3
+          .border.rounded.p-3
+            %h6.mb-2
+              Duplicate Results Check
+              %span.badge.ms-2{ class: "text-bg-#{dup_css}" }= dup_label
+            %ul.mb-0
+              - dup_keys.each do |key|
+                %li
+                  %strong Duplicate #{key} groups:
+                  = dup_totals[key].to_i
+      - merge_lists.each do |list_key, title, css|
+        - next unless badge_check[:"#{list_key}_count"].to_i.positive?
+
+        .card.mt-2{ class: "border-#{css}" }
+          .card-header{ class: "text-bg-#{css}" }
+            %strong= title
+          .card-body
+            - Array(badge_check[list_key]).each do |entry|
+              - badge_ids = Array(entry[:badges]).filter_map { |badge| badge[:id] }.sort
+              %p.mb-1.d-flex.flex-wrap.align-items-center.gap-2
+                %strong Swimmer #{entry[:swimmer_id]}
+                %span.me-auto - #{entry[:swimmer_name]}
+                - if badge_ids.size >= 2
+                  = render(Maintenance::FixButtonComponent.new(operation_key: 'badge.merge', origin: 'commit_report',
+                                                               params: { source_id: badge_ids.second, dest_id: badge_ids.first, autofix: true }))
+              %ul.small
+                - Array(entry[:badges]).each do |badge|
+                  %li Badge #{badge[:id]} • Team #{badge[:team_id]} (#{badge[:team_name]}) • Cat #{badge[:category_code]}
+      - if duplicate_check[:meetings_with_findings_count].to_i.positive?
+        .card.mt-2.border-danger
+          .card-header.text-bg-danger
+            %strong Duplicate Result Findings (Errors)
+          .card-body
+            - Array(duplicate_check[:meetings_with_findings]).each do |meeting_entry|
+              %p.mb-1.d-flex.flex-wrap.align-items-center.gap-2
+                %strong Meeting #{meeting_entry[:meeting_id]}
+                %span.me-auto - #{meeting_entry[:meeting_description]}
+                = render(Maintenance::FixButtonComponent.new(operation_key: 'results.dedupe', origin: 'commit_report',
+                                                             params: { meeting_id: meeting_entry[:meeting_id] }))
+              %ul.small
+                - dup_keys.each do |key|
+                  %li Duplicate #{key} groups: #{meeting_entry.dig(:counts, key).to_i}
+      - if badge_check[:status] == 'ok' && duplicate_check[:status] == 'ok'
+        .alert.alert-success.mt-2.mb-0
+          %strong All green.
+          No duplicates or merge candidates detected by post-commit checks.

@@ -1,0 +1,29 @@
+-#
+  Background activity of the crawler tab (frame 'sources-crawler-activity'): the board/Sources strip and the latest
+  manual crawls & extractions (SeasonBoard::ActivityLog source entries). Locals: active, recent (ActivityLog entries).
+:ruby
+  tones = { queued: 'info', running: 'primary', done: 'success', failed: 'danger' }
+  details = lambda do |entry|
+    time = entry.last_timestamp && l(entry.last_timestamp.localtime, format: :short)
+    ['', t("season_board.strip.kinds.#{entry.kind}"), time].compact.join(' · ')
+  end
+.card.h-100#sources-crawler-activity-card
+  .card-header.fw-semibold
+    %i.fa-solid.fa-gears{ 'aria-hidden' => 'true' }
+    = t('sources.crawler.activity_title')
+  .card-body
+    %span.d-none{ data: { live_busy: active.any?.to_s } }
+    = render(SeasonBoard::ActivityStripComponent.new(activities: active))
+    %h3.h6.mt-3= t('sources.crawler.recent_title')
+    - if recent.empty?
+      %p.small.text-body-secondary.mb-0#sources-crawler-recent-empty= t('sources.crawler.recent_empty')
+    - else
+      %ul.list-unstyled.small.mb-0#sources-crawler-recent
+        - recent.each do |entry|
+          %li.py-1.border-bottom{ data: { activity_status: entry.status } }
+            %span.badge{ class: "text-bg-#{tones.fetch(entry.status, 'secondary')}" }
+              = t("sources.crawler.statuses.#{entry.status}", default: entry.status.to_s)
+            %span.fw-semibold= entry.label.presence || entry.fin_event_id
+            %span.text-body-secondary= details.call(entry)
+            - if entry.message.present?
+              .text-body-secondary.text-break= entry.message

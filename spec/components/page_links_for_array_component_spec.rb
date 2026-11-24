@@ -106,6 +106,32 @@ RSpec.describe PageLinksForArrayComponent, type: :component do
     end
   end
 
-  # NOTE: Full rendering tests with Kaminari pagination are performed in integration tests
-  # (spec/requests/data_fix_controller_phase*_spec.rb) where proper routing context exists
+  describe 'rendering (app/views/kaminari partials)' do
+    subject(:doc) do
+      with_request_url('/api_teams') do
+        render_inline(described_class.new(data: (1..10).to_a, total_count: 200, page: 5, per_page: 10))
+      end
+    end
+
+    it 'renders each page item with a Bootstrap 5 .page-link as its direct child' do
+      expect(doc.css('nav#paginator-controls ul.pagination > li.page-item')).to be_present
+      expect(doc.css('ul.pagination > li.page-item > .page-link').size).to eq(doc.css('ul.pagination > li.page-item').size)
+    end
+
+    it 'shows the current page as an active, non-link item' do
+      expect(doc.css('li.page-item.active[aria-current="page"] > span.page-link').text).to eq('5')
+      expect(doc.css('li.page-item.active a')).to be_empty
+    end
+
+    it 'renders the truncation gaps as disabled items' do
+      expect(doc.css('li.page-item.disabled > span.page-link.gap')).to be_present
+    end
+
+    it 'does not reference the legacy #loading-indicator' do
+      expect(doc.to_html).not_to include('loading-indicator')
+    end
+  end
+
+  # NOTE: Further rendering tests with Kaminari pagination are performed in integration tests
+  # (spec/requests/data_fix_controller_phase*_spec.rb), with full request parameters
 end

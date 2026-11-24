@@ -1,0 +1,32 @@
+-#
+  A Step 2 team card inside its key-based Turbo frame (data_fix_card_frame_id): rendered by review_teams and,
+  after a save in place, by update_phase2_team.turbo_stream (the frame targets the page, so that delete and
+  links leave it). Locals: team_hash, team_index (position in the filtered list), file_path, api_url.
+:ruby
+  team_key = team_hash['key'] || team_hash['name']
+  team_name = team_hash['name'] || team_key
+  editable_name = team_hash['editable_name'] || team_name
+  team_id = team_hash['team_id']
+  has_match = team_id.to_i.positive?
+  similar_affiliated = team_hash['similar_affiliated'] == true
+  phase3_conflict_hint = phase3_conflict_hint?(team_hash)
+  # (for teams only the name is required)
+  has_missing_data = team_name.blank?
+  card_bg, border_color, icon_class, icon_title =
+    if has_match && phase3_conflict_hint
+      ['bg-light-yellow', 'border-warning', 'fa-exclamation-triangle text-warning', 'Phase 3 conflict hint found']
+    elsif has_match
+      ['bg-body-tertiary', 'border-secondary', 'fa-check-circle text-success', 'Matched']
+    elsif has_missing_data
+      ['bg-light-red', 'border-danger', 'fa-exclamation-triangle text-danger', 'Missing required data']
+    elsif similar_affiliated
+      ['bg-light-yellow', 'border-warning', 'fa-exclamation-triangle text-warning', 'Similar team in season']
+    else
+      ['bg-light-yellow', 'border-warning', 'fa-plus-circle text-warning', 'New/Unmatched']
+    end
+= turbo_frame_tag(data_fix_card_frame_id('team', team_key), target: '_top') do
+  = render(partial: 'data_fix/team_form_card',
+           locals: { file_path:, api_url:, team_hash:, team_index:, team_key:, team_name:, editable_name:, team_id:,
+                     city_id: team_hash['city_id'], name_variations: team_hash['name_variations'], has_match:, has_missing_data:,
+                     similar_affiliated:, phase3_conflict_hint:, card_bg:, border_color:, border_width: 'border-2',
+                     icon_class:, icon_title:, issue_codes: [DataFix::IssueMarkers.team(team_hash)].compact })

@@ -79,7 +79,13 @@ RSpec.describe Merge::Badge do
     context 'when source and destination have different categories' do
       let(:other_category) do
         GogglesDb::CategoryType.where(season:).where.not(id: category_type.id).where(relay: false).first ||
-          FactoryBot.create(:category_type, season:)
+          begin
+            # The factory picks a random "M<age>" code: avoid the codes already taken in the season
+            # (unique key 'season_and_code'), otherwise this setup fails about once in 16 runs.
+            taken = GogglesDb::CategoryType.where(season:).pluck(:code)
+            free_age = (25..100).step(5).find { |age| taken.exclude?("M#{age}") }
+            FactoryBot.create(:category_type, season:, age_begin: free_age)
+          end
       end
 
       before(:each) do
@@ -113,7 +119,13 @@ RSpec.describe Merge::Badge do
       let(:other_affiliation) { FactoryBot.create(:team_affiliation, team: other_team, season:) }
       let(:other_category) do
         GogglesDb::CategoryType.where(season:).where.not(id: category_type.id).where(relay: false).first ||
-          FactoryBot.create(:category_type, season:)
+          begin
+            # The factory picks a random "M<age>" code: avoid the codes already taken in the season
+            # (unique key 'season_and_code'), otherwise this setup fails about once in 16 runs.
+            taken = GogglesDb::CategoryType.where(season:).pluck(:code)
+            free_age = (25..100).step(5).find { |age| taken.exclude?("M#{age}") }
+            FactoryBot.create(:category_type, season:, age_begin: free_age)
+          end
       end
 
       before(:each) do

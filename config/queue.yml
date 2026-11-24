@@ -1,11 +1,20 @@
 # Solid Queue processes (run inside Puma via `plugin :solid_queue`, or stand-alone with `bin/jobs`).
 #
-# Two workers, so that long-running jobs never delay the hourly FIN watcher:
+# Separate workers, so that long-running jobs never delay the hourly FIN watcher:
 # - 'default': quick jobs (FedernuotoWatchJob, mailers, ...);
 # - 'background': Season board crawls & manifest extractions (MeetingCrawlJob, ManifestExtractJob,
 #   SeasonRecheckJob) with a single thread & process, so that they run strictly one at a time
 #   (gentle with the FIN server & the LLM engine). Keep it at 1 thread / 1 process.
-# NOTE: jobs on any other queue name are not picked up: add the queue to the 'default' worker.
+# - 'maintenance': read-only data health checks (Health::SeasonRunJob, Health::SweepJob), one at a time
+#   (later shared with the maintenance operations and the guided DB restore). Keep it at 1 thread / 1 process.
+# - 'outbox': SQL Outbox pushes (Outbox::PushJob, enqueued only by an operator click) and the one-time legacy
+#   import, strictly one at a time and never behind a crawl ('background' can be held up to 30 minutes) nor
+#   delaying the quick jobs ('default'). Keep it at 1 thread / 1 process.
+# - 'pipeline': the Data-Fix commit (DataFixCommitJob, enqueued only by an operator click; priority 0) and, from
+#   phase 10, the prepare jobs. Keep it at 1 thread / 1 process: that is what serialises a queued commit and a
+#   running prepare (they use different concurrency keys).
+# NOTE: jobs on any other queue name are not picked up: add the queue to a worker
+# (spec/config/queue_names_spec.rb checks every job's queue_as and every recurring.yml queue).
 default: &default
   dispatchers:
     - polling_interval: 1
@@ -19,6 +28,18 @@ default: &default
       threads: 1
       processes: 1
       polling_interval: 2
+    - queues: maintenance
+      threads: 1
+      processes: 1
+      polling_interval: 2
+    - queues: outbox
+      threads: 1
+      processes: 1
+      polling_interval: 1
+    - queues: pipeline
+      threads: 1
+      processes: 1
+      polling_interval: 1
 
 development:
   <<: *default

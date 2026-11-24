@@ -1,0 +1,99 @@
+en:
+  inbox:
+    empty: "Nothing needs you right now."
+    more: "%{count} more: %{source}"
+    waiting: "waiting for %{ago}"
+    bands:
+      blocked: "Blocked"
+      failed: "Failed"
+      push: "To push"
+      review: "To review"
+      acquire: "To acquire"
+      notice: "Notice"
+    sources:
+      blockers: "blockers"
+      failed_jobs: "failed jobs"
+      pending_sql: "SQL scripts to push"
+      board_rows: "Season board"
+      unmatched_sources: "files without a FIN id"
+      data_fix_sessions: "Data-Fix sessions"
+      fin_change: "FIN calendar"
+      drift: "DB sync"
+    builder:
+      source_failed: "Inbox source '%{source}' failed: %{error}"
+      reload: "Reload"
+    blockers:
+      api_offline:
+        title: "API offline: no valid JWT for this session"
+        detail: "API URL: %{url}. Fix it in Settings (or start the API), then sign in again."
+        action: "Open Settings"
+      credentials:
+        title: "The background jobs have no valid API credentials"
+        missing: "No admin JWT to use: the counters and the DB sync check make no call until someone signs in."
+        expired: "The last admin JWT expired (it lasts 10 hours): the counters and the DB sync check are paused."
+        action: "Sign in again"
+      ops_db:
+        title: "Local ops DB not ready"
+        detail: "%{state} Run bin/rails ops:prepare."
+        action: "How to set it up"
+      queue:
+        title: "No background job can run"
+        action: "How to start the jobs"
+    failed_jobs:
+      board:
+        crawl_failed: "Crawl failed: %{name}"
+        crawl_stuck: "Crawl seems stuck: %{name}"
+        extract_failed: "Manifest extraction failed: %{name}"
+        extract_stuck: "Manifest extraction seems stuck: %{name}"
+      job_title: "Job failed: %{job}"
+      retry: "Retry"
+      discard: "Discard"
+      discard_confirm: "Discard the failed %{job} job? It won't run again."
+    pending_sql:
+      title:
+        one: "1 script to push (%{number})"
+        other: "%{count} scripts to push, oldest %{number}"
+      push: "Push"
+      held:
+        one: "1 held"
+        other: "%{count} held"
+      held_only:
+        one: "1 SQL script held in the Outbox"
+        other: "%{count} SQL scripts held in the Outbox"
+      in_doubt:
+        one: "1 push in doubt: check the remote import queue"
+        other: "%{count} pushes in doubt: check the remote import queue"
+      resolve: "Resolve"
+      open: "Open"
+      failed:
+        one: "Push failed: 1 script stopped on the server"
+        other: "Push failed: %{count} scripts stopped on the server"
+      fix: "Fix it"
+    unmatched_sources:
+      titles:
+        resume_review: "In review, without FIN id: %{name}"
+        review_source: "Source without FIN id: %{name}"
+        manifest: "Manifest without FIN id: %{name}"
+      detail: "Not on the FIN calendar of the Season board"
+      actions:
+        review: "Open in Data-Fix"
+        manifests: "Open the Manifests tab"
+    data_fix_sessions:
+      idle_title: "Idle for %{days} days: %{name}"
+      idle_detail: "Season %{season}, step %{phase}, last change %{time}"
+      orphan_title:
+        one: "1 staging row whose source is gone: %{name}"
+        other: "%{count} staging rows whose source is gone: %{name}"
+      orphan_detail: "Source file: %{path}"
+      purge: "Purge staging rows"
+    fin_change:
+      title:
+        zero: "The FIN calendar page changed"
+        one: "FIN calendar changed (1 row)"
+        other: "FIN calendar changed (%{count} rows)"
+      open_board: "Open board"
+    drift:
+      red_title: "DB sync red: the local DB no longer mirrors production (Phase 6 commits are refused)"
+      amber_title: "DB sync amber: check the differences with production"
+      open: "Open DB sync"
+      review: "Review remote-only edits"

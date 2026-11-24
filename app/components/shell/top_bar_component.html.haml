@@ -1,0 +1,24 @@
+%nav.app-topbar-inner.d-flex.align-items-center.gap-2.px-2.px-lg-3{ 'aria-label' => t('shell.topbar.label'), data: { api_offline: @offline.to_s } }
+  -# Below lg: opens the offcanvas sidebar; above: collapses/expands it (cookie 'sidebar')
+  %button{ offcanvas_toggle_attributes }
+    %i.fa-solid.fa-bars{ 'aria-hidden' => 'true' }
+  %button{ collapse_toggle_attributes }
+    %i.fa-solid.fa-bars{ 'aria-hidden' => 'true' }
+  %a.app-brand.link-body-emphasis.text-decoration-none.fw-semibold.text-nowrap.me-1.d-none.d-xl-inline{ href: root_path }
+    = t('shell.brand')
+
+  = render(Shell::APITargetBadgeComponent.new(api_target: @api_target))
+
+  %turbo-frame.app-status-frame.d-none.d-md-flex#shell-status{ src: shell_status_path, loading: 'lazy' }
+    %span.small.text-body-secondary.app-status-loading{ role: 'status' }
+      %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+      %span.visually-hidden= t('shell.status.loading')
+
+  - if search?
+    .app-topbar-search.flex-shrink-0= search
+
+  .ms-auto.d-flex.align-items-center.gap-1
+    %div{ data: { controller: 'theme' } }
+      %button{ theme_toggle_attributes }
+        %i.fa-solid{ class: dark_theme? ? 'fa-sun' : 'fa-moon', 'aria-hidden' => 'true', data: { theme_target: 'icon' } }
+    = render(Shell::UserMenuComponent.new(user: @user))

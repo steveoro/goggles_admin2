@@ -1,0 +1,42 @@
+- if @rows.empty?
+  %p.text-body-secondary.my-3{ id: "#{@table_id}-empty" }= @empty_text
+- else
+  .table-responsive
+    %table.table.table-sm.table-hover.align-middle.mb-0.sources-file-table{ id: @table_id }
+      %thead
+        %tr
+          %th{ scope: 'col' }= t('sources.table.name')
+          %th.text-end.d-none.d-md-table-cell{ scope: 'col' }= t('sources.table.size')
+          %th.d-none.d-lg-table-cell{ scope: 'col' }= t('sources.table.modified')
+          %th.text-end{ scope: 'col' }
+            %span.visually-hidden= t('sources.table.actions')
+      %tbody
+        - @rows.each do |row|
+          %tr{ row_attributes(row) }
+            %td
+              .fw-semibold.text-break= row.name
+              - if row.badges.any? || row.note.present?
+                .d-flex.flex-wrap.align-items-center.gap-1.mt-1
+                  - row.badges.each do |badge|
+                    - if badge.path
+                      = link_to(badge.label, badge.path, class: badge_class(badge), title: badge.title)
+                    - else
+                      %span{ class: badge_class(badge), title: badge.title }= badge.label
+                  - if row.note.present?
+                    %span.small.text-body-secondary= row.note
+              .small.text-body-secondary.d-md-none= [size_text(row), time_text(row)].join(' · ')
+            %td.text-end.text-nowrap.d-none.d-md-table-cell= size_text(row)
+            %td.text-nowrap.d-none.d-lg-table-cell= time_text(row)
+            %td.text-end
+              .d-inline-flex.flex-wrap.justify-content-end.align-items-center.gap-1
+                - ([row.primary] + row.extra).compact.each_with_index do |action, index|
+                  = render(Sources::ActionButtonComponent.new(action:, style: index.zero? ? 'btn-outline-primary' : 'btn-outline-secondary'))
+                - menu = menu_actions(row)
+                - if menu.any?
+                  .dropdown
+                    %button.btn.btn-sm.btn-outline-secondary.dropdown-toggle{ menu_button_attributes(row) }
+                      %i.fa-solid.fa-ellipsis{ 'aria-hidden' => 'true' }
+                    %ul.dropdown-menu.dropdown-menu-end
+                      - menu.each do |key, action|
+                        %li
+                          = render(Sources::ActionButtonComponent.new(action:, menu: true, danger: key == :delete))

@@ -4,35 +4,13 @@ module DataFix
   # ResultsController: Phase 5 (results) review, per-row overwrite metadata and result verification endpoints.
   class ResultsController < BaseController
     def review_results
-      redirect_to(review_results_legacy_path(request.query_parameters)) && return if params[:phase5_v2].blank?
-
       source_path = @source_path
-      season = source_resolver.detect_season_from_pathname(source_path)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      phase_path = source_resolver.default_phase_path_for(source_path, 5)
+      phase_path = pipeline.phase_path(5)
 
-      # Build/rebuild phase 5 JSON scaffold (for summary display)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 5,
-                                       review_path: method(:review_results_path)) do
-        Import::Solvers::ResultSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
+      # Build/rebuild phase 5 (staging rows + program list) when missing, on rescan, or when stale without edits
+      return unless ensure_phase_file!(phase: 5, review_path: method(:review_results_path))
 
-        # Populate data_import_* tables immediately after rescan (before redirect)
-        populator = Import::Phase5Populator.new(
-          source_path: source_path,
-          phase1_path: source_resolver.default_phase_path_for(source_path, 1),
-          phase2_path: source_resolver.default_phase_path_for(source_path, 2),
-          phase3_path: source_resolver.default_phase_path_for(source_path, 3),
-          phase4_path: source_resolver.default_phase_path_for(source_path, 4)
-        )
-        broadcast_progress('Populating phase 5...', 0, 100)
-        populate_stats = populator.populate!
-        "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps"
-      end
-
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      @retry_needed = pipeline.settle!(5)
 
       # Load phase5 JSON with program groups
       if File.exist?(phase_path)
@@ -88,6 +66,8 @@ module DataFix
         filter_data = DataFix::IssueDetector.load_filter_data(source_path, staging)
         @programs_with_issues = DataFix::IssueDetector.detect_programs_with_issues(all_programs, filter_data, staging)
         @issue_count = @programs_with_issues.size
+        # (phase 12) issue markers of the program cards: next/previous issue navigation
+        @issue_program_keys = @programs_with_issues.to_set { |program| program_key_for(program) }
 
         # Server-side filtering: only show programs with issues if filter is active.
         # An explicit filter_issues param always wins; when absent, the filter
@@ -141,6 +121,7 @@ module DataFix
         # Apply pagination to prevent UI slowdown
         @current_page = [params[:page].to_i, 1].max
         @phase5_programs, @total_pages = Phase5::Paginator.paginate(all_programs, @current_page, staging)
+        @issue_nav = results_issue_nav(all_programs, staging)
       else
         @phase5_meta = {}
         @phase5_programs = []
@@ -151,29 +132,21 @@ module DataFix
 
       # Populate data_import_* tables for detailed review (triggered by populate_db only)
       if params[:populate_db].present?
-        phase1_path = source_resolver.default_phase_path_for(source_path, 1)
-        phase2_path = source_resolver.default_phase_path_for(source_path, 2)
-        phase3_path = source_resolver.default_phase_path_for(source_path, 3)
-        phase4_path = source_resolver.default_phase_path_for(source_path, 4)
-
-        populator = Import::Phase5Populator.new(
-          source_path: source_path,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path,
-          phase3_path: phase3_path,
-          phase4_path: phase4_path
-        )
+        # (an explicit operator rebuild of phase 5: same recipe as the build, through the pipeline)
         broadcast_progress('Populating DB from phase 5 data...', 0, 100)
-        @populate_stats = populator.populate!
-        flash.now[:info] =
-          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
-          "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
-          "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
+        pipeline.build_phase!(5, force: true, strict_upstream: false)
+        @populate_stats = pipeline.last_build_result[:stats]
+        flash.now[:info] = I18n.t('data_fix.flash.populated', results: @populate_stats[:mir_created], laps: @populate_stats[:laps_created],
+                                                              relay_results: @populate_stats[:relay_results_created],
+                                                              relay_swimmers: @populate_stats[:relay_swimmers_created],
+                                                              relay_laps: @populate_stats[:relay_laps_created],
+                                                              programs: @populate_stats[:programs_matched])
 
         # populate! rewrote the staging tables: reload before rendering
         staging = DataFix::StagingRows.load_staging_rows(source_path)
       end
 
+      @issue_program_keys ||= Set.new
       # Query data_import tables for display (loaded once, reused per program bucket)
       staging ||= DataFix::StagingRows.load_staging_rows(source_path)
       @mirs_by_program = staging[:mirs_by_program]
@@ -311,6 +284,7 @@ module DataFix
 
     def update_individual_result_overwrite_candidate
       phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+      @edited_source_path = edited_source_for(phase5_path)
       payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
       raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
@@ -333,6 +307,7 @@ module DataFix
 
     def update_individual_result_merge_candidate
       phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+      @edited_source_path = edited_source_for(phase5_path)
       payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
       raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
@@ -357,6 +332,7 @@ module DataFix
 
     def bulk_update_individual_result_overwrite
       phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+      @edited_source_path = edited_source_for(phase5_path)
       payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
       raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
@@ -442,43 +418,31 @@ module DataFix
           source_path = data_import_row.phase_file_path
           season_id = source_resolver.detect_season_from_pathname(source_path)&.id if source_path.present?
 
-          result = checker.check_individual(
-            swimmer_id: data_import_row.swimmer_id,
-            meeting_program_id: data_import_row.meeting_program_id,
-            timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
-                      hundredths: data_import_row.hundredths },
-            team_id: data_import_row.team_id,
-            season_id: season_id
-          )
-
-          # Auto-fix: if exactly 1 perfect match found, apply it immediately
-          if result[:perfect_matches]&.length == 1
-            perfect = result[:perfect_matches].first
-            existing = GogglesDb::MeetingIndividualResult.find_by(id: perfect['id'])
-            if existing
-              data_import_row.update!(
-                meeting_individual_result_id: existing.id,
-                meeting_program_id: existing.meeting_program_id,
-                swimmer_id: existing.swimmer_id,
-                team_id: existing.team_id,
-                badge_id: existing.badge_id,
-                rank: existing.rank,
-                minutes: existing.minutes,
-                seconds: existing.seconds,
-                hundredths: existing.hundredths,
-                disqualified: existing.disqualified,
-                standard_points: existing.standard_points,
-                meeting_points: existing.meeting_points,
-                goggle_cup_points: existing.goggle_cup_points
-              )
-              result[:auto_fixed] = true
-              result[:auto_fixed_id] = existing.id
-            end
-          end
+          # Auto-fix: if exactly 1 perfect match found, apply it immediately (DataFix::ResultVerifier)
+          result = DataFix::ResultVerifier.new(source_path:, season_id:, checker:)
+                                          .verify_row(data_import_row, merge_target: false)
         end
       end
 
       render json: result
+    end
+
+    # POST data_fix/verify_all_results?file_path= ("Verify all" of Step 5, phase 12): matches every unmatched staged
+    # individual result having exactly one perfect duplicate in the DB (DataFix::ResultVerifier, also run after each
+    # Phase 5 populate; never touches a merge target, never commits), then reopens Step 5 with its filters and the
+    # counts (fixed, partial = possible duplicates left to review, none). The program cards are rendered again.
+    def verify_all_results
+      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 0, 1)
+      outcome = DataFix::ResultVerifier.new(source_path: @source_path, season_id: pipeline.season&.id).verify_all!
+      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 1, 1)
+      kept = params.slice(:filter_issues, :filter_new, :filter_unmatched, :page).permit!.to_h
+      back = review_results_path(kept.merge(file_path: @source_path, phase5_v2: 1))
+      return redirect_to(back, flash: { error: I18n.t('data_fix.verify_all.failed', error: outcome['error']) }) if outcome['error'].present?
+
+      checked = outcome['checked'].to_i
+      fixed = outcome['verified'].to_i
+      partial = Array(outcome['partial']).size
+      redirect_to(back, notice: I18n.t('data_fix.verify_all.done', checked:, fixed:, partial:, none: [checked - fixed - partial, 0].max))
     end
 
     # Fix a result duplicate: set the existing DB row's ID on the DataImport* record.
@@ -499,6 +463,8 @@ module DataFix
         return
       end
 
+      @edited_source_path = (result_type == 'relay' ? GogglesDb::DataImportMeetingRelayResult : GogglesDb::DataImportMeetingIndividualResult)
+                            .where(import_key:).pick(:phase_file_path)
       if result_type != 'relay'
         data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
         merge_source = DataFix::OverwriteMetadata.merge_target_for(data_import_row)
@@ -575,6 +541,32 @@ module DataFix
       render json: { success: true, import_key: import_key, existing_id: existing_id, mode: mode }
     rescue ActiveRecord::RecordInvalid => e
       render json: { error: e.message }, status: :unprocessable_content
+    end
+
+    private
+
+    def program_key_for(program)
+      "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
+    end
+
+    # Next/previous issue across the Phase 5 pages (Phase5::Paginator splits them by row count): the issue programs
+    # per page, then the nearest page holding one, opened on its first / last issue card.
+    def results_issue_nav(all_programs, staging)
+      counts = if @total_pages.to_i > 1
+                 (1..@total_pages).map do |page|
+                   Phase5::Paginator.paginate(all_programs, page, staging).first.count { |program| @issue_program_keys.include?(program_key_for(program)) }
+                 end
+               else
+                 [@phase5_programs.count { |program| @issue_program_keys.include?(program_key_for(program)) }]
+               end
+      DataFix::IssueNav.for_pages(counts, page: @current_page) do |page, edge|
+        review_results_path(request.query_parameters.merge(file_path: @file_path, phase5_v2: 1, page:, anchor: "issue-#{edge}"))
+      end
+    end
+
+    # Source path of a Phase 5 file (for the edit marker of the JSON overwrite endpoints).
+    def edited_source_for(phase5_path)
+      phase5_path.to_s.sub(/-phase5\.json\z/, '.json')
     end
   end
 end

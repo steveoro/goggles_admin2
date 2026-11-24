@@ -235,7 +235,7 @@
           - name: team_name
             format: "^\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
-            # Support also incomplete results without team name: (may be fetched later by MacroSolver)
+            # Support also incomplete results without team name: (may be fetched later by the Data-Fix solvers)
             required: false
             pop_out: false
           - name: year_of_birth
@@ -348,7 +348,7 @@
           - name: team_name
             format: "^\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
-            # Support also incomplete results without team name: (may be fetched later by MacroSolver)
+            # Support also incomplete results without team name: (may be fetched later by the Data-Fix solvers)
             required: false
             pop_out: false
           - name: year_of_birth

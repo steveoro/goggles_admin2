@@ -1,0 +1,21 @@
+-#
+  One operation run (Maintenance::RunsController#show): the status frame polls (live-frames, every 2 s) while the run
+  is queued or running and reloads on the run's own ping (Maintenance::Notifier); an apply page also follows the
+  health re-run ('health-ping'). A dry run page never reloads by itself once finished (its apply form stays intact).
+:ruby
+  ping_ids = [Maintenance::Notifier.dom_id_for(@run)]
+  ping_ids << Health::Notifier::DOM_ID unless @run.preview?
+  finding = Ops.safely { @run.health_finding }
+.container-fluid{ data: { controller: 'live-frames', live_frames_interval_value: 2000, live_frames_ping_ids_value: ping_ids.to_json } }
+  = render(Shell::PageHeaderComponent.new(title: @run.display_label, subtitle: t("maintenance.run.subtitle.#{@run.mode}", id: @run.id))) do |header|
+    - header.with_actions do
+      - if finding
+        = link_to(health_finding_path(finding), class: 'btn btn-sm btn-outline-secondary', id: 'operation-run-finding-link') do
+          %i.fa-solid.fa-stethoscope{ 'aria-hidden' => 'true' }
+          = t('maintenance.run.finding')
+      - if @run.parent_run_id
+        = link_to(t('maintenance.run.subtitle.preview', id: @run.parent_run_id), maintenance_run_path(@run.parent_run_id),
+                  class: 'btn btn-sm btn-outline-secondary', id: 'operation-run-preview-link')
+      = link_to(t('maintenance.run.back'), operations_path, class: 'btn btn-sm btn-outline-primary')
+
+  = render(partial: 'maintenance/runs/status', locals: { run: @run, gate: @gate, polling: true })

@@ -33,6 +33,14 @@ RSpec.describe APISeasonsController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'seasons') do
+      let(:index_path) { api_seasons_path }
+      let(:api_params) do
+        { begin_date: anything, end_date: anything, header_year: anything, season_type_id: anything,
+          page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

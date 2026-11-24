@@ -1,0 +1,7 @@
+%nav.mb-3#sources-tabs{ 'aria-label' => t('sources.tabs.label') }
+  %ul.nav.nav-tabs.flex-nowrap.overflow-x-auto.overflow-y-hidden
+    - tabs.each do |tab|
+      %li.nav-item
+        %a.nav-link.text-nowrap{ tab[:attributes] }
+          %i.fa-solid{ class: tab[:icon], 'aria-hidden' => 'true' }
+          %span.ms-1= tab[:label]

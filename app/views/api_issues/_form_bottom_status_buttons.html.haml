@@ -1,6 +1,4 @@
-%span.d-flex.my-1.justify-content-center
+%span.d-flex.my-1.justify-content-center.align-items-center
   = I18n.t("issues.status_#{status}")
-  &nbsp;
-  .fa.fa-arrow-right.pt-1.mx-2
-  &nbsp;
+  %i.fa.fa-arrow-right.mx-2
   = render(Issue::StatusButtonsComponent.new(asset_id: issue_id, asset_status: status))

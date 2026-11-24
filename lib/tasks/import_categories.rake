@@ -32,7 +32,9 @@ namespace :import do
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-import_categories-<src_id>-<dest_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-import_categories-<src_id>-<dest_id>.sql'
+
+    (Since phase 13: the 'categories.clone' operation, a repair step of the season-start checklist.)
 
     Options: [Rails.env=#{Rails.env}]
              src=<source_season_id>
@@ -51,40 +53,8 @@ namespace :import do
 
   DESC
   task(categories: ['merge:check_needed_dirs']) do
-    puts '*** Task: import:categories ***'
-    src_season = GogglesDb::Season.find_by(id: ENV['src'].to_i)
-    dest_season = GogglesDb::Season.find_by(id: ENV['dest'].to_i)
-    if src_season.nil? || dest_season.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid Season values in order to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    remove_codes = ENV['remove'].present? ? ENV['remove'].split(',').map(&:strip).compact_blank : []
-
-    puts("\r\nCloning CategoryTypes from Season #{src_season.id} (#{src_season.header_year})")
-    puts("    |=> Season #{dest_season.id} (#{dest_season.header_year})")
-    puts("\r\n- simulate.......: #{simulate}")
-    puts("- remove_codes...: #{remove_codes.any? ? remove_codes.join(', ') : '(none)'}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    cloner = Import::CategoryCloner.new(src_season:, dest_season:, remove_codes:)
-    cloner.prepare
-
-    puts("\r\n*** Log: ***\r\n")
-    puts(cloner.log.join("\r\n"))
-
-    if cloner.errors.present?
-      puts("\r\n*** Errors: ***\r\n")
-      puts(cloner.errors.join("\r\n"))
-      puts('Aborted.')
-      exit
-    end
-
-    file_name = "#{format('%04d', file_index)}-import_categories-#{src_season.id}-#{dest_season.id}"
-    process_sql_file(file_name:, sql_log_array: cloner.sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('import:categories', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

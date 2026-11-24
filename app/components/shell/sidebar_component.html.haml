@@ -1,0 +1,26 @@
+%aside.app-sidebar.offcanvas-lg.offcanvas-start#app-sidebar{ tabindex: '-1', 'aria-labelledby' => 'app-sidebar-title' }
+  .offcanvas-header.border-bottom
+    %h5.offcanvas-title#app-sidebar-title= t('shell.brand')
+    %button.btn-close{ type: 'button', 'aria-label' => t('shell.sidebar.close'),
+                       data: { bs_dismiss: 'offcanvas', bs_target: '#app-sidebar' } }
+  .offcanvas-body.app-sidebar-body
+    %nav.app-sidebar-nav{ 'aria-label' => t('shell.nav.label') }
+      - groups.each do |group|
+        .app-nav-group{ data: { nav_group: group.key } }
+          .app-nav-group-title.text-uppercase.small.fw-semibold.text-body-secondary= t(group.label_key)
+          %ul.nav.flex-column
+            - group.items.each do |item|
+              - disabled = group.disabled?(item)
+              - label = t(item.label_key)
+              - if disabled
+                %li.nav-item{ tabindex: '0', data: { bs_toggle: 'tooltip', bs_placement: 'right',
+                                                     bs_title: t('shell.nav.offline_disabled'), nav_item: item.key } }
+                  %a{ class: link_classes(item, true), href: item_path(item), 'aria-disabled' => 'true', tabindex: '-1' }
+                    %i.fa-solid.fa-fw{ class: item.icon, 'aria-hidden' => 'true' }
+                    %span.app-nav-label= label
+              - else
+                %li.nav-item{ data: { nav_item: item.key } }
+                  %a{ class: link_classes(item, false), href: item_path(item), title: label,
+                      'aria-current' => active?(item) ? 'page' : nil }
+                    %i.fa-solid.fa-fw{ class: item.icon, 'aria-hidden' => 'true' }
+                    %span.app-nav-label= label

@@ -1,0 +1,19 @@
+= render(Shell::PageHeaderComponent.new(title: t('remote_writes.title'), count: @assets&.total_count,
+                                        subtitle: t('remote_writes.subtitle')))
+
+= render(partial: 'db_sync_summary', locals: { api_url: @api_url, ops_available: @ops_available })
+
+- if @ops_available
+  %section.mb-4#data-grid
+    - toolbar = Grid::ToolbarComponent.new(asset_row: Ops::RemoteWrite.new, controller_name: controller_name,
+                                           request_params: @grid_filter_params, select: false, create: false, destroy: false)
+    = render(toolbar)
+    = datagrid_form_with(model: @grid, method: :get, url: remote_writes_path)
+    = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+
+    = paginate(@assets)
+    .table-responsive
+      = datagrid_table(@grid, @assets, html: { class: 'table table-hover table-sm align-middle' })
+    = paginate(@assets)
+- else
+  .alert.alert-warning#remote-writes-unavailable{ role: 'alert' }= t('remote_writes.ops_unavailable')

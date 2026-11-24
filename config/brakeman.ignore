@@ -208,29 +208,6 @@
       "note": ""
     },
     {
-      "warning_type": "Command Injection",
-      "warning_code": 14,
-      "fingerprint": "88fd76ed3ecefeb55f16b4993438a899d6fe6e2dffe95d369bbe53846f2633e5",
-      "check_name": "Execute",
-      "message": "Possible command injection",
-      "file": "app/controllers/pdf_controller.rb",
-      "line": 23,
-      "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
-      "code": "system(\"pdftotext -layout #{process_params[:file_path]} #{process_params[:file_path].gsub(/\\.pdf|\\.txt/i, \".txt\")}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "PdfController",
-        "method": "extract_txt"
-      },
-      "user_input": "process_params[:file_path]",
-      "confidence": "Medium",
-      "cwe_id": [
-        77
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "956293dc4e901efc9364d89275b28c7e0caf10183debfea627f8ca469c5eab7d",

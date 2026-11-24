@@ -1,0 +1,21 @@
+// = Custom web fonts (woff2 only) =
+//
+// Files under app/assets/stylesheets/fonts/ (SIL OFL, see fonts/OFL.txt), resolved by Propshaft
+// relative to the built application.css.
+// - Saira Stencil One: the `.cancelled` stamp (base/_helpers.scss);
+// - Share Tech Mono: `--ga-font-mono` (base/_tokens.scss).
+@font-face {
+  font-family: 'Saira Stencil One';
+  src: url('fonts/SairaStencilOne-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: 'Share Tech Mono';
+  src: url('fonts/ShareTechMono-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}

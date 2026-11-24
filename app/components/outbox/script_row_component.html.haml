@@ -1,0 +1,37 @@
+%tr{ id: dom_id, class: row_css, data: { outbox_script_id: script.id, outbox_filename: script.filename, outbox_focus: (focus? ? 'true' : nil) } }
+  %td.text-center
+    - if selectable?
+      %input.form-check-input{ type: 'checkbox', value: script.id, 'aria-label' => script.filename,
+                               data: { 'outbox-target': 'checkbox', action: 'outbox#toggle' } }
+  %td.text-end.font-monospace= format('%04d', script.seq)
+  %td.text-break
+    = link_to(script.filename, helpers.outbox_script_path(script), data: { turbo_frame: '_top' }, class: 'font-monospace')
+    - if blocker
+      %span.badge.rounded-pill.bg-body-tertiary.text-body-secondary.border.ms-1{ title: t('outbox.blocked_tooltip') }
+        %i.fa-solid.fa-lock{ 'aria-hidden' => 'true' }
+        = t('outbox.blocked_by', file: blocker.filename)
+    - if server_blocker
+      %span.badge.rounded-pill.text-bg-danger.ms-1.outbox-server-blocked{ title: t('outbox.server_blocked_tooltip') }
+        %i.fa-solid.fa-lock{ 'aria-hidden' => 'true' }
+        = t('outbox.server_blocked_by', number: format('%04d', server_blocker.seq))
+    - if script.failed? && remote_error_excerpt
+      .small.text-danger-emphasis.font-monospace.text-break.mt-1.outbox-remote-error= remote_error_excerpt
+    - if preview_text
+      %details.mt-1
+        %summary.small.text-body-secondary= t('outbox.preview')
+        %pre.small.bg-body-tertiary.border.rounded.p-2.mb-0.outbox-preview= preview_text + (preview_truncated? ? "\n..." : '')
+  %td.small= script.kind_label
+  %td.small.font-monospace= script.folder
+  %td.small.text-end.text-nowrap= size_text
+  %td= render(Outbox::StateBadgeComponent.new(script:))
+  - if remote?
+    %td.small.text-end.font-monospace= script.remote_iq_id || '-'
+    %td.small.text-nowrap= pushed_at_text
+  - else
+    %td.small
+      - origin_links.each do |label, path|
+        %div
+          - if path
+            = link_to(label, path, data: { turbo_frame: '_top' })
+          - else
+            = label

@@ -2,45 +2,6 @@ en:
   data_import:
     generic_save_btn: "💾 Save edits"
     btn_save_confirm: 'Save the edits?'
-    crawler_headers:
-      calendar: '1. Calendar / target season'
-      results: '2. Results / target URL / layout type'
-    config:
-      sub_menu_type: 'Sub-menu (calendars only)'
-      target_url: 'Target URL (results only, ignored for calendars)'
-      crawler_type: 'Crawler type'
-      crawler_fin_calendar: 'FIN calendar (auto-layout)'
-      crawler_fin_results_lt2: 'FIN results direct (layout 2)'
-      crawler_fin_results: 'FIN results (layout ~3)'
-      crawler_microplus: 'Microplus results (layout 4)'
-      crawler_ficr_results: 'FICR results (layout 5, LT4 output)'
-      crawler_goandswim_results: 'Go&Swim results (layout 6, LT4 output)'
-      target_event: 'Target event title (as shown on page; empty = all)'
-    calendar:
-      crawler_status_page_title: 'Crawler API'
-      choose_season_label: 'Select season'
-      calendar_files_page_title: 'Calendar files'
-      pdfs_page_title: 'PDFs'
-      result_files_page_title: 'Results files'
-      btn_run_crawler: '📥 CRAWLER run'
-      btn_run_crawler_confirm: 'Run the crawler to retrieve the data as specified?'
-      btn_clear_log: 'Clear Log'
-      btn_clear_log_confirm: 'Clear the log?'
-      season_search_label: 'Season / search by label / Calendar URL / layout:'
-    file:
-      btn_delete_tooltip: 'Delete file'
-      confirm_delete: 'Are you sure you want to delete this file?'
-      btn_rename_tooltip: 'Rename file'
-      btn_edit_tooltip: 'Edit file'
-      btn_process_json_v2_tooltip: 'Process with phased pipeline (v2)'
-      btn_download_tooltip: 'Download file'
-      btn_process_csv_tooltip: 'Process this calendar file, downloading the available results'
-      btn_select_csv_tooltip: 'Open the meeting selection page for this calendar file'
-      btn_process_pdf_tooltip: 'Parse this PDF result file into a processable JSON results file'
-      btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
-      btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
-      btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
-      confirm_purge: "Are you sure you want to PURGE the possible duplicate '%{key}'? (NOTE: this can be done ONLY BEFORE starting reviewing results to avoid data corruption!)"
     selection:
       title: '1. Select meetings to crawl'
       season_label: 'Season ID %{id}'
@@ -72,27 +33,12 @@ en:
       source_done_tooltip: 'A source file for this meeting is already in results.done'
       btn_crawl_selected: '🕷 Crawl selected'
       btn_crawl_selected_confirm: 'Crawl the selected meetings?'
-      btn_extract_manifests: 'Extract manifests (%{count} pending)'
-      btn_extract_manifests_tooltip: 'Extract meeting data from pending manifests (background batch)'
-      engine_tooltip: 'Extraction engine: Devin CLI (`devin -p` sessions) or local Ollama server'
-      extraction:
-        already_running: 'A manifest extraction is already running'
-        engine_unavailable: '%{engine} engine not available: %{hint}'
-        model_missing: "Model '%{model}' not available for %{engine}: %{hint}"
-        no_manifests: 'No manifest PDFs pending extraction for this season'
-        started: 'Manifest extraction started in background (%{count} file(s))'
       errors:
         invalid_calendar_file: 'Invalid calendar file'
         no_selection: 'No meetings selected'
         file_changed: 'The calendar file changed since this page was rendered; reloading it'
     data_fix:
-      link_to_manifest_download: "Download manifest"
-      link_to_results_pdf_download: "Download results on PDF"
-      btn_maps_search: 'Search'
-      btn_maps_search_tooltip: 'Search on Maps for the name & address to get the Plus code and/or the URI to be copied here'
-      btn_teams_for_swimmer_tooltip: 'Get the list of Teams this swimmer belongs to'
       btn_start_sql_batch: "Start SQL batch creation"
-      btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
       btn_start_sql_batch_confirm: "Commit changes?"
       individual_result_overwrite_label: "Individual-result overwrite mode"
       individual_result_overwrite_help: "Delete existing individual results absent from this source for represented swimmer/team pairs."
@@ -136,21 +82,14 @@ en:
       no_phase5_data: "No Phase 5 data found. Please rescan Phase 5 (Results) before committing."
       team_not_found: "Team not found: %{key}"
       swimmer_not_found: "Swimmer not found: %{key}"
-      clean_slate_done: "Clean slate completed: removed %{total} temp rows across %{tables} tables (%{sessions} session(s) from phase_file_path)."
-      clean_slate_failed: "Clean slate failed: %{message}"
+      discard_source_done: "Discarded %{total} temp rows of source %{source}."
+      discard_source_unknown: "Nothing to discard: unknown or blank source."
+      confirm_discard_source: "Delete the temporary data_import_* rows of this source only (%{source})?"
       btn_reparse_session_label: "Reparse sessions"
-      btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
-      reparse_notice_for_events: "If you have run a forced 'reparse' for the Meeting or its sessions, you'll need to run a forced 'reparse' for the events too in order to search for any existing event or program on the DB."
-      btn_purge_duplicate: "Purge duplicate"
-      confirm_purge: "Are you sure you want to PURGE the possible duplicate row indexed by '%{key}'? (NOTE: this should be done AFTER mapping or rescanning the meeting events to avoid re-mapping already deleted duplicates form the original data sections, thus forcing you to re-delete ALL the duplicates one-by-one.)"
       btn_add_session: "Add session"
       confirm_add_session: "Are you sure you want to add a new session to the data file?"
       copy_from_session_label: "Copy pool & city from:"
       btn_copy_session_pool: "Copy"
-      add_session_with_shared_place: "Add session with the same shared place"
-      notice_for_add_session: "WARNING: If you add a new session with the same shared place after editing the existing one (not yet committed to the DB), the new session will restore both the swimming pool and its city from the values found on the DB. Edit the details of the sessions after you're done adding them if you want to save time."
-      btn_add_event: "Add event"
-      confirm_add_event: "Are you sure you want to add a new event to the data file?"
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
       btn_expand_scan_details: "Scan details"
@@ -169,28 +108,22 @@ en:
         other: "%{count} fields need attention"
       code_autocomputed_hint: "the code is autocomputed but is serialized only when you click \"Save Meeting\""
       matched_by_fin_event_id: "Matched by FIN event ID %{id}"
-    push:
-      msg_prepare_batch_ok: 'SQL batch file created.'
-      msg_send_batch_ok: "SQL batch file successfully sent."
-      new_results_tab_name: "New"
-      sent_results_tab_name: "Sent"
-      btn_all_sql_files: "ALL files"
-      btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
-      btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
-      all_sql_files_ok: "All SQL batch files have been successfully sent."
-    manifest_extraction:
-      title: "2. Automatic Manifest data extraction from existing files"
+      team_scores:
+        title: "Team rankings"
+        rank: "Rank"
+        team: "Team (source key)"
+        matched_team: "Matched team"
+        ind_points: "Individual points"
+        overall_points: "Overall points"
+        missing_team: "missing or new team"
+        skipped: "Team scores skipped (unresolved team)"
     errors:
       invalid_request: 'Invalid request'
-      invalid_file_content: 'Invalid file contents for the given file extension'
-      missing_url_or_season_id: 'You must specify a calendar URL and a season ID'
-      crawler_unreachable: 'Crawler server unreachable'
-      crawler_connecting: 'connecting...'
-      unsupported_layout_or_incomplete_url: 'Unsupported layout type or incomplete target URL: make sure insert the whole page on the URL placeholder.'
       category_recompute_missing_inputs: 'Unable to recompute categories: Phase 1 must contain a season and meeting date.'
       category_recompute_failed: 'Category recomputation failed. No complete result was applied.'
     messages:
       updated: 'Updated successfully.'
+      deleted: 'Deleted successfully.'
       phase_rebuilt: 'Phase %{phase} rebuilt from source.'
       category_recompute_success: 'Category recomputation processed %{swimmers_processed} swimmers: %{swimmer_categories_changed} swimmer categories and %{result_categories_changed} result categories changed; %{skipped_categories} skipped. Backup: %{backup_path}.'
       category_recompute_no_backup: 'no changes'

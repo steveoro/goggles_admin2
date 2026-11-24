@@ -1,5 +1,9 @@
 import { Controller } from '@hotwired/stimulus'
 
+// Classes of an ignored (not selected) candidate row, as rendered by data_fix/_result_program_card
+const IGNORED_ROW_BG = 'bg-body-tertiary'
+const IGNORED_ROW_TEXT = 'text-body-secondary'
+
 export default class extends Controller {
   static targets = ['candidate', 'merge', 'selectedCount', 'mergeCount', 'toolbar']
 
@@ -144,11 +148,12 @@ export default class extends Controller {
       mergeCheckbox.checked = isMerge
     }
 
+    // (the classes rendered by data_fix/_result_program_card: an ignored row is muted, a selected one red or blue)
     row.classList.toggle('bg-info', selected && isMerge)
     row.classList.toggle('text-white', selected)
     row.classList.toggle('bg-danger', selected && !isMerge)
-    row.classList.toggle('bg-light', !selected)
-    row.classList.toggle('text-muted', !selected)
+    row.classList.toggle(IGNORED_ROW_BG, !selected)
+    row.classList.toggle(IGNORED_ROW_TEXT, !selected)
 
     if (mergeTarget) {
       mergeTarget.style.display = (selected && isMerge) ? '' : 'none'
@@ -157,13 +162,13 @@ export default class extends Controller {
     if (status) {
       if (selected && isMerge) {
         status.textContent = this.mergedLabelValue
-        status.className = 'badge badge-light text-info'
+        status.className = 'badge text-bg-light text-info'
       } else if (selected) {
         status.textContent = this.selectedLabelValue
-        status.className = 'badge badge-light text-danger'
+        status.className = 'badge text-bg-light text-danger'
       } else {
         status.textContent = this.ignoredLabelValue
-        status.className = 'badge badge-secondary'
+        status.className = 'badge text-bg-secondary'
       }
     }
   }
@@ -183,10 +188,10 @@ export default class extends Controller {
     if (status) {
       if (merge) {
         status.textContent = this.mergedLabelValue
-        status.className = 'badge badge-light text-info'
+        status.className = 'badge text-bg-light text-info'
       } else {
         status.textContent = this.selectedLabelValue
-        status.className = 'badge badge-light text-danger'
+        status.className = 'badge text-bg-light text-danger'
       }
     }
   }

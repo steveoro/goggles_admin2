@@ -7,7 +7,7 @@ module PdfResults
   #   - author:   Steve A.
   #
   # Converts from any parsed field hash to the "Layout type 2" format
-  # used by the MacroSolver.
+  # read by the Data-Fix pipeline (adapted to LT4 by Import::Adapters::Layout2To4).
   #
   # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   class L2Converter
@@ -477,7 +477,7 @@ module PdfResults
 
       section = {
         'title' => 'Overall Team Ranking',
-        'ranking' => true, # Commodity flag used by the MacroSolver
+        'ranking' => true, # Commodity flag read by Layout2To4 / Import::TeamScoreExtractor
         'rows' => []
       }
       event_hash.fetch(:rows, [{}]).each do |ranking_hash|
@@ -527,7 +527,7 @@ module PdfResults
         if scores_hash[:name] == 'results'
           putc('i')
           # Build-up event title so that the Parser::EventType can detect them
-          # for the MacroSolver later on:
+          # for the Data-Fix solvers later on:
           gender_code = fields.fetch(GENDER_FIELD_NAME, '').gsub(/D/i, 'F').gsub(/U/i, 'M')
           event_title = Parser::EventType.normalize_event_title("#{event_length} #{event_style}")
           result_row = {
@@ -572,7 +572,7 @@ module PdfResults
 
       section = {
         'title' => 'Overall Stats',
-        'stats' => true, # Commodity flag used by the MacroSolver
+        'stats' => true, # Commodity flag: stats sections are skipped by Layout2To4
         'rows' => []
       }
       event_hash.fetch(:rows, [{}]).each do |ranking_hash|
@@ -651,7 +651,7 @@ module PdfResults
                    cmd.result
                  else
                    # Do a second attempt converting ticks to backticks in case of failure:
-                   # (MacroSolver will deal with this later & will try to standardize the aphostrophes)
+                   # (the Data-Fix solvers will deal with this later & will try to standardize the aphostrophes)
                    finder_opts = { complete_name: swimmer_name.upcase.tr('\'', '`'), year_of_birth: year_of_birth.to_i }
                    cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts, 0.92)
                    cmd.result if cmd.successful?
@@ -678,7 +678,7 @@ module PdfResults
       end
 
       # Store names as uppercase for consistency with the DB, but don't force aphostrophes standardization
-      # until MacroSolver deals with it:
+      # until the Data-Fix solvers deal with it:
       [swimmer_name&.upcase, year_of_birth, gender_code]
 
       # NOTE: some duplicated FK errors may still be raised during the commit phase anyway, whenever the forced apostrophes
@@ -770,7 +770,7 @@ module PdfResults
         'name' => swimmer_name,
         'year' => year_of_birth,
         'sex' => gender_code,
-        # TODO: support this in MacroSolver:
+        # TODO: support this in the Data-Fix solvers:
         'badge_num' => fetch_field_with_alt_value(fields, 'badge_num'),
         # Sometimes the 3-char region code may end up formatted in a second result row:
         # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
@@ -778,7 +778,7 @@ module PdfResults
         'team' => team_name,
         'timing' => timing,
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
-        # Optionals / added recently / To-be-supported by MacroSolver:
+        # Optionals / added recently / To-be-supported by the Data-Fix solvers:
         'lane_num' => fields['lane_num'],
         'heat_rank' => fields['heat_rank'],
         'nation' => fields['nation'],
@@ -825,7 +825,7 @@ module PdfResults
         'team' => team_name,
         'timing' => timing,
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
-        # Optionals / added recently / To-be-supported by MacroSolver:
+        # Optionals / added recently / To-be-supported by the Data-Fix solvers:
         'lane_num' => fields['lane_num'],
         'nation' => fields['nation'],
         'disqualify_type' => dsq_label
@@ -886,7 +886,7 @@ module PdfResults
     #   > str = l2.to_hash.to_json
     #   > File.open('path/to/json_results/my-output.json', 'w+') { |f| f.puts(str) }
     #
-    # The resulting JSON file can be processed as usualy by a MacroSolver instance.
+    # The resulting JSON file can be processed as usual by the Data-Fix pipeline.
     #
     def to_hash
       result = header
