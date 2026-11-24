@@ -98,11 +98,11 @@ runner*) builds each phase through one recipe, stamps it, checks it and stores a
 ### Review pages (phase 12)
 
 Every step is a native Bootstrap 5 page (light and dark themes) driven by Stimulus controllers only: no inline
-handler, no inline script, no `window.DataFix` global (the former `data_fix_helpers.js` moved into the card
-controllers `meeting_card`, `session_card`, `team_card`, `swimmer_card`, `event_card`, plus `verify_team`, sharing
+handler, no inline script, no `window.DataFix` global (the card controllers `meeting_card`, `session_card`,
+`team_card`, `swimmer_card`, `event_card`, plus `verify_team`, share the DOM helpers of
 `app/javascript/lib/form_fields.js`).
 
-- **Page header and stepper.** Each step opens with the page header (title, source name, "File list" and the next
+- **Page header and stepper.** Each step opens with the page header (title, source name, "Sources" (back to the Sources Results tab) and the next
   step) and the stepper (`DataFix::StepperComponent`, `#data-fix-stepper`): one tab per phase with its verdict pill
   and issue count, the "being prepared" state (spinner, run progress) while a prepare job holds the lease, the crawl
   retry banner, and the active step's menu with "Rebuild this phase from the source" (its confirmation names the

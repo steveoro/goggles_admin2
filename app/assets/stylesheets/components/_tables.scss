@@ -19,3 +19,9 @@
   color: var(--bs-table-color);
   border-color: var(--bs-table-border-color);
 }
+
+// Row tints on table rows (`%tr.bg-light-blue`, `%tr.bg-body-tertiary`, ...): Bootstrap 5 paints every cell with
+// --bs-table-bg, which would hide the background of the row; the cells of a tinted row stay transparent.
+.table tr[class*='bg-'] > * {
+  --bs-table-bg: transparent;
+}

@@ -5,7 +5,7 @@
 
       %label.switch
         %input{ type: 'checkbox' }
-          %span.slider.round.collapsed{ id: <id>, 'data-toggle' => 'collapse', ... }/
+          %span.slider.round.collapsed{ id: <id>, 'data-bs-toggle' => 'collapse', ... }/
 
   Slider supports:
   - rounded borders: use '.round'; default: squared

@@ -176,7 +176,7 @@ it:
       group: Gruppo
       status: Stato
       findings: Segnalazioni
-      back_to_files: Torna all'elenco file
+      back_to_files: Torna alle Sorgenti
       back_to_board: Torna al Season board
       reports: Report dei commit
       not_found: Report del commit non trovato.

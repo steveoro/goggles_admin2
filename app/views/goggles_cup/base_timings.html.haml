@@ -4,8 +4,8 @@
 %section#goggles-cup-base-timings
   :ruby
     base_timings_locals = { goggle_cup: @goggle_cup, team: @team, no_duplicated_events: @no_duplicated_events }
-  -# The engine partial still carries Bootstrap 4 markup (shared with goggles_main):
-  %div{ data: { bs4_compat: true } }
+  -# Engine partial with Bootstrap 4 markup (shared with goggles_main): see compat/_goggles_db_partials.scss
+  .goggles-db-partial{ data: { controller: 'goggles-db-partial' } }
     = render(partial: 'goggles_db/goggle_cups/base_timings',
              locals: { team: @team, goggle_cup: @goggle_cup,
                        ranking_data: @ranking_data, no_duplicated_events: @no_duplicated_events,

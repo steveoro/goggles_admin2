@@ -10,7 +10,6 @@ const AUTO_HIDE_DELAY = 4000 // (ms)
  * Bound to the layout's <body>: a single delegated Bootstrap 5 Tooltip handles every
  * `[data-bs-toggle="tooltip"]` element, including content inserted later (Turbo frames & streams,
  * cable payloads, modals), with no re-initialization needed.
- * (BS4 `data-toggle="tooltip"` markup gets its BS5 attributes from bs4_compat.js.)
  *
  * - Each tooltip hides itself 4 seconds after being shown.
  * - Before a Turbo cache snapshot or a frame render, the per-element tooltip instances are disposed

@@ -3,7 +3,7 @@ en:
     # Phase 12: the Data-Fix review pages (wizard chrome, cards, issue navigation, in-place saves, "Verify all")
     wizard:
       title: 'Data-Fix • Step %{number}: %{name}'
-      back_to_files: File list
+      back_to_files: Sources
       proceed: 'Step %{number}: %{name}'
       page_info: 'Page %{page} / %{pages} • rows %{range} / %{count}'
       metadata: 'Phase %{number} Metadata'

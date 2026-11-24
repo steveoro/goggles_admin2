@@ -534,7 +534,7 @@ en:
           never: "Never checked."
         static_calendars:
           title: "Static calendar URLs checked"
-          body: "Check the static calendar URLs of the new season (the FIN regional and national calendar pages crawled for the season board). Their place is not configurable from admin2 yet (phase 15, Sources): confirm it by hand."
+          body: "Check the static calendar URLs of the new season: the FIN \"Riepilogo Eventi\" page read every hour by the watcher of the Season board, and the FIN calendar pages crawled by Import › Sources › Crawler › FIN calendar (menu items Eventi, Riepilogo Eventi, Archivio 2012-). Crawl the new season's calendar from that form once: a new CSV in the Sources Calendars tab means the pages still answer. The addresses are fixed in the crawler and watcher code, not configurable from admin2: confirm by hand."
         season_board_backfill:
           title: "Season board backfill"
           body: "After the first calendar crawl of the new season, run the 'season_board.backfill' operation for it. The board season (SeasonDefaults.default_season_id) must now be the new season."

@@ -3,7 +3,7 @@ it:
     # Fase 12: le pagine di revisione Data-Fix (cornice del wizard, card, navigazione tra i problemi, salvataggi sul posto, "Verifica tutti")
     wizard:
       title: 'Data-Fix • Step %{number}: %{name}'
-      back_to_files: Elenco file
+      back_to_files: Sorgenti
       proceed: 'Passo %{number}: %{name}'
       page_info: 'Pagina %{page} / %{pages} • righe %{range} / %{count}'
       metadata: 'Metadati fase %{number}'

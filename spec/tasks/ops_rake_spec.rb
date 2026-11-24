@@ -39,6 +39,15 @@ RSpec.describe 'ops rake tasks' do # rubocop:disable RSpec/DescribeClass
       expect(Ops::Database.state).to eq(:ready)
     end
 
+    it 'reports the old web sessions it deletes' do
+      Ops::Database.prepare!
+      Ops::Database.with_isolated_connection do |conn|
+        old = conn.quote(31.days.ago.utc)
+        conn.execute("INSERT INTO sessions (session_id, data, created_at, updated_at) VALUES ('old-one', '{}', #{old}, #{old})")
+      end
+      expect { invoke_task('ops:prepare') }.to output(/'ops' DB: 1 old web session\(s\) deleted\./).to_stdout
+    end
+
     it 'skips when the ops entry is missing' do
       allow(Ops::Database).to receive(:db_config).and_return(nil)
       expect { invoke_task('ops:prepare') }.to output(/not configured for 'test': skipped/).to_stdout
@@ -49,6 +58,11 @@ RSpec.describe 'ops rake tasks' do # rubocop:disable RSpec/DescribeClass
     it 'reports the state & the row counts' do
       Ops::Database.prepare!
       expect { invoke_task('ops:status') }.to output(/State\.+: ready.*Migrations\.+: current \d+, pending 0.*settings\.+: 1/m).to_stdout
+    end
+
+    it 'lists every ops table, the later ones included' do
+      Ops::Database.prepare!
+      expect { invoke_task('ops:status') }.to output(/^sessions\.+: 0$.*^sql_scripts\.+: 0$/m).to_stdout
     end
   end
 

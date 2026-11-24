@@ -223,7 +223,7 @@
             - if pool_field_errors['lanes_number'].present?
               .invalid-feedback= Array(pool_field_errors['lanes_number']).join(', ')
           .col-md-4
-            %label
+            %label.form-label
               Maps URI
               %a.btn.btn-sm.btn-outline-primary{ id: "maps-uri-search-#{idx}", href: initial_maps_href,
                                                  target: '_blank', rel: 'noopener',

@@ -534,7 +534,7 @@ it:
           never: "Mai verificata."
         static_calendars:
           title: "URL dei calendari statici verificati"
-          body: "Verifica gli URL dei calendari statici della nuova stagione (le pagine dei calendari FIN regionali e nazionali lette per la bacheca stagione). La loro posizione non è ancora configurabile da admin2 (fase 15, Sorgenti): confermalo a mano."
+          body: "Verifica gli URL dei calendari statici della nuova stagione: la pagina FIN \"Riepilogo Eventi\" letta ogni ora dal watcher della bacheca stagione e le pagine del calendario FIN lette da Importazione › Sorgenti › Crawler › Calendario FIN (voci di menu Eventi, Riepilogo Eventi, Archivio 2012-). Scarica una volta il calendario della nuova stagione da quel modulo: un nuovo CSV nella scheda Calendari delle Sorgenti vuol dire che le pagine rispondono ancora. Gli indirizzi sono fissati nel codice del crawler e del watcher, non configurabili da admin2: confermalo a mano."
         season_board_backfill:
           title: "Backfill della bacheca stagione"
           body: "Dopo la prima lettura del calendario della nuova stagione, esegui per essa l'operazione 'season_board.backfill'. La stagione della bacheca (SeasonDefaults.default_season_id) ora deve essere la nuova stagione."

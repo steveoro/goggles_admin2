@@ -87,7 +87,12 @@ The apply (with the checkbox confirmation) inserts the rows on the local DB, the
 
 ### Step 7: static calendar URLs (tick box)
 
-Check the static calendar URLs of the new season (the FIN regional and national calendar pages read for the Season board). Where these URLs are configured is not shown by admin2 yet (it will be named here once the Sources area of phase 15 exists): tick **Mark as done** (or **Skip**) when checked.
+Check the static calendar URLs of the new season. They are the FIN pages admin2 reads by itself:
+
+- the FIN "Riepilogo Eventi" page, read every hour by the watcher behind the Season board (`FedernuotoWatch::URL`);
+- the FIN calendar pages crawled by **Import > Sources > Crawler > FIN calendar** (menu items *Eventi*, *Riepilogo Eventi* and *Archivio 2012-*; the base page is `Sources::CrawlKinds::FIN_CALENDAR_BASE_URL`, the menu targets are in `crawler/server/calendar-crawler.js`).
+
+Crawl the new season's calendar once from that form: a new CSV in the **Calendars** tab of Sources means the pages still answer. The addresses are fixed in the code (watcher and crawler), not configurable from admin2: when FIN moves a page, the code has to change. Tick **Mark as done** (or **Skip**) when checked.
 
 ### Step 8: Season board backfill
 

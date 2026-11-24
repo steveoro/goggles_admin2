@@ -79,12 +79,13 @@ module Ops
       end
 
       # Creates the DB file when missing, migrates it when needed (after a backup when it already holds
-      # applied migrations), seeds the 'db_epoch' setting and prunes the events older than EVENT_RETENTION.
-      # Returns a Hash: { state:, migrated:, backup:, pruned: }.
+      # applied migrations), seeds the 'db_epoch' setting, prunes the events older than EVENT_RETENTION and
+      # trims the web sessions not used for Ops::SessionStoreSetup::RETENTION (anonymous visits accumulate).
+      # Returns a Hash: { state:, migrated:, backup:, pruned:, sessions_trimmed: }.
       # Only for rake tasks & the test suite boot (see the class notes).
       def prepare!(verbose: false)
         config = db_config
-        return { state: :not_configured, migrated: false, backup: nil, pruned: 0 } unless config
+        return { state: :not_configured, migrated: false, backup: nil, pruned: 0, sessions_trimmed: 0 } unless config
 
         path = database_path(config)
         FileUtils.mkdir_p(path.dirname)
@@ -94,12 +95,12 @@ module Ops
           backup = backup!(label: 'pre_migrate') if applied_migrations?(config)
           migrate!(config, verbose:)
         end
-        pruned = with_isolated_connection(config) do |conn|
+        pruned, sessions_trimmed = with_isolated_connection(config) do |conn|
           seed_db_epoch(conn)
-          prune_events(conn)
+          [prune_events(conn), trim_sessions(conn)]
         end
         reset_state!
-        { state: state, migrated:, backup:, pruned: }
+        { state: state, migrated:, backup:, pruned:, sessions_trimmed: }
       end
 
       # Yields a connection on a private ConnectionHandler (does not touch ActiveRecord::Base nor the
@@ -156,6 +157,17 @@ module Ops
         return 0 unless conn.select_value("SELECT 1 FROM events WHERE #{condition} LIMIT 1")
 
         conn.delete("DELETE FROM events WHERE #{condition}")
+      end
+
+      # Returns the number of deleted web sessions (same rule as Ops::SessionStoreSetup.trim!).
+      def trim_sessions(conn)
+        table = Ops::SessionStoreSetup::TABLE
+        return 0 unless conn.table_exists?(table)
+
+        condition = "updated_at < #{conn.quote(Ops::SessionStoreSetup::RETENTION.ago.utc)}"
+        return 0 unless conn.select_value("SELECT 1 FROM #{table} WHERE #{condition} LIMIT 1")
+
+        conn.delete("DELETE FROM #{table} WHERE #{condition}")
       end
     end
   end

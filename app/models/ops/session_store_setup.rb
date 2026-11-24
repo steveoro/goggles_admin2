@@ -21,6 +21,8 @@ module Ops
   #
   module SessionStoreSetup
     TABLE = 'sessions'
+    # Rows not updated for this long are deleted by #trim! and by Ops::Database.prepare! ('bin/rails ops:prepare').
+    RETENTION = 30.days
 
     # SqlBypass session rows in the ops DB.
     class OpsSession < ActiveRecord::SessionStore::SqlBypass
@@ -118,7 +120,7 @@ module Ops
     end
 
     # Deletes the ops session rows not updated for +older_than+; returns the deleted count (nil without the ops DB).
-    def trim!(older_than: 30.days)
+    def trim!(older_than: RETENTION)
       Ops.safely do
         next unless ops_ready?
 

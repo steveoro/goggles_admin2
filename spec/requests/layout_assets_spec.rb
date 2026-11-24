@@ -11,7 +11,7 @@ RSpec.describe 'Layout assets' do
   let(:admin_user) { prepare_admin_user }
   let(:html) { response.parsed_body }
   let(:head) { html.at('head') }
-  let(:local_modules) { %w[bootstrap @popperjs/core bs4_compat tom-select chart.js/auto] }
+  let(:local_modules) { %w[bootstrap @popperjs/core tom-select chart.js/auto] }
   let(:asset_urls) { head.css('link[href]').pluck('href') + head.css('script[src]').pluck('src') }
 
   before(:each) do
@@ -47,11 +47,13 @@ RSpec.describe 'Layout assets' do
         expect(indexes).to eq(indexes.sort)
       end
 
-      it 'maps Bootstrap & the BS4 compatibility shim to local modules' do
+      it 'maps Bootstrap to local modules, with no Bootstrap 4 compatibility shim' do
         importmap = JSON.parse(head.at('script[type="importmap"]').text)['imports']
         local_modules.each do |name|
           expect(importmap[name]).to start_with('/assets/')
         end
+        expect(importmap.keys.grep(/bs4/)).to be_empty
+        expect(importmap['controllers/goggles_db_partial_controller']).to start_with('/assets/')
       end
 
       it 'keeps the sticky alerts region out of the flash toasts container' do

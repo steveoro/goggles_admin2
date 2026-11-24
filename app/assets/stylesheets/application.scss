@@ -3,23 +3,21 @@
 // under vendor/assets/stylesheets and linked by the layout before this file (not @use'd here).
 //
 // Local partials, by folder:
-// - base/:       design tokens (CSS custom properties), web fonts, generic helpers & animations;
-// - compat/:     temporary Bootstrap 4 class compatibility layer + legacy 3-column view wrappers;
-// - shell/:      app shell (sidebar, top bar, page header) + neutralised legacy per-view wrappers;
+// - base/:       design tokens (CSS custom properties), web fonts, links, generic helpers & animations;
+// - compat/:     the Bootstrap 4 classes of the goggles_db engine partials, scoped to `.goggles-db-partial`;
+// - shell/:      app shell (sidebar, top bar, page header, command palette);
 // - components/: widgets shared by several pages (table tints, tom-select, datagrid, switches, ...);
 // - pages/:      page-specific rules.
 
 @use 'base/tokens';
 @use 'base/fonts';
+@use 'base/links';
 @use 'base/helpers';
 @use 'base/animations';
 
-// (see compat/_bs4.scss; both files go in phase 15)
-@use 'compat/bs4';
-@use 'compat/full_bleed_layout';
+@use 'compat/goggles_db_partials';
 
 @use 'shell/layout';
-@use 'shell/legacy_wrappers';
 @use 'shell/palette';
 
 @use 'components/tables';

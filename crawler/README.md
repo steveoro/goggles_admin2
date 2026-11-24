@@ -1,25 +1,25 @@
 # Goggles Admin2 Results Crawler Server
 
-This directory contains the Node.js crawler service used by `goggles_admin2` to retrieve swimming meeting calendars and results. The service runs locally, normally on port 7000, and is launched from the Rails Pull dashboard or through its HTTP API.
+This directory contains the Node.js crawler service used by `goggles_admin2` to retrieve swimming meeting calendars and results. The service runs locally, normally on port 7000; the Rails crawl jobs (Season board and Sources crawler tab) start it when needed and call its HTTP API.
 
 The results crawlers currently support:
 
 - **FIN results** — legacy FIN result pages and calendar-file processing, layouts 1–3.
 - **Microplus Timing** — AJAX-driven MicroplusTiming pages, layout 4.
-- **FICR results** — FICR JSON services with LT4 JSON output, UI target layout 5.
-- **Go&Swim results** — Go&Swim public JSON API with LT4 JSON output, UI target layout 6.
+- **FICR results** — FICR JSON services with LT4 JSON output (Sources crawl kind `ficr`).
+- **Go&Swim results** — Go&Swim public JSON API with LT4 JSON output (Sources crawl kind `goandswim`).
 
-All crawlers write artifacts under `crawler/data/` and report asynchronous progress through `crawler-status.json`, which is broadcast to the Rails UI over the crawler WebSocket channel.
+All crawlers write artifacts under `crawler/data/` and report asynchronous progress through `crawler-status.json`: the Rails pages and status pill read that file, the Rails crawl jobs poll `GET /status`. (The server still broadcasts the status on its own WebSocket every second; nothing in the Rails app listens to it any more.)
 
 ## Common server setup
 
 ```bash
-cd /home/steve/Projects/goggles_admin2/crawler
+cd crawler   # from the goggles_admin2 root
 npm install
 npm start
 ```
 
-The local server listens on port 7000 by default. The Rails Pull dashboard expects this service to already be running.
+The local server listens on port 7000 by default. The Rails crawl jobs start it when it is not running (`CrawlerLauncher`; also the "Start crawler" button of the Sources crawler tab).
 
 Available API endpoints:
 
@@ -55,7 +55,7 @@ A direct FIN request has the following shape:
 curl "http://localhost:7000/pull_results?season_id=242&layout=2&meeting_url=https%3A%2F%2Fwww.federnuoto.it%2Fhome%2Fmaster%2Fcircuito-supermaster%2Feventi-circuito-supermaster.html%23%2Frisultati%2F<meeting>"
 ```
 
-CSV mode is used when the user processes a calendar file from the Rails file list. The crawler visits each meeting URL, skips cancelled/unavailable rows, parses the result page, and moves the processed calendar file to the appropriate completed directory.
+CSV mode is used when the operator crawls a calendar file from the Sources Calendars tab ("Crawl all", or "Select meetings" for a subset). The crawler visits each meeting URL, skips cancelled/unavailable rows, parses the result page, and moves the processed calendar file to the appropriate completed directory.
 
 ### FIN layouts
 
@@ -155,7 +155,7 @@ FICR writes a single LT4 JSON file to:
 
 `crawler/data/results.new/<season_id>/<date>-<meeting>-lt4.json`
 
-The file contains LT4 root fields, `swimmers` and `teams` lookup dictionaries, normalized `events[].results[]` entries, relay rows, points, and lap timings. The Rails UI target is ID 5, but the emitted JSON `layoutType` is 4 so it enters the existing DataFix V2 Phase 1–6 pipeline.
+The file contains LT4 root fields, `swimmers` and `teams` lookup dictionaries, normalized `events[].results[]` entries, relay rows, points, and lap timings. The emitted JSON `layoutType` is 4, so it enters the DataFix V2 Phase 1–6 pipeline.
 
 ## Go&Swim results crawler
 
@@ -202,7 +202,7 @@ Go&Swim writes a single LT4 JSON file to:
 
 `crawler/data/results.new/<season_id>/<date>-<meeting>-lt4.json`
 
-The Rails UI target is ID 6, while the emitted JSON `layoutType` is 4 so the existing DataFix V2 Phase 1–6 pipeline can consume it.
+The emitted JSON `layoutType` is 4, so the DataFix V2 Phase 1–6 pipeline can consume it.
 
 ## Result JSON conventions
 
@@ -221,7 +221,7 @@ Results are stored under `crawler/data/results.new/<season_id>/`, then processed
 ## Tests
 
 ```bash
-cd /home/steve/Projects/goggles_admin2/crawler
+cd crawler   # from the goggles_admin2 root
 npm test
 ```
 

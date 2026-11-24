@@ -2,7 +2,7 @@
 
 Operator guide of `/season_board` (sidebar "Season board", the dashboard's "Season progress" chips and inbox items, "Back to Season board" button on the Phase 6 report). The board shows the latest MASFIN season, one row per row of the FIN "Riepilogo Eventi" page (as last stored by the hourly watcher), with the linked local meeting (individual/relay result counts), the pipeline **state** and **one next action**.
 
-Developer notes (state rules, jobs, files): `AGENTS.md`, section "Season board".
+The whole routine, from sign-in to the push, is in the [operator guide](operator_guide.md). Developer notes (state rules, jobs, files): `AGENTS.md`, section "Season board".
 
 ## Weekly routine
 

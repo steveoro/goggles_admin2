@@ -64,11 +64,11 @@ The extraction has one implementation, `PdfManifests::Extraction.call(pdf_path:,
 - **Season board**: **Extract manifest** on a row, and the automatic extractions of the pipeline planner (at most 3 attempts per PDF, 20 hours apart), queue the same job with the FIN event id.
 - **`rake manifests:extract`** runs the same `PdfManifests::Extraction` inline, one file at a time (the engine is checked once), and writes the same activity entries, so the UI sees a rake run too.
 
-The former in-page batch (`PdfManifests::BatchRunner` in a Puma thread, `crawler/data/manifests-extract-status.json`, `GET /pull/extraction_status`) is gone; a leftover status file can be deleted.
+There is no other extraction path (no in-page batch, no status file to poll). A leftover `crawler/data/manifests-extract-status.json` from an older version can be deleted.
 
 ## Pipeline
 
-1. **`PdfManifests::TextExtractor`** runs `pdftotext -layout` (reusing the `.txt` sibling when present, which also powers the TXT badge in the file list).
+1. **`PdfManifests::TextExtractor`** runs `pdftotext -layout` (reusing the `.txt` sibling when present, which also powers the TXT badge of the Sources Manifests and PDFs tabs).
 2. If the text layer is missing (scanned PDF) and the engine supports a vision path, **`PdfManifests::VisionExtractor`** renders the pages with `pdftoppm`; the engine consumes them (Ollama: base64 `images` param; Devin: PNG files the agent reads). Otherwise the file is skipped with a warning.
 3. **`PdfManifests::ExtractionPrompt`** builds an Italian-language prompt asking for strict JSON: meeting name/edition/dates, venue name/address/city/province, pool length, max individual events, and the event list (distance in meters, stroke code, relay flag, `NxM` relay style, gender, day part, raw label).
 4. **The engine client** (`DevinClient` or `OllamaClient`, resolved by `ClientFactory` from `engine=` param > `MANIFEST_ENGINE` > default `devin`) returns the parsed JSON object, retrying once on malformed output. Ollama calls `/api/generate` with `format: json` and `think: false`; Devin spawns `devin -p` with `--verbosity 0` and parses the JSON object out of stdout.

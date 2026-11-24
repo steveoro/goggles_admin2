@@ -1,0 +1,54 @@
+// = Bootstrap 4 classes of the goggles_db engine partials (scoped) =
+//
+// The GoggleCup partials of the goggles_db engine (goggles_db/goggle_cups/_ranking, _base_timings and
+// _base_timings_table) are shared with goggles_main, which still runs Bootstrap 4, so they keep their Bootstrap 4
+// class names. admin2 renders them inside a `.goggles-db-partial` wrapper (goggles_cup/_ranking.html.haml and
+// goggles_cup/base_timings.html.haml): these rules apply only there. Every other page uses native Bootstrap 5 markup.
+// The data-toggle → data-bs-toggle copy of the same partials is done by the `goggles-db-partial` Stimulus controller
+// (app/javascript/controllers/goggles_db_partial_controller.js), also scoped to the wrapper.
+// spec/bs4_leftovers_spec.rb counts the BS4 tokens of those engine partials (its BASELINE) and fails when one
+// outside this subset appears.
+@use 'sass:list';
+
+// Bootstrap 4 defaults:
+$bs4-spacers: (0: 0, 1: .25rem, 2: .5rem, 3: 1rem, 4: 1.5rem, 5: 3rem);
+$bs4-breakpoints: (sm: 576px, md: 768px, lg: 992px, xl: 1200px);
+$bs4-theme-colors: primary, secondary, success, danger, warning, info, light, dark;
+// Badge backgrounds that get dark text (as BS5 .text-bg-*):
+$bs4-dark-text-colors: warning, info, light;
+
+// .ml-* / .mr-* / .pl-* / .pr-* (0-5, auto for margins) and .text-left / .text-right for a breakpoint infix
+@mixin -bs4-utilities($infix) {
+  @each $key, $size in $bs4-spacers {
+    .ml#{$infix}-#{$key} { margin-left: $size !important; }
+    .mr#{$infix}-#{$key} { margin-right: $size !important; }
+    .pl#{$infix}-#{$key} { padding-left: $size !important; }
+    .pr#{$infix}-#{$key} { padding-right: $size !important; }
+  }
+  .ml#{$infix}-auto { margin-left: auto !important; }
+  .mr#{$infix}-auto { margin-right: auto !important; }
+  .text#{$infix}-left { text-align: left !important; }
+  .text#{$infix}-right { text-align: right !important; }
+}
+
+.goggles-db-partial {
+  @include -bs4-utilities('');
+
+  @each $breakpoint, $min-width in $bs4-breakpoints {
+    @media (min-width: $min-width) {
+      @include -bs4-utilities('-#{$breakpoint}');
+    }
+  }
+
+  // .badge-{color}: background from the BS5 color variables; white text except on light backgrounds
+  @each $color in $bs4-theme-colors {
+    .badge-#{$color} {
+      @if list.index($bs4-dark-text-colors, $color) {
+        color: #000 !important;
+      } @else {
+        color: #fff !important;
+      }
+      background-color: RGBA(var(--bs-#{$color}-rgb), var(--bs-bg-opacity, 1)) !important;
+    }
+  }
+}

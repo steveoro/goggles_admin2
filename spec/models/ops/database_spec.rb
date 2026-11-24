@@ -66,7 +66,7 @@ RSpec.describe Ops::Database do
 
     it 'creates the DB from nothing, migrates it & seeds the db_epoch' do
       result = described_class.prepare!
-      expect(result).to include(state: :ready, migrated: true, backup: nil, pruned: 0)
+      expect(result).to include(state: :ready, migrated: true, backup: nil, pruned: 0, sessions_trimmed: 0)
       expect(db_path).to exist
       described_class.with_isolated_connection(config) do |conn|
         expect(%w[events settings snapshots].select { |table| conn.table_exists?(table) }).to eq(%w[events settings snapshots])
@@ -109,6 +109,20 @@ RSpec.describe Ops::Database do
       expect(described_class.prepare![:pruned]).to eq(1)
       described_class.with_isolated_connection(config) do |conn|
         expect(conn.select_value('SELECT COUNT(*) FROM events')).to eq(1)
+      end
+    end
+
+    it 'trims the web sessions not updated for the session retention period' do
+      described_class.prepare!
+      described_class.with_isolated_connection(config) do |conn|
+        { 'stale' => 31.days.ago, 'recent' => 2.days.ago }.each do |session_id, time|
+          conn.execute('INSERT INTO sessions (session_id, data, created_at, updated_at) ' \
+                       "VALUES (#{conn.quote(session_id)}, '{}', #{conn.quote(time.utc)}, #{conn.quote(time.utc)})")
+        end
+      end
+      expect(described_class.prepare![:sessions_trimmed]).to eq(1)
+      described_class.with_isolated_connection(config) do |conn|
+        expect(conn.select_values('SELECT session_id FROM sessions')).to eq(%w[recent])
       end
     end
 

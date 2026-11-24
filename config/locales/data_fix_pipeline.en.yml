@@ -176,7 +176,7 @@ en:
       group: Group
       status: Status
       findings: Findings
-      back_to_files: Back to the file list
+      back_to_files: Back to Sources
       back_to_board: Back to the Season board
       reports: Commit reports
       not_found: Commit report not found.

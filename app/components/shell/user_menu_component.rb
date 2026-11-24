@@ -7,7 +7,7 @@ module Shell
   # = Shell::UserMenuComponent
   #
   # Top bar user dropdown: name and avatar, locale switch (<tt>#href-locale-switch</tt>), app version
-  # and log out. (Supersedes the locale switch and version of Footer::MainComponent.)
+  # and log out. (Supersedes the locale switch and version of the former page footer.)
   #
   class UserMenuComponent < ViewComponent::Base
     # == Params:

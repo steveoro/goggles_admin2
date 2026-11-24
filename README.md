@@ -7,6 +7,20 @@
 
 Administration client UI app for version 7 and onward.
 
+## What it does
+
+Goggles Admin2 is the operations console of the framework, run only on the operator's own computer against a local copy of the production DB:
+
+- **Dashboard**: what needs you ("Needs you" inbox), what is running, the season progress and the system status;
+- **Season board** and **Sources**: follow the current FIN season, crawl calendars and results (FIN, Microplus, FICR, Go&Swim), extract meeting manifests and scan result PDFs, with the preparation of each meeting running in the background;
+- **Data-Fix**: review a meeting in five steps (sessions, teams, swimmers, events, results), then commit it to the local DB from its commit summary;
+- **Outbox**: push the resulting SQL scripts, in one global order, to the production API and follow their outcome;
+- **Data health**, **Operations** and the **season-start checklist**: read-only checks per season, fixes with a dry run before any write;
+- **DB sync** and the **guided restore**: is the local DB still a mirror of production, and a guided reload of a production dump when it isn't;
+- entity grids (meetings, swimmers, teams, badges, users, ...) over the API, and a **Ctrl+K** command palette.
+
+Start with the [operator guide](docs/operator_guide.md); the other pages are listed in [docs/introduction.md](docs/introduction.md).
+
 ## Wiki & HOW-TOs
 
 - [Official Framework Wiki :link:](https://github.com/steveoro/goggles_db/wiki) (v. 7+)
@@ -89,7 +103,7 @@ Check out our [Wiki :link:](https://github.com/steveoro/goggles_db/wiki) and the
 - [How to update the GogglesDb gem](https://github.com/steveoro/goggles_api#source-dependencies--how-to-update-gogglesdb)
 - [DB setup](https://github.com/steveoro/goggles_db#database-setup)
 - [How to run the test suite](https://github.com/steveoro/goggles_api#how-to-run-the-test-suite) (can be applied to `goggles_main` as well)
-- **System specs** (`spec/system`, browser smoke suite): run `bin/rails dartsass:build` before the first run; they need network access and Chrome (set `CHROME_BIN` if it is not on the default path). `SKIP_SYSTEM=1 bundle exec rspec` skips them.
+- **System specs** (`spec/system`, browser smoke suite): run `bin/rails dartsass:build` before the first run; they need Chrome (set `CHROME_BIN` if it is not on the default path) but no network access (every asset is vendored). `SYSTEM_THEME=dark` runs them in the dark theme; `SKIP_SYSTEM=1 bundle exec rspec` skips them.
 - [Dev workflow](https://github.com/steveoro/goggles_api#dev-workflow-for-contributors)
 - [Getting started: GogglesAPI & container usage](https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-docker_usage_for_GogglesApi#getting-started-setup-and-usage-as-a-composed-docker-service) (can be applied to `goggles_admin2` as well)
 

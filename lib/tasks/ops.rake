@@ -16,8 +16,9 @@ namespace :ops do # rubocop:disable Metrics/BlockLength
     Idempotent setup of the local SQLite ops DB ('ops:' entry of config/database.yml, file db/ops/<env>.sqlite3).
 
     Creates the DB file when missing, applies the pending db/ops_migrate migrations (after a backup
-    under db/dump/ when the DB already holds data), seeds the 'db_epoch' setting and deletes the
-    events older than 180 days. Never touches the primary (MySQL) DB.
+    under db/dump/ when the DB already holds data), seeds the 'db_epoch' setting, deletes the
+    events older than 180 days and the web sessions not used for 30 days. Never touches the
+    primary (MySQL) DB.
     Also invoked by 'solid:prepare'.
 
     Usage:
@@ -34,6 +35,7 @@ namespace :ops do # rubocop:disable Metrics/BlockLength
     puts("- 'ops' DB backup: #{result[:backup].relative_path_from(Rails.root)}") if result[:backup]
     puts(result[:migrated] ? "- 'ops' DB migrated." : "- 'ops' DB already prepared.")
     puts("- 'ops' DB: #{result[:pruned]} old event(s) pruned.") if result[:pruned].to_i.positive?
+    puts("- 'ops' DB: #{result[:sessions_trimmed]} old web session(s) deleted.") if result[:sessions_trimmed].to_i.positive?
     puts("- 'ops' DB state: #{result[:state]}")
   end
 
@@ -55,9 +57,12 @@ namespace :ops do # rubocop:disable Metrics/BlockLength
       Ops::Database.with_isolated_connection do |conn|
         context = conn.pool.migration_context
         puts("Migrations..: current #{context.current_version}, pending #{context.open.pending_migrations.size}")
-        %w[events settings snapshots].each do |table|
+        # (every ops table: events, settings, snapshots, the Outbox registry, health, pipeline, sessions, ...)
+        tables = %w[events settings snapshots] | (conn.tables - %w[schema_migrations ar_internal_metadata]).sort
+        width = [12, tables.map(&:size).max.to_i + 1].max
+        tables.each do |table|
           count = conn.table_exists?(table) ? conn.select_value("SELECT COUNT(*) FROM #{conn.quote_table_name(table)}") : '-'
-          puts("#{table.ljust(12, '.')}: #{count}")
+          puts("#{table.ljust(width, '.')}: #{count}")
         end
       end
     end
