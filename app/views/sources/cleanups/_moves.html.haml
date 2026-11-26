@@ -1,0 +1,44 @@
+-#
+  The files the clean-up would move (Plan#move_items) and the apply form (Plan#digest).
+  Locals: plan (Sources::Cleanup::Plan), ops_ready (Boolean)
+- moves = plan.move_items
+.card.mb-3#sources-cleanup-moves
+  .card-header.d-flex.flex-wrap.align-items-center.justify-content-between.gap-2
+    %h2.h6.mb-0= t('sources.cleanup.moves.title', count: moves.size)
+    = form_with(url: sources_cleanup_path, method: :post, id: 'sources-cleanup-form', class: 'd-inline',
+                data: { turbo_confirm: t('sources.cleanup.apply.confirm', count: moves.size) }) do
+      = hidden_field_tag(:digest, plan.digest)
+      = hidden_field_tag(:season_id, season_id)
+      %button.btn.btn-sm.btn-primary#btn-sources-cleanup-apply{ type: 'submit', disabled: !(ops_ready && plan.applicable?) }
+        %i.fa-solid.fa-broom{ 'aria-hidden' => 'true' }
+        = t('sources.cleanup.apply.button', count: moves.size)
+  .card-body
+    - if moves.empty?
+      %p.text-body-secondary.mb-0#sources-cleanup-empty= t('sources.cleanup.moves.empty', season: season_id)
+    - else
+      .table-responsive
+        %table.table.table-sm.align-middle.mb-0#sources-cleanup-table
+          %thead
+            %tr
+              %th{ scope: 'col' }= t('sources.cleanup.table.file')
+              %th.d-none.d-md-table-cell{ scope: 'col' }= t('sources.cleanup.table.rule')
+              %th.text-end.d-none.d-lg-table-cell{ scope: 'col' }= t('sources.table.size')
+              %th.d-none.d-lg-table-cell{ scope: 'col' }= t('sources.cleanup.table.age')
+              %th{ scope: 'col' }= t('sources.cleanup.table.destination')
+          %tbody
+            - moves.each do |item|
+              %tr{ data: { 'cleanup-file' => File.basename(item.path), 'cleanup-rule' => item.rule } }
+                %td
+                  .fw-semibold.text-break= item.relative
+                  - if item.companion
+                    .small.text-body-secondary.text-break= t('sources.cleanup.table.companion', file: File.basename(item.companion))
+                  = link_to("FIN #{item.fin_event_id}", season_board_path(row: item.fin_event_id), class: 'badge text-bg-secondary') if item.fin_event_id
+                  .small.text-body-secondary.d-md-none= t("sources.cleanup.rules.#{item.rule}")
+                %td.small.d-none.d-md-table-cell= t("sources.cleanup.rules.#{item.rule}")
+                %td.text-end.text-nowrap.small.d-none.d-lg-table-cell= number_to_human_size(item.size)
+                %td.text-nowrap.small.d-none.d-lg-table-cell= time_ago_in_words(item.mtime)
+                %td.small.text-break
+                  %span.badge{ class: item.action == :archive ? 'text-bg-info' : 'text-bg-primary' }= t("sources.cleanup.actions.#{item.action}")
+                  = item.destination
+                  - if item.duplicate
+                    .text-body-secondary= t('sources.cleanup.table.duplicate')

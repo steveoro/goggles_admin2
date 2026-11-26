@@ -94,4 +94,34 @@ RSpec.describe Inbox::Sources::FailedJobs do
     expect(items['job:2'].secondary_action).to be_nil
     expect(described_class.retriable?('Outbox::PushJob')).to be false
   end
+
+  describe "the failed automatic FIN 'Eventi' calendar crawl (0.10.103)" do
+    let(:season) { FactoryBot.build_stubbed(:season, id: 262, begin_date: Date.new(2026, 10, 1), end_date: Date.new(2027, 9, 30)) }
+    let(:request) { Sources::CrawlRequest.eventi_calendar(season) }
+    let(:context) { inbox_context(season:, board_snapshot: board_summary, now: Time.current) }
+
+    def calendar!(origin, status, message: 'no new calendar file')
+      log.queue!(request.key, kind: :crawl, origin:, url: request.target, label: request.label)
+      log.finish!(request.key, kind: :crawl, status:, message:)
+    end
+
+    it 'offers Retry: an operator POST of the same Eventi crawl, keyed once per season' do
+      calendar!(:auto, :failed)
+      item = described_class.new.items(context).sole
+      expect(item).to have_attributes(key: 'calendar_crawl:262', band: :failed, kind: :calendar_crawl_failed)
+      expect(item.detail).to include('no new calendar file')
+      expect(item.action).to have_attributes(http_method: :post, path: '/sources/crawls',
+                                             params: { kind: 'calendar', season_id: 262, sub_menu_type: 'Eventi', year_text: '2026/2027' })
+    end
+
+    it 'goes once a later crawl succeeds, and never shows a manual failure or a refusal with the automation off' do
+      calendar!(:auto, :failed)
+      calendar!(:auto, :done, message: 'done')
+      expect(described_class.new.items(context)).to eq([])
+      calendar!(:manual, :failed)
+      expect(described_class.new.items(context)).to eq([])
+      calendar!(:auto, :failed, message: I18n.t('pipeline_automation.reasons.automation_paused'))
+      expect(described_class.new.items(context)).to eq([])
+    end
+  end
 end

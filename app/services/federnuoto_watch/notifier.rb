@@ -16,9 +16,10 @@ module FedernuotoWatch
   #       federnuoto_watch_controller.js).
   #
   class Notifier
-    # Broadcasts the sticky change alert.
-    def broadcast_change(change)
-      broadcast(FedernuotoWatch::ALERT_DOM_ID, render(FedernuotoWatchAlertComponent.new(change:)))
+    # Broadcasts the sticky change alert (0.10.103: +digest+, the snapshot the change belongs to, guards the dismiss;
+    # +progress+, the FedernuotoWatch::Progress payload, gives the lines of what the automation is doing about it).
+    def broadcast_change(change, digest: nil, progress: nil)
+      broadcast(FedernuotoWatch::ALERT_DOM_ID, render(FedernuotoWatchAlertComponent.new(change:, digest:, progress:)))
     end
 
     # Removes the change alert from any open page.

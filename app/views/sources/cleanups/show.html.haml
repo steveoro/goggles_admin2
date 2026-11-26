@@ -1,0 +1,38 @@
+-#
+  Clean-up of the redundant files of the Sources season (0.10.104): the dry run of Sources::Cleanup::Plan (@plan), the
+  apply form (the digest of the plan shown here) and how to undo; @folders: the destination folders (relative).
+  Nothing is ever deleted.
+= render(Shell::PageHeaderComponent.new(title: t('sources.cleanup.title'), subtitle: t('sources.cleanup.subtitle', season: season_id),
+                                        count: @plan.move_items.size, crumbs: cleanup_crumbs)) do |header|
+  - header.with_actions do
+    = link_to(sources_results_path(season_id:), class: 'btn btn-sm btn-outline-secondary', id: 'btn-sources-cleanup-back') do
+      %i.fa-solid.fa-arrow-left{ 'aria-hidden' => 'true' }
+      = t('sources.cleanup.back')
+    = sources_season_selector(sources_cleanup_path)
+
+%section#sources-cleanup
+  .card.mb-3#sources-cleanup-intro
+    .card-body
+      %p.mb-2
+        %i.fa-solid.fa-shield-halved.text-success{ 'aria-hidden' => 'true' }
+        %strong= t('sources.cleanup.intro.nothing_deleted')
+      %ul.small.mb-2
+        %li= t('sources.cleanup.intro.results', folder: @folders[:backup])
+        %li= t('sources.cleanup.intro.manifests', folder: @folders[:manifests])
+        %li= t('sources.cleanup.intro.calendars', folder: @folders[:calendars])
+        %li= t('sources.cleanup.intro.duplicates', folder: @folders[:duplicates])
+      %p.small.mb-1
+        %strong= t('sources.cleanup.intro.undo_title')
+        = t('sources.cleanup.intro.undo', season: season_id, file: @folders[:moves_file])
+      %p.small.text-body-secondary.mb-0= t('sources.cleanup.intro.automatic')
+
+  - unless @ops_ready
+    .alert.alert-warning#sources-cleanup-no-ops= t('sources.cleanup.no_ops')
+  - if @plan.blocked_reason
+    .alert.alert-warning#sources-cleanup-blocked
+      %i.fa-solid.fa-hourglass-half{ 'aria-hidden' => 'true' }
+      = t('sources.cleanup.blocked', reason: t("sources.cleanup.reasons.#{@plan.blocked_reason}"))
+
+  = render(partial: 'sources/cleanups/moves', locals: { plan: @plan, ops_ready: @ops_ready })
+  = render(partial: 'sources/cleanups/listed', locals: { items: @plan.list_items }) if @plan.list_items.any?
+  = render(partial: 'sources/cleanups/kept', locals: { refusals: @plan.refusals }) if @plan.refusals.any?

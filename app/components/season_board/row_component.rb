@@ -33,7 +33,7 @@ module SeasonBoard
     }.freeze
 
     # Flags rendered as warning badges
-    WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
+    WARNING_FLAGS = %i[possible_unlinked_meeting removed_from_fin].freeze
 
     # States offering a secondary "Prepare" button (the primary action stays the review / commit link).
     SECONDARY_PREPARE_STATES = %i[needs_review in_review results_ready structure_ready crawled_no_manifest].freeze

@@ -90,6 +90,8 @@ RSpec.describe MeetingCrawlJob do
     allow(SeasonBoard::DbIndex).to receive(:new).and_return(db_index)
     allow(SeasonBoard::Notifier).to receive(:ping)
     allow(SeasonBoard::Snapshot).to receive(:invalidate!)
+    # (0.10.104: the tidy-up reads the crawler status file; none here = idle)
+    allow(SystemStatus::CrawlerProbe).to receive(:status_path).and_return(Pathname.new(data_dir).join('no-crawler-status.json'))
     state = clock_state
     described_class.clock = clock
     described_class.sleeper = lambda { |seconds|
@@ -196,7 +198,8 @@ RSpec.describe MeetingCrawlJob do
   context 'when the crawl is result-free for a linked meeting' do
     let(:calendar) { linked_calendar }
 
-    it 'deletes only the fresh redundant LT2 & manifest PDF' do
+    # (0.10.104: moved, never deleted: the LT2 to the run backup folder, the PDF to manifests.done)
+    it 'moves away only the fresh redundant LT2 & manifest PDF' do
       old_lt2 = age!(write_json('results.new', 'old.json', lt2_hash(fin_id:)))
       old_pdf = age!(write_file('manifests', 'manifest-old.pdf', '%PDF'))
       other = write_json('results.new', 'other.json', lt2_hash(fin_id: '150092'))
@@ -209,7 +212,30 @@ RSpec.describe MeetingCrawlJob do
       expect(crawl_entry.message).to start_with('no results yet')
       expect(File).not_to exist(path_for('results.new', 'm.json'))
       expect(File).not_to exist(path_for('manifests', 'manifest-m.pdf'))
+      expect(Dir.glob(File.join(data_dir, 'results.backup', '262', 'cleanup-*', 'm.json')).size).to eq(1)
       expect([old_lt2, old_pdf, other]).to all(satisfy { |path| File.exist?(path) })
+      journal = Dir.glob(File.join(data_dir, 'results.backup', '262', 'cleanup-*', 'MOVES.txt')).first
+      expect(File.readlines(journal).map { |line| line.chomp.split("\t").last }).to contain_exactly(
+        start_with('results.new/262/m.json -> results.backup/262/cleanup-'), 'manifests/262/manifest-m.pdf -> manifests.done/262/manifest-m.pdf'
+      )
+      expect(Ops::Event.where(kind: 'board.crawl_finished').last.data['cleanup']).to include('moves' => 2, 'backup_dir' => start_with('results.backup/262/'))
+    end
+
+    it 'survives a failing tidy-up: the crawl still ends done, the error is reported' do
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:)) }
+      allow_any_instance_of(Sources::Cleanup::Mover).to receive(:to_backup).and_raise(Errno::EIO, 'disk trouble') # rubocop:disable RSpec/AnyInstance
+      perform
+      expect(crawl_entry).to have_attributes(status: :done, message: 'no results yet (clean-up stopped by an error)')
+      expect(File).to exist(path_for('results.new', 'm.json'))
+      expect(Ops::Event.where(kind: 'board.crawl_finished').last.data.dig('cleanup', 'skipped').join).to include('disk trouble')
+    end
+
+    it 'tidies nothing while a preparation of the same FIN id is queued (Sources::Cleanup::Safety)' do
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:)) }
+      activity_log.queue!(fin_id, kind: :prepare, origin: :manual)
+      perform
+      expect(crawl_entry).to have_attributes(status: :done, message: 'no results yet (clean-up skipped: busy_activity)')
+      expect(File).to exist(path_for('results.new', 'm.json'))
     end
 
     it 'keeps a fresh LT2 having an LT4 working copy or phase files' do

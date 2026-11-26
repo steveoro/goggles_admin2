@@ -86,6 +86,17 @@ RSpec.describe 'Sources results' do
       expect(flash[:warning]).to eq(I18n.t('sources.results.prepare.fin_source'))
     end
 
+    it 'queues the prepare of a FIN source whose FIN id is on no board row (the board off-board list, 0.10.103)' do
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150999' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      post(sources_prepare_path, params: { path: 'results.new/242/2025-11-08-Trofeo.json', season_id: 242 })
+      expect(SeasonBoard::Scheduler).to have_received(:prepare!)
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150091' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      post(sources_prepare_path, params: { path: 'results.new/242/2025-11-08-Trofeo.json', season_id: 242 })
+      expect(SeasonBoard::Scheduler).to have_received(:prepare!).once
+    end
+
     it 'refuses a path outside the season results folder or the data root' do
       other = write_data('calendar.new/242/x.json', '{}')
       post(sources_prepare_path, params: { path: other.to_s, season_id: 242 })

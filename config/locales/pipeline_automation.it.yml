@@ -49,6 +49,9 @@ it:
       auto_prepare:
         label: 'Preparazione automatica (passi Data-Fix 1-5)'
         help: 'Preparazione Data-Fix non presidiata fino a "pronta per il commit" o "da rivedere". Non esegue mai commit né push.'
+      auto_calendar:
+        label: "Scarica da solo il calendario FIN 'Eventi'"
+        help: 'Scarica da solo il calendario FIN "Eventi" dopo una modifica FIN (al massimo una volta ogni 6 ore finché la modifica è in sospeso) e una volta al giorno, così i meeting senza link possono prenderlo da lì. Spento: lo fa solo il pulsante Scarica di Sorgenti › Crawler.'
     worker_mode:
       puma: 'I job girano dentro Puma (predefinito).'
       separate: 'I job girano in un processo bin/jobs separato (SOLID_QUEUE_IN_PUMA=false).'

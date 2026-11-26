@@ -36,11 +36,18 @@ RSpec.describe SeasonBoard::RowFlags do
     expect(row_flags.call(facts(date: '??'), :not_linked, no_activity, false)).to eq([:unparsable_date])
   end
 
-  it 'flags a link adopted from the FIN Eventi calendar (:link_adopted, last in FLAGS order)' do
+  it 'flags a link adopted from the FIN Eventi calendar (:link_adopted)' do
     expect(row_flags.call(facts, :link_not_crawled, no_activity, false, link_adopted: true)).to eq([:link_adopted])
     expect(row_flags.call(facts, :link_not_crawled, { crawl: entry(:failed), extract: nil }, true, link_adopted: true))
       .to eq(%i[busy crawl_failed link_adopted])
-    expect(described_class::FLAGS.last).to eq(:link_adopted)
+  end
+
+  it 'flags a row FIN removed from the page (:removed_from_fin, 0.10.103, last in FLAGS order), with a tooltip' do
+    expect(row_flags.call(facts, :structure_committed, no_activity, false, removed: true)).to eq([:removed_from_fin])
+    expect(row_flags.call(facts, :structure_committed, no_activity, false)).to eq([])
+    expect(described_class::FLAGS.last(2)).to eq(%i[link_adopted removed_from_fin])
+    expect(described_class.tooltip(:removed_from_fin, nil)).to include('Riepilogo Eventi')
+    expect(I18n.t('season_board.flags.removed_from_fin', locale: :en)).to eq('removed from FIN')
   end
 
   it 'flags duplicated calendars & calendars pointing to a missing meeting' do

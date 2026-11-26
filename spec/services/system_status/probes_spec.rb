@@ -292,6 +292,17 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       expect(result.action[:path]).to eq('/season_board')
     end
 
+    it 'is :ok while the automation found nothing actionable in the pending change (0.10.103: no alert shown)' do
+      store.update do |state|
+        state.merge('last_checked' => Time.current.iso8601, 'digest' => 'd1',
+                    'change' => { 'detected_at' => Time.current.iso8601, 'added' => [{ 'name' => 'No link yet' }] })
+      end
+      FedernuotoWatch::Progress.store!('digest' => 'd1', 'automation' => true, 'actionable' => 0, 'checked_at' => Time.current.iso8601)
+      expect(described_class.new.call.level).to eq(:ok)
+      FedernuotoWatch::Progress.store!('digest' => 'd1', 'automation' => true, 'actionable' => 1)
+      expect(described_class.new.call.level).to eq(:warn)
+    end
+
     it 'is :error when the last check failed, offering "Check now"' do
       store.update { |state| state.merge('last_checked' => Time.current.iso8601, 'last_error' => 'FetchError: 503') }
       result = described_class.new.call

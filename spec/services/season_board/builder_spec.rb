@@ -327,7 +327,7 @@ RSpec.describe SeasonBoard::Builder do
       expect(result.warnings).to eq([I18n.t('season_board.calendar_links.too_old', file: calendar_file, season: '262', date: '25/11/2026', days: 14)])
     end
 
-    it 'lists the pending files whose FIN id is on no board row, with a warning (the adoption gone)' do
+    it 'lists the pending files whose FIN id is on no board row, without a warning (the adoption gone; 0.10.103: listed under the board)' do
       write_json('results.new', 'cagliari.json', lt2_hash(fin_id: adopted_id, results: true))
       write_json('results.new', 'lignano.json', lt2_hash(fin_id: '150244'))
       write_json('results.done', 'old.json', lt2_hash(fin_id: '150001', results: true))
@@ -336,7 +336,7 @@ RSpec.describe SeasonBoard::Builder do
       write_eventi('150001' => '150901', '150002' => '150902') # (self-check fails: Cagliari loses its link)
       result = adopted_board
       expect(result.off_board_sources.map(&:fin_event_id)).to eq([adopted_id, '150244'])
-      expect(result.warnings).to include(I18n.t('season_board.calendar_links.off_board', count: 2, ids: "#{adopted_id}, 150244"))
+      expect(result.warnings.join).not_to include('150244')
     end
 
     it 'counts the adopted FIN id as on the snapshot for the orphans' do
@@ -367,6 +367,47 @@ RSpec.describe SeasonBoard::Builder do
       result = build(linked_rows + [cagliari_row], calendar_index:)
       expect(result.rows.last.fin_event_id).to be_nil
       expect(result.warnings).to eq(['calendar note'])
+    end
+  end
+
+  describe 'rows FIN removed from the page (0.10.103)' do
+    let(:removed_id) { '150500' }
+    let(:removed_row) do
+      { 'year' => '2026', 'date' => '01/11', 'name' => 'Removed meeting', 'place' => 'Bari', 'url' => results_url(removed_id), 'info' => '',
+        'key' => '2026 | 01/11 | Removed meeting | Bari', 'removed_at' => 2.days.ago.iso8601 }
+    end
+
+    def build_with_removed(removed = [removed_row]) = build([fin_row], removed_rows: removed)
+
+    it 'appends a removed row with local files, flagged :removed_from_fin, without the crawl actions' do
+      write_json('results.new', 'bari.json', lt2_hash(fin_id: removed_id, results: true))
+      result = build_with_removed
+      row = result.rows.last
+      expect(result.rows.size).to eq(2)
+      expect(row).to have_attributes(fin_event_id: removed_id, key: removed_row['key'], state: :results_ready, flags: [:removed_from_fin])
+      expect(result.off_board_sources).to be_empty
+    end
+
+    it 'appends a removed row with a local calendar, dropping its "check results" crawl' do
+      link!
+      calendars[removed_id] = calendars[fin_id].with(fin_event_id: removed_id)
+      row = build_with_removed.rows.last
+      expect(row).to have_attributes(state: :structure_committed, state_detail: { past: true }, flags: [:removed_from_fin], next_action: nil)
+      expect(db_index).to have_received(:orphans).with([fin_id, removed_id])
+    end
+
+    it 'leaves out a removed row with nothing local, or whose FIN id is still on the snapshot' do
+      expect(build_with_removed.rows.size).to eq(1)
+      write_json('results.new', 'm.json', lt2_hash(fin_id: fin_id, results: true))
+      expect(build_with_removed([removed_row.merge('url' => results_url(fin_id))]).rows.size).to eq(1)
+    end
+
+    it 'reads the removed rows of the watcher state' do
+      write_json('results.new', 'bari.json', lt2_hash(fin_id: removed_id, results: true))
+      store = FedernuotoWatch::StateStore.new(path: File.join(data_dir, 'state.json'))
+      store.update { { 'rows' => [fin_row], 'removed_rows' => [removed_row] } }
+      result = described_class.new(season:, disk_index:, db_index:, activity_log:, today:, state_store: store).call
+      expect(result.rows.map(&:fin_event_id)).to eq([fin_id, removed_id])
     end
   end
 

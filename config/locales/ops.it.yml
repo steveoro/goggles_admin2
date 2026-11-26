@@ -23,3 +23,5 @@ it:
         calendar_linked: "Calendario collegato a un evento FIN"
       fin:
         watch_changed: "Pagina eventi FIN cambiata"
+        watch_acknowledged: "Modifica della pagina eventi FIN segnata come vista"
+        calendar_notice: "Modifica del calendario FIN senza nulla da scaricare"

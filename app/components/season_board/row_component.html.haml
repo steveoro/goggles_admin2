@@ -5,7 +5,7 @@
     = row.date_text
     %small.text-body-secondary= row.year
   %td
-    - if row.url.present?
+    - if FINEventId.fin_url?(row.url)
       = link_to(row.name, row.url, target: '_blank', rel: 'noopener')
     - else
       = row.name

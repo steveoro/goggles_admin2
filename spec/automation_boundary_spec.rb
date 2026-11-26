@@ -14,7 +14,8 @@ RSpec.describe 'Automation boundary' do # rubocop:disable RSpec/DescribeClass
     %w[app/jobs/**/*.rb app/services/season_board/**/*.rb app/services/data_fix/pipeline.rb app/services/data_fix/pipeline/**/*.rb
        app/services/data_fix/automation.rb app/services/inbox/**/*.rb app/controllers/season_board_controller.rb
        app/controllers/automation_controller.rb app/services/sources.rb app/services/sources/**/*.rb app/controllers/sources/**/*.rb
-       app/services/crawler/**/*.rb app/strategies/pdf_manifests/**/*.rb app/strategies/pdf_results/scan_*.rb]
+       app/services/crawler/**/*.rb app/strategies/pdf_manifests/**/*.rb app/strategies/pdf_results/scan_*.rb
+       app/services/federnuoto_watch.rb app/services/federnuoto_watch/**/*.rb app/controllers/federnuoto_watch_controller.rb]
   end
 
   # Files allowed to name them: the two jobs themselves, and the failed-job list that refuses to retry them.
@@ -29,7 +30,8 @@ RSpec.describe 'Automation boundary' do # rubocop:disable RSpec/DescribeClass
   let(:prepare_path_globs) do
     %w[app/jobs/data_fix_prepare_job.rb app/jobs/pipeline_planner_job.rb app/jobs/manifest_extract_job.rb app/jobs/meeting_crawl_job.rb
        app/services/data_fix/**/*.rb app/strategies/import/**/*.rb app/services/drift/**/*.rb app/services/season_board/**/*.rb
-       app/services/phase3/**/*.rb app/strategies/pdf_results/**/*.rb app/strategies/pdf_manifests/**/*.rb app/services/inbox/**/*.rb]
+       app/services/phase3/**/*.rb app/strategies/pdf_results/**/*.rb app/strategies/pdf_manifests/**/*.rb app/services/inbox/**/*.rb
+       app/services/federnuoto_watch/**/*.rb app/jobs/federnuoto_watch_job.rb app/jobs/season_recheck_job.rb app/jobs/source_crawl_job.rb]
   end
 
   # [path, line number, line] of every non-comment line naming a forbidden constant.
@@ -93,5 +95,61 @@ RSpec.describe 'Automation boundary' do # rubocop:disable RSpec/DescribeClass
     expect(enqueues.uniq.sort).to eq(%w[app/controllers/sources/crawls_controller.rb app/controllers/sources/pdfs_controller.rb
                                         app/services/season_board/scheduler.rb app/services/sources/manifest_queue.rb])
     expect([SourceCrawlJob, PdfScanJob, ManifestExtractJob].map(&:rescue_handlers)).to all(be_empty)
+  end
+
+  # 0.10.103: the calendar automation chain (FIN change -> 'Eventi' calendar crawl -> meeting crawls -> prepares ->
+  # automatic dismissal of the alert) only crawls and acknowledges the watcher state.
+  describe 'the calendar automation chain (0.10.103)' do
+    let(:chain_files) do
+      %w[app/services/season_board/calendar_planner.rb app/services/season_board/change_chain.rb app/services/season_board/crawl_planner.rb
+         app/services/season_board/scheduler.rb app/services/federnuoto_watch/parity.rb app/services/federnuoto_watch/parity_check.rb
+         app/services/federnuoto_watch/acknowledge.rb app/services/federnuoto_watch/progress.rb app/services/inbox/sources/fin_notice.rb
+         app/jobs/pipeline_planner_job.rb app/jobs/federnuoto_watch_job.rb app/jobs/season_recheck_job.rb]
+    end
+
+    # Non-comment lines of the file matching the regexp.
+    def code_lines(path, regexp)
+      Rails.root.join(path).readlines.map { |line| line.chomp.sub(/#(?!\{).*\z/, '') }.grep(regexp)
+    end
+
+    it 'never names the calendar_results kind (processing a whole calendar stays an operator click)' do
+      expect(chain_files.flat_map { |path| code_lines(path, /calendar_results/) }).to eq([])
+      expect(SourceCrawlJob::AUTO_KINDS).to eq(%w[calendar])
+    end
+
+    it 'names no commit, push or maintenance apply entry point, and writes no local calendar or meeting' do
+      apply = /\b(?:DataFixCommitJob|CommitRunner|Committers::Main|PushJob|commit_all|Maintenance::RunJob|RunJob|SqlRunner|CalendarLinker|Outbox::Writer)\b/
+      expect(chain_files.flat_map { |path| code_lines(path, apply).map { |line| [path, line.strip] } }).to eq([])
+      db_models = /GogglesDb::(?!Season\b)\w+/
+      expect(chain_files.flat_map { |path| code_lines(path, db_models).map { |line| [path, line.strip] } }).to eq([])
+    end
+
+    it 'enqueues the calendar crawl only through the Scheduler, and the meeting crawls only through Scheduler.crawl!' do
+      enqueues = chain_files.flat_map { |path| code_lines(path, /\b(?:SourceCrawlJob|MeetingCrawlJob)\b.*\.perform_(?:later|now)\b/).map { path } }
+      expect(enqueues.uniq).to eq(%w[app/services/season_board/scheduler.rb])
+    end
+
+    it 'can never request the calendar_results kind: the default Eventi request, the Scheduler and an automatic SourceCrawlJob' do
+      season = GogglesDb::Season.last
+      expect(Sources::CrawlRequest.eventi_calendar(season).kind).to eq('calendar')
+      FileUtils.rm_f(SeasonBoard::ActivityLog.default_path)
+      allow(SeasonBoard::Notifier).to receive(:ping)
+      expect { SeasonBoard::Scheduler.calendar_crawl!(season:, origin: :auto) }
+        .to have_enqueued_job(SourceCrawlJob).with(hash_including(kind: 'calendar', origin: 'auto'))
+
+      crawler = instance_double(CrawlerClient)
+      SourceCrawlJob.crawler_client_factory = -> { crawler }
+      key = SeasonBoard::ActivityLog.source_key('crawl:calendar_results', '/x.csv')
+      SourceCrawlJob.perform_now(kind: 'calendar_results', season_id: season.id, file_path: '/x.csv', key:, origin: 'auto')
+      expect(SeasonBoard::ActivityLog.new.entry(key, :crawl))
+        .to have_attributes(status: :failed, message: I18n.t('sources.crawl.auto_kind_refused', kind: 'calendar_results'))
+    ensure
+      SourceCrawlJob.crawler_client_factory = -> { CrawlerClient.new }
+      FileUtils.rm_f(SeasonBoard::ActivityLog.default_path)
+    end
+
+    it 'gives the watcher and the daily re-check jobs no retry handler' do
+      expect([FedernuotoWatchJob, SeasonRecheckJob].map(&:rescue_handlers)).to all(be_empty)
+    end
   end
 end

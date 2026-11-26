@@ -9,7 +9,11 @@ module SeasonBoard
     # - meeting_only: true when the LT4 file is manifest-derived ('_meta.meeting_only');
     # - phase: highest existing phase number (nil when none); phase_paths: { N => path };
     # - mtime: most recent modification time among the files.
-    Source = Data.define(:base, :lt2_path, :lt4_path, :has_results, :meeting_only, :phase, :phase_paths, :mtime) do
+    # - (0.10.104) unparsable: a file of the source could not be parsed (SourceProbe); pdf_derived: an LT2 written by
+    #   the PDF scan (SourceProbe). Both default to false.
+    Source = Data.define(:base, :lt2_path, :lt4_path, :has_results, :meeting_only, :phase, :phase_paths, :mtime, :unparsable, :pdf_derived) do
+      def initialize(unparsable: false, pdf_derived: false, **) = super
+
       # Path to hand to the Data-Fix review actions: the LT2 when present (so that the working
       # copy is resolved/re-materialized by DataFix::SourceResolver), else the LT4, else the
       # highest phase file (its meta points back to the source).
@@ -18,6 +22,8 @@ module SeasonBoard
       end
 
       def results? = has_results
+      def unparsable? = unparsable
+      def pdf_derived? = pdf_derived
       def meeting_only? = meeting_only
       def in_review? = phase.present?
       def files? = lt2_path.present? || lt4_path.present?

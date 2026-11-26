@@ -16,7 +16,7 @@ RSpec.describe SeasonRecheckJob do
   before(:each) do
     FileUtils.rm_f(SeasonBoard::ActivityLog.default_path)
     allow(SeasonBoard::Builder).to receive_messages(latest_season: season, new: builder)
-    allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+    allow(SeasonBoard::Scheduler).to receive_messages(crawl!: true, calendar_crawl!: true)
   end
 
   after(:each) { FileUtils.rm_f(SeasonBoard::ActivityLog.default_path) }
@@ -202,6 +202,11 @@ RSpec.describe SeasonRecheckJob do
       expect(described_class.perform_now.size).to eq(described_class::MAX_CRAWLS_PER_RUN)
       expect(SeasonBoard::Scheduler).to have_received(:crawl!).exactly(described_class::MAX_CRAWLS_PER_RUN).times
     end
+
+    it 'queues only what the ceiling of 15 outstanding automatic crawls leaves (0.10.103)' do
+      (1..12).each { |id| activity_log.queue!("90#{id}", kind: :crawl, origin: :auto) }
+      expect(described_class.perform_now.size).to eq(3)
+    end
   end
 
   it 'does nothing without a season' do
@@ -214,5 +219,34 @@ RSpec.describe SeasonRecheckJob do
     expect(described_class.perform_now).to eq([])
     expect(builder).not_to have_received(:call)
     expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    expect(SeasonBoard::Scheduler).not_to have_received(:calendar_crawl!)
+  end
+
+  describe "the daily FIN 'Eventi' calendar crawl (0.10.103)" do
+    it 'asks for one crawl a day, automatic' do
+      described_class.perform_now
+      described_class.perform_now
+      expect(SeasonBoard::Scheduler).to have_received(:calendar_crawl!).with(season:, origin: :auto).once
+      travel(21.hours) { described_class.perform_now }
+      expect(SeasonBoard::Scheduler).to have_received(:calendar_crawl!).twice
+    end
+
+    it "obeys the 'auto_calendar' switch, the meeting crawls going on" do
+      rows << board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      DataFix::Automation.store!(:auto_calendar, false)
+      expect(described_class.perform_now).to eq(%w[3])
+      expect(SeasonBoard::Scheduler).not_to have_received(:calendar_crawl!)
+    end
+
+    it 'goes on with the meeting crawls when the calendar crawl cannot be queued' do
+      rows << board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      allow(SeasonBoard::CalendarPlanner).to receive(:new).and_raise(RuntimeError, 'boom')
+      expect(described_class.perform_now).to eq(%w[3])
+    end
+  end
+
+  it 'never crawls a row FIN removed from the page (0.10.103)' do
+    rows << board_row(fin_event_id: '9', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2, flags: [:removed_from_fin])
+    expect(described_class.perform_now).to eq([])
   end
 end

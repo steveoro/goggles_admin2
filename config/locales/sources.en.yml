@@ -238,6 +238,10 @@ en:
         invalid_url_ficr: "the URL must be a FICR results page (https://nuoto.ficr.it/#/NUO/...)"
         invalid_url_goandswim: "the URL must be a Go&Swim event page (https://risultati.goandswim.it/evento/...)"
       already_queued: "%{label} is already queued or running."
+      auto_kind_refused: "refused: an automatic crawl can only be a FIN calendar (kind %{kind})"
+      calendar_check:
+        no_file: "no new calendar file: the FIN page may be empty or not supported yet"
+        no_rows: "the new calendar has no meeting rows (%{names})"
       queued: "%{label}: crawl queued."
       queued_behind:
         one: "%{label}: crawl queued, after 1 crawl queued or running."
@@ -250,6 +254,7 @@ en:
       toast:
         done: "Crawl finished: %{label}"
         failed: "Crawl failed: %{label}"
+        warning: "Crawl finished with a warning: %{label}"
         open_file: "Open %{name}"
         open_crawler: "Open the crawler tab"
         close: "Close"
@@ -302,6 +307,7 @@ en:
   inbox:
     pipeline_rows:
       non_fin: "Non-FIN source prepared from the Sources page"
+      off_board: "FIN %{fin_event_id} · not on the Season board (prepared from its off-board list)"
   ops:
     events:
       sources:

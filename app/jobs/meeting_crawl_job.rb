@@ -24,7 +24,7 @@
 #
 # The sleeper/clock/factories are class attributes so that specs can run instantly.
 #
-class MeetingCrawlJob < ApplicationJob
+class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   queue_as :background
 
   # Hard timeout for a single crawl (the FIN server is slow & throttles: large championships can take that long).
@@ -107,13 +107,22 @@ class MeetingCrawlJob < ApplicationJob
     target_url = snapshot_url_for(url, season)
     ensure_crawler!
     wait_until_idle!
+    root = data_dir || SeasonBoard::DiskIndex.default_data_dir
+    before = Sources::CrawlOutputs.listing(root, season.id)
     since, baseline = start_crawl!(season.id, target_url)
     final = wait_for_crawl_end!(since, baseline)
     raise Failure, "crawler error: #{final.detail}".truncate(200) if final.error?
 
-    outcome = SeasonBoard::CrawlOutput.new(season_id: season.id, fin_event_id: @fin_event_id, since:,
-                                           data_dir: data_dir || SeasonBoard::DiskIndex.default_data_dir).call
-    [outcome.status, outcome.message]
+    check_output(season.id, root, before, since)
+  end
+
+  # Checks & tidies the output of this run (0.10.104: only the files it wrote, see SeasonBoard::CrawlOutput, which never
+  # raises). Returns [status, message].
+  def check_output(season_id, root, before, since)
+    new_files = Sources::CrawlOutputs.new_files(before, Sources::CrawlOutputs.listing(root, season_id), since:)
+    @output = SeasonBoard::CrawlOutput.new(season_id:, fin_event_id: @fin_event_id, since:, data_dir: root, new_files:,
+                                           until_time: Time.current, own_key: @fin_event_id).call
+    [@output.status, @output.message]
   end
 
   # Returns the results URL stored on the current watcher snapshot for the FIN id, else the one a link-less snapshot row
@@ -183,7 +192,8 @@ class MeetingCrawlJob < ApplicationJob
       Ops.record_event!(
         kind: done ? 'board.crawl_finished' : 'board.crawl_failed', level: done ? 'success' : 'error', actor: 'job',
         season_id: Integer(@season_id, exception: false), subject_type: 'fin_event', subject_key: @fin_event_id,
-        data: { 'status' => status.to_s, 'message' => message }, link_path: Rails.application.routes.url_helpers.season_board_path
+        data: { 'status' => status.to_s, 'message' => message, 'cleanup' => @output&.event_data }.compact,
+        link_path: Rails.application.routes.url_helpers.season_board_path
       )
     end
   end

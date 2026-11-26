@@ -24,6 +24,14 @@ module Sources
           sub_menu_type: hash[:sub_menu_type].to_s.presence, year_text: hash[:year_text].to_s.strip.presence)
     end
 
+    # The default 'Eventi' calendar crawl of a season (0.10.103): the request of the crawler tab's FIN calendar form left
+    # on its defaults (first sub-menu item, the season text of the season), so a manual crawl and an automatic one
+    # (SeasonBoard::Scheduler.calendar_crawl!) share the same ActivityLog key and never run twice.
+    def self.eventi_calendar(season)
+      new(kind: 'calendar', season_id: season.id.to_i, url: nil, file_path: nil, target_event: nil,
+          sub_menu_type: CrawlKinds::CALENDAR_SUB_MENUS.first, year_text: CrawlKinds.year_text_for(season))
+    end
+
     def valid?(guard: FileGuard.new) = errors(guard:).empty?
 
     # i18n keys of the problems (Array of Symbols).

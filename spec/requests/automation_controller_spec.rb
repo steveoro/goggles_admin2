@@ -59,6 +59,34 @@ RSpec.describe AutomationController do
       expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.env_override'))
     end
 
+    describe 'the FIN change alert hidden while the automation waits (0.10.103)' do
+      let(:store) { FedernuotoWatch::StateStore.new }
+      let(:change) { { 'detected_at' => Time.current.iso8601, 'added' => [{ 'key' => 'k', 'name' => 'Waiting meeting', 'url' => '' }] } }
+
+      before(:each) do
+        store.update { { 'digest' => 'd1', 'rows' => [], 'change' => change } }
+        FedernuotoWatch::Progress.store!('digest' => 'd1', 'automation' => true, 'actionable' => 0, 'checked_at' => Time.current.iso8601)
+      end
+
+      after(:each) { FileUtils.rm_f(store.path) }
+
+      it 'shows in every tab as soon as the master switch is turned off, without waiting for any job' do
+        expect { post(automation_switch_path, params: { switch: 'enabled', value: '0' }) }
+          .to have_broadcasted_to(AppNotificationsChannel::STREAM).with(a_hash_including(dom_id: FedernuotoWatch::ALERT_DOM_ID,
+                                                                                         html: a_string_including('Waiting meeting')))
+        expect(FedernuotoWatch::Progress.read('d1')).to be_nil
+        get(sources_crawler_path)
+        expect(response.parsed_body.at_css("##{FedernuotoWatch::ALERT_DOM_ID}")).to be_present
+      end
+
+      it 'shows again when the calendar switch is toggled, not for the other switches' do
+        expect { post(automation_switch_path, params: { switch: 'auto_extract', value: '0' }) }
+          .not_to have_broadcasted_to(AppNotificationsChannel::STREAM).with(a_hash_including(dom_id: FedernuotoWatch::ALERT_DOM_ID))
+        expect { post(automation_switch_path, params: { switch: 'auto_calendar', value: '0' }) }
+          .to have_broadcasted_to(AppNotificationsChannel::STREAM).with(a_hash_including(dom_id: FedernuotoWatch::ALERT_DOM_ID))
+      end
+    end
+
     describe 'a Turbo request (the switches, Switch::ToggleFormComponent)' do
       let(:turbo_headers) { { 'Accept' => 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml' } }
 
@@ -132,7 +160,7 @@ RSpec.describe AutomationController do
         panel = template('automation-switches-dashboard')
         expect(panel.at_css('[data-automation-env-off="true"]')).to be_present
         switches = panel.css('input[role=switch]')
-        expect(switches.size).to eq(3)
+        expect(switches.size).to eq(DataFix::Automation::SWITCHES.size)
         expect(switches.map { |input| [input['checked'], input['disabled'].present?] }).to all(eq([nil, true]))
         reason = I18n.t('pipeline_automation.switches.env_off', key: DataFix::Automation::ENV_KEY)
         expect(panel.css('.form-switch').pluck('title')).to all(eq(reason))

@@ -19,6 +19,8 @@ module Inbox
     # Phase 15: the non-FIN sources prepared from the Sources page (the summary's unmatched sources with the same
     # pipeline state) get the same items, keyed 'unmatched:<base>:<ACTION_KIND>', titled with their base name; their
     # action comes from #unmatched_action.
+    # 0.10.103: so do the off-board sources (a FIN id on no board row) prepared from the board's off-board list, keyed
+    # 'off_board:<fin_event_id>:<base>:<ACTION_KIND>'.
     #
     class PipelineRows < Inbox::Source
       STATE = nil
@@ -52,20 +54,26 @@ module Inbox
       private
 
       def unmatched_items(summary, context)
-        summary.unmatched_sources.filter_map do |source|
+        off_board = summary.respond_to?(:off_board_sources) ? Array(summary.off_board_sources) : []
+        (summary.unmatched_sources + off_board).filter_map do |source|
           next unless source.pipeline_state == self.class::STATE && source.review_path
 
           primary = unmatched_action(source, summary)
-          next unless primary
-
-          label = SeasonBoard::StateText.label(source.pipeline_state, source.pipeline_detail)
-          item(
-            key: "unmatched:#{source.base}:#{self.class::ACTION_KIND}", kind: self.class::STATE, band: self.class::BAND,
-            title: I18n.t('inbox.pipeline_rows.title', name: source.base, state: label), detail: I18n.t('inbox.pipeline_rows.non_fin'),
-            subject: { file_path: source.review_path, season_id: summary.season_id }, action: primary,
-            since: newest_mtime(source.paths) || summary.built_at || context.now
-          )
+          primary && unmatched_item(source, primary, summary, context)
         end
+      end
+
+      # (an off-board source has a FIN id: on no board row)
+      def unmatched_item(source, primary, summary, context)
+        label = SeasonBoard::StateText.label(source.pipeline_state, source.pipeline_detail)
+        fin_event_id = source.respond_to?(:fin_event_id) ? source.fin_event_id : nil
+        item(
+          key: "#{fin_event_id ? "off_board:#{fin_event_id}" : 'unmatched'}:#{source.base}:#{self.class::ACTION_KIND}",
+          kind: self.class::STATE, band: self.class::BAND, title: I18n.t('inbox.pipeline_rows.title', name: source.base, state: label),
+          detail: fin_event_id ? I18n.t('inbox.pipeline_rows.off_board', fin_event_id:) : I18n.t('inbox.pipeline_rows.non_fin'),
+          subject: { file_path: source.review_path, season_id: summary.season_id }, action: primary,
+          since: newest_mtime(source.paths) || summary.built_at || context.now
+        )
       end
 
       def newest_mtime(paths)

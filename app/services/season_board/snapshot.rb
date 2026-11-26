@@ -59,7 +59,9 @@ module SeasonBoard
     # 4: 0.10.99 row 'locked' (a job working on the row's files right now) and the :needs_review detail 'outdated'.
     # 5: 0.10.102 links adopted from the FIN 'Eventi' calendar (row 'url' & 'fin_event_id' of a row without its own link,
     #    flag 'link_adopted', row 'adopted_link'), and the 'off_board_sources' (pending files whose FIN id is on no row).
-    FORMAT_VERSION = 5
+    # 6: 0.10.103 rows removed from the FIN page (flag 'removed_from_fin', appended after the snapshot rows) and the
+    #    pipeline state of the off-board sources.
+    FORMAT_VERSION = 6
 
     KEY_PREFIX = 'season_board:'
 

@@ -9,10 +9,43 @@ en:
       dismiss: 'Dismiss (mark as seen)'
       text_only: 'The page text changed, but no meeting rows were affected.'
       more: '...and %{count} more'
-      pull_calendar: 'Pull calendar'
       open_board: 'Open Season board'
       open_board_tooltip: 'Opens the Season board for the latest MASFIN season'
-      pull_calendar_tooltip: 'Starts the crawler server if needed and opens the Sources crawler tab'
+      progress:
+        title: 'What the automation is doing about it:'
+        automation_off: 'Automation is off: crawl and prepare these meetings yourself, then dismiss this alert.'
+        calendar_queued: 'FIN "Eventi" calendar crawl queued (it may lend their link to the meetings without one).'
+        calendar_running: 'FIN "Eventi" calendar crawl running.'
+        awaiting_calendar:
+          one: '1 meeting without a link waits for the FIN "Eventi" calendar.'
+          other: '%{count} meetings without a link wait for the FIN "Eventi" calendar.'
+        busy:
+          crawling:
+            one: '1 meeting being crawled.'
+            other: '%{count} meetings being crawled.'
+          extracting:
+            one: '1 manifest being extracted.'
+            other: '%{count} manifests being extracted.'
+          preparing:
+            one: '1 meeting being prepared (Data-Fix steps 1-5).'
+            other: '%{count} meetings being prepared (Data-Fix steps 1-5).'
+          busy:
+            one: '1 meeting busy with a job.'
+            other: '%{count} meetings busy with a job.'
+        waiting_for: 'Waiting for: %{rows}'
+        reasons:
+          not_on_board: '%{name} (not on the Season board yet)'
+          crawling: '%{name} (being crawled)'
+          extracting: '%{name} (manifest being extracted)'
+          preparing: '%{name} (being prepared)'
+          busy: '%{name} (busy)'
+          waiting_crawl: '%{name} (crawl to be queued)'
+          crawl_failed: '%{name} (last crawl failed: retried automatically, or press Crawl on the board)'
+          waiting_prepare: '%{name} (preparation to be queued)'
+          waiting_extract: '%{name} (manifest extraction to be queued)'
+          waiting_recrawl: '%{name} (results to be crawled again)'
+        nothing_left: 'Every meeting with a link is in the pipeline: this alert closes at the next check.'
+        closes_itself: 'This alert closes by itself once every new or changed meeting with a link is crawled and on the board.'
       sections:
         with_results:
           one: 'Link published (1)'
@@ -31,6 +64,12 @@ en:
       started: 'FIN page check started: the outcome will be shown here in a few seconds.'
       no_changes: 'No changes on the FIN "Riepilogo Eventi" page (%{count} meetings listed).'
       failed: 'FIN page check failed: %{error}'
+      wait: 'The FIN page changed: the meetings without a link wait for the FIN "Eventi" calendar crawl (no alert unless one gets a link).'
+      nothing_to_crawl: 'The FIN page changed, with nothing to crawl: the change is logged in "Needs you" (dashboard).'
+      parity: 'The FIN page changed: every changed meeting with a link is already on the board.'
+    notice:
+      dismissed: 'FIN calendar notice dismissed.'
+      not_dismissed: 'The FIN calendar notice could not be dismissed (unknown notice, or the local ops DB is not available).'
     status:
       last_checked: 'Last check: %{time}'
       never_checked: 'Never checked yet'

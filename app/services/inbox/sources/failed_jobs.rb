@@ -15,7 +15,11 @@ module Inbox
     #   item (a :prepare_failed row is left to that source; any other failed prepare is a refusal or a failure the row
     #   state already shows);
     # - Solid Queue failed executions => "Discard" (POST dashboard#discard_failed_job), plus a secondary "Retry"
-    #   (POST dashboard#retry_failed_job) only for the jobs outside PROTECTED_JOBS.
+    #   (POST dashboard#retry_failed_job) only for the jobs outside PROTECTED_JOBS;
+    # - (0.10.103) the failed AUTOMATIC crawl of the board season's FIN 'Eventi' calendar (its latest attempt: a later
+    #   crawl, successful or manual, replaces it; a refusal because the automation was off is no failure) => "Retry": an
+    #   operator POST of the same crawl (Sources::CrawlsController, the crawler tab's 'Eventi' defaults), keyed
+    #   'calendar_crawl:<season_id>'.
     #
     # Commit, push, maintenance-apply and restore jobs are never retried from here (never automatically, and not
     # by one click on the dashboard): they get "Discard" only (later phases add a link to their report).
@@ -36,10 +40,37 @@ module Inbox
       end
 
       def items(context)
-        board_items(context) + queue_items(context)
+        board_items(context) + calendar_items(context) + queue_items(context)
       end
 
       private
+
+      # == The automatic 'Eventi' calendar crawl
+
+      def calendar_items(context)
+        season = context.season
+        return [] unless season
+
+        request = ::Sources::CrawlRequest.eventi_calendar(season)
+        entry = SeasonBoard::ActivityLog.new.entry(request.key, :crawl)
+        return [] unless entry&.failed? && entry.origin == :auto && !paused_refusal?(entry.message)
+
+        [calendar_item(request, entry, context)]
+      end
+
+      def calendar_item(request, entry, context)
+        item(
+          key: "calendar_crawl:#{request.season_id}", kind: :calendar_crawl_failed, band: :failed, title: t('calendar.failed', label: request.label),
+          detail: [short_time(entry.last_timestamp), entry.message.to_s.truncate(160)].compact_blank.join(' · '),
+          subject: { season_id: request.season_id }, since: entry.last_timestamp || context.now,
+          action: action(t(:retry), url_helpers.sources_crawls_path, http_method: :post, params: request.to_job_args)
+        )
+      end
+
+      # A refusal because the automation switch was off (any locale of the message): no failure.
+      def paused_refusal?(message)
+        I18n.available_locales.any? { |locale| message.to_s == I18n.t('pipeline_automation.reasons.automation_paused', locale:) }
+      end
 
       # == Season board activity
 

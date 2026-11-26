@@ -25,12 +25,15 @@ module SeasonBoard
   #                                 (0.10.99: informational only; the steps and their checks ignore the LT2 then)
   # - :link_adopted                 the row has no URL on the FIN summary page: its link comes from the FIN 'Eventi'
   #                                 calendar (SeasonBoard::CalendarIndex, 0.10.102)
+  # - :removed_from_fin             FIN removed the row from the summary page (not a rename), while something local
+  #                                 exists for its FIN id (Builder, 0.10.103): no crawl action, never crawled
+  #                                 automatically
   #
   class RowFlags
     FLAGS = %i[
       busy crawl_failed extract_failed manifest_pdf_pending redundant_result_free_source missing_meeting
       duplicate_calendar multiple_sources pushed outside_season unparsable_date possible_unlinked_meeting prepare_held
-      newer_crawl link_adopted
+      newer_crawl link_adopted removed_from_fin
     ].freeze
 
     # Localized tooltip of a row flag (i18n 'season_board.flag_tooltips'): :link_adopted names the date of the 'Eventi'
@@ -53,10 +56,11 @@ module SeasonBoard
     # Returns the Array of flags (Symbols, in FLAGS order) for the row facts
     # (StateResolver::Facts), its resolved state, its activity Hash & busy overlay.
     # +unlinked_dates+: dates (Date) of the season link candidate calendars (Builder.link_candidates);
-    # +link_adopted+: true when the row's URL comes from the FIN 'Eventi' calendar (Builder, CalendarIndex).
-    def call(facts, state, activity, busy, unlinked_dates: [], link_adopted: false) # rubocop:disable Metrics/ParameterLists
+    # +link_adopted+: true when the row's URL comes from the FIN 'Eventi' calendar (Builder, CalendarIndex);
+    # +removed+: true for a row FIN removed from the summary page (Builder, 0.10.103).
+    def call(facts, state, activity, busy, unlinked_dates: [], link_adopted: false, removed: false) # rubocop:disable Metrics/ParameterLists
       flags = {
-        busy: busy, link_adopted: link_adopted,
+        busy: busy, link_adopted: link_adopted, removed_from_fin: removed,
         possible_unlinked_meeting: state == :link_not_crawled && unlinked_date_within?(facts.row_date, unlinked_dates),
         crawl_failed: activity[:crawl]&.failed?,
         extract_failed: activity[:extract]&.failed?,

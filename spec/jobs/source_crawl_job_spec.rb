@@ -258,4 +258,137 @@ RSpec.describe SourceCrawlJob do
       expect(activity_log.entry(req.key, :crawl).heartbeat_at).to be_present
     end
   end
+
+  # 0.10.104: the tidy-up hook (Sources::CrawlTidy) after a crawl ended done.
+  describe 'the clean-up after the crawl' do
+    let(:fin_url) { "#{Sources::CrawlKinds::FIN_RESULTS_BASE_URL}150091:trofeo.html" }
+    let(:req) { request(kind: 'fin_meeting', url: fin_url) }
+    let(:lt2_path) { data_root.join('results.new', season_id.to_s, 'trofeo.json') }
+    let(:calendar) do
+      meeting = SeasonBoard::DbIndex::MeetingInfo.new(id: 19_000, description: 'M', code: 'm', header_date: nil, cancelled: false,
+                                                      results_acquired: false, manifest: true, mir_count: 0, mrr_count: 0)
+      SeasonBoard::DbIndex::CalendarInfo.new(id: 1700, fin_event_id: '150091', meeting_id: 19_000, meeting_code: 'm', meeting_name: 'M',
+                                             meeting_place: 'X', scheduled_date: '8', year: '2026', month: 'Nov', cancelled: false,
+                                             results_link: nil, meeting:)
+    end
+
+    before(:each) do
+      allow(SeasonBoard::DbIndex).to receive(:new).and_return(instance_double(SeasonBoard::DbIndex, calendar_for: calendar))
+      allow(SystemStatus::CrawlerProbe).to receive(:status_path).and_return(data_root.join('no-crawler-status.json'))
+      path = lt2_path
+      crawler.on_pull = lambda {
+        FileUtils.mkdir_p(path.dirname)
+        File.write(path, { 'layoutType' => 2, 'name' => 'Trofeo', 'meetingURL' => fin_url, 'sections' => [] }.to_json)
+      }
+    end
+
+    it 'moves the result-free crawl of an already linked meeting to the backup folder and says so in the end message' do
+      perform(req)
+      entry = activity_log.reload!.entry(req.key, :crawl)
+      expect(entry.status).to eq(:done)
+      folder = Dir.children(data_root.join('results.backup', season_id.to_s)).first
+      expect(entry.message).to include(I18n.t('sources.cleanup.crawl_summary.moved', count: 1, folder: "results.backup/#{season_id}/#{folder}"))
+      expect(File).not_to exist(lt2_path)
+      expect(Dir.glob(data_root.join('results.backup', season_id.to_s, 'cleanup-*', 'trofeo.json').to_s).size).to eq(1)
+      data = Ops::Event.where(kind: 'sources.crawl_finished', subject_key: req.key).last.data
+      expect(data['message']).to include('results.backup')
+      expect(data['cleanup']).to eq('backup_dir' => "results.backup/#{season_id}/#{folder}", 'moves' => 1)
+    end
+
+    it 'never fails the crawl when the clean-up raises' do
+      allow(Sources::CrawlTidy).to receive(:new).and_raise(Errno::EACCES, 'denied')
+      perform(req)
+      entry = activity_log.reload!.entry(req.key, :crawl)
+      expect(entry).to have_attributes(status: :done, message: include('trofeo.json'))
+      expect(File).to exist(lt2_path)
+      expect(Ops::Event.where(kind: 'sources.crawl_finished', subject_key: req.key).last.data).not_to have_key('cleanup')
+    end
+  end
+
+  # 0.10.103: the automatic 'Eventi' calendar crawl (SeasonBoard::Scheduler.calendar_crawl!) and the calendar checks.
+  describe 'a FIN calendar crawl' do
+    let(:req) { request(kind: 'calendar', url: nil, sub_menu_type: 'Eventi', year_text: '2025/2026') }
+    let(:calendar_dir) { data_root.join('calendar.new', season_id.to_s) }
+    let(:csv_name) { "#{Date.current.strftime('%Y%m%d')}-#{season_id}-2-FIN-calendar.csv" }
+
+    def perform_calendar(origin: nil)
+      args = { **req.to_job_args, key: req.key, label: req.label }
+      args[:origin] = origin if origin
+      described_class.perform_now(**args)
+    end
+
+    def write_calendar(rows: true)
+      FileUtils.mkdir_p(calendar_dir)
+      text = file_fixture('files/calendar_sample.csv').read
+      File.write(calendar_dir.join(csv_name), rows ? text : text.lines.first)
+    end
+
+    def toasts
+      calls = []
+      allow(ActionCable.server).to receive(:broadcast) { |_stream, payload| calls << payload }
+      yield
+      calls.select { |payload| payload[:dom_id].to_s.start_with?(described_class::TOAST_DOM_ID_PREFIX) }
+    end
+
+    it 'ends done with the new calendar file, as before (operator)' do
+      crawler.on_pull = -> { write_calendar }
+      perform_calendar
+      expect(crawler.calls.first.first).to eq(:pull_calendar)
+      expect(activity_log.entry(req.key, :crawl)).to have_attributes(status: :done, origin: :manual, message: include(csv_name))
+      expect(Ops::Event.where(kind: 'sources.crawl_finished').last).to have_attributes(level: 'success')
+      expect(Ops::Event.where(kind: 'sources.crawl_finished').last.data).to include('origin' => 'operator')
+    end
+
+    context 'when queued by the automation (origin auto)' do
+      before(:each) { activity_log.queue!(req.key, kind: :crawl, origin: :auto, url: req.target, label: req.label) }
+
+      it 'crawls with the switch on, records its origin and sends no toast' do
+        crawler.on_pull = -> { write_calendar }
+        expect(toasts { perform_calendar(origin: 'auto') }).to be_empty
+        expect(activity_log.reload!.entry(req.key, :crawl)).to have_attributes(status: :done, origin: :auto)
+        expect(Ops::Event.where(kind: 'sources.crawl_finished').last.data).to include('origin' => 'auto')
+        expect(PipelinePlannerJob).to have_received(:enqueue_after).with('SourceCrawlJob')
+      end
+
+      it "refuses at start with the 'auto_calendar' switch off (or the master one), closing its queued entry" do
+        DataFix::Automation.store!(:auto_calendar, false)
+        perform_calendar(origin: 'auto')
+        expect(crawler.calls).to be_empty
+        expect(activity_log.reload!.entry(req.key, :crawl))
+          .to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.automation_paused'))
+        DataFix::Automation.store!(:auto_calendar, true)
+        allow(DataFix::Automation).to receive(:env_off?).and_return(true)
+        perform_calendar(origin: 'auto')
+        expect(crawler.calls).to be_empty
+      end
+
+      it 'fails when the crawl brought no new calendar file (an empty or unsupported FIN page)' do
+        perform_calendar(origin: 'auto')
+        expect(activity_log.reload!.entry(req.key, :crawl))
+          .to have_attributes(status: :failed, message: I18n.t('sources.crawl.calendar_check.no_file'))
+        expect(Ops::Event.where(kind: 'sources.crawl_failed').last).to have_attributes(level: 'error')
+      end
+
+      it 'fails when the new calendar has no data rows' do
+        crawler.on_pull = -> { write_calendar(rows: false) }
+        perform_calendar(origin: 'auto')
+        expect(activity_log.reload!.entry(req.key, :crawl)).to have_attributes(status: :failed, message: include(csv_name))
+      end
+
+      it 'refuses any other kind' do
+        microplus = request
+        described_class.perform_now(**microplus.to_job_args, key: microplus.key, label: microplus.label, origin: 'auto')
+        expect(crawler.calls).to be_empty
+        expect(activity_log.entry(microplus.key, :crawl).message).to eq(I18n.t('sources.crawl.auto_kind_refused', kind: 'microplus'))
+      end
+    end
+
+    it 'ends done with a warning (warning toast and event) for an operator crawl that brought no usable calendar' do
+      sent = toasts { perform_calendar }
+      expect(activity_log.entry(req.key, :crawl)).to have_attributes(status: :done, message: I18n.t('sources.crawl.calendar_check.no_file'))
+      expect(Ops::Event.where(kind: 'sources.crawl_finished').last).to have_attributes(level: 'warning')
+      expect(sent.size).to eq(1)
+      expect(sent.first[:html]).to include('text-bg-warning')
+    end
+  end
 end

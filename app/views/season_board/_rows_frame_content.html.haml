@@ -106,3 +106,4 @@
   %p.small.text-body-secondary.mb-0#season-board-unmatched
     = t('season_board.unmatched.text', count: board.unmatched_sources.size)
     = link_to(t('season_board.unmatched.link'), sources_results_path, data: { turbo_frame: '_top' })
+= render(SeasonBoard::OffBoardSourcesComponent.from_board(board, csrf_token: form_authenticity_token))

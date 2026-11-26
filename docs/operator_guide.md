@@ -39,7 +39,7 @@ Details: [dashboard.md](dashboard.md).
 
 ## 3. Season board
 
-**Import > Season board** shows the current FIN Masters season: one row per row of the FIN "Riepilogo Eventi" page, the local meeting linked to it, its **state** and **one next action**. A watcher reads the FIN page every hour; when it changes, an alert appears on every open page.
+**Import > Season board** shows the current FIN Masters season: one row per row of the FIN "Riepilogo Eventi" page, the local meeting linked to it, its **state** and **one next action**. A watcher reads the FIN page every hour; when it changes and something can be crawled, an alert appears on every open page (see [After a FIN change](#after-a-fin-change)). A meeting FIN removed from its page stays on the board, flagged **removed from FIN**, while local files or a calendar row exist for it. Pending files whose FIN id is on no row (a meeting listed only on the FIN "Eventi" calendar) are listed under the rows, each with **Open in Sources**, **Open in Data-Fix** and **Prepare**.
 
 The usual path of a row: **Not crawled** → (crawl) → **Manifest to extract** or **Results ready** → (preparation) → **Ready to commit** or **Needs review at step N** → (commit) → **SQL to push** → (push) → **Done**.
 
@@ -49,7 +49,7 @@ Details, every state and button: [season_board.md](season_board.md).
 
 With the automation on (the default), most of the work happens by itself:
 
-- a new or changed FIN row is **crawled** (results page, result PDFs, manifest PDF);
+- after a FIN change the FIN **"Eventi" calendar** is crawled (it gives a link to the meetings that have none on the "Riepilogo Eventi" page), then each **new or changed** meeting with a link is **crawled** (results page, result PDFs, manifest PDF); the "Eventi" calendar is also crawled once a day;
 - a manifest PDF is **extracted** by the LLM engine into a meeting structure;
 - every source is **prepared**: the Data-Fix steps 1-5 are built and checked in the background, and the row becomes **Ready to commit · +2 teams, +37 swimmers**, **Needs review at step N · K issues** or **Preparation failed at step N**.
 
@@ -58,6 +58,16 @@ The automation never commits and never pushes: those two clicks are always yours
 You can also act yourself on any row: **Crawl**, **Extract manifest**, **Prepare**, **Retry**, and the **Auto-prepare** switch (off = the automation never prepares that meeting). The board remembers the state chip you chose (also after a button or a switch); **All** clears it. A link to one meeting's row (from the Outbox, Sources, a health finding) shows the whole board when that chip would hide the row. A crawl takes a while (the FIN server is slow: allow up to 30 minutes for a big meeting) and only one crawl runs at a time; the row shows when it is queued or running.
 
 Meetings that are not on the FIN calendar (Microplus, FICR, Go&Swim, PDF results) start from **Sources** instead: see [Sources](#sources).
+
+### After a FIN change
+
+1. The watcher sees the change. If there is something to crawl, the alert appears; it says what the automation is doing ("calendar crawl queued", "2 meetings being crawled", "waiting for: ...").
+2. The "Eventi" calendar is crawled, then only the new or changed meetings, one at a time; then they are prepared.
+3. When every new or changed meeting with a link is in the pipeline (ready to commit, needs review, failed and shown in **Needs you**, already committed, cancelled, or held by you), **the alert closes by itself** in every tab. Then go on as usual from **Needs you** or the board: review, commit, push.
+
+What still needs you: a meeting whose crawl keeps failing (the alert stays until it works or you handle it: press **Crawl** on its row), a meeting with a local meeting on its dates not linked yet (**Link to meeting...** or **Crawl**), a meeting FIN published results for while you have it in review (listed in the notice: crawl it again from Sources if you want them), a failed automatic "Eventi" calendar crawl (**Retry** in **Needs you**), everything after the preparation (review, commit, push). Your own crawls always go before the automatic ones, and at most 15 automatic crawls wait at any time.
+
+A change with **nothing to crawl** (meetings removed, meetings still without a link, only the page text) shows no alert: **Needs you** shows a notice with what changed; press **Dismiss** once you have read it. With the automation off every change shows the alert, which never closes by itself: crawl and prepare by hand, then dismiss it. Details: *After a FIN calendar change* in [season_board.md](season_board.md).
 
 ## 5. Review in Data-Fix
 
@@ -116,6 +126,8 @@ A meeting first committed from its manifest (structure only) is crawled again wh
 - **Crawler**: start a crawl by hand (FIN calendar, calendar file, FIN meeting, Microplus, FICR, Go&Swim) with the meeting URL; it runs in the background and a notice tells you when it ends. Crawls never run two at a time: yours waits for the board's.
 - **Files**: rename, edit or delete any file under the crawler data folder (a JSON is checked before saving; backups and archives are read-only).
 
+**Redundant files.** A calendar CSV crawl also re-crawls the meetings already committed: their result-free crawl files show as **redundant file** / **PDF pending** on the board. After each crawl the files that very crawl wrote are tidied by themselves (same rule as the board crawls; never a meeting with work in progress, a lease or your edits), and old calendar files move to `calendar.done`. For what is already on disk, **Sources › Results › Clean up redundant files (N)** (or the link in the board header) lists what would move, where and why, and what stays and why; **Move N files** applies exactly that list. Nothing is deleted: result files go to `results.backup/<season>/cleanup-<time>/`, manifests to `manifests.done`, calendar files to `calendar.done`, and every move is written at once to the `MOVES.txt` of that folder. To undo, move them back as `MOVES.txt` lists them. On the Manifests tab, a PDF of a meeting already linked shows **meeting linked** and **Extract next** skips it. Details: the *Redundant files and the clean-up* section of [season_board.md](season_board.md).
+
 Details: the *Sources* section of [season_board.md](season_board.md), [crawler/crawler_interaction.md](crawler/crawler_interaction.md), [pdf_processing/manifest_extraction.md](pdf_processing/manifest_extraction.md) and [pdf_processing/pdf_processing.md](pdf_processing/pdf_processing.md).
 
 ## Data health and operations
@@ -161,8 +173,8 @@ The entity pages (**Entities**, **Support**) list the production data through th
 
 Every switch is flipped in place (the page stays where it is) and logged in **Activity**.
 
-- **Automation** (master switch), **Auto-extract manifests** and **Auto-prepare**: in the dashboard **System status** zone and on the Season board header. Off = nothing is crawled, extracted or prepared by itself; every button keeps working. **Needs you** shows **Automation paused** while the master switch is off.
-- `ADMIN2_AUTOMATION=0` in the server environment forces all three off without touching the stored switches (restart the server to apply or remove it); the switches then show off and cannot be flipped.
+- **Automation** (master switch), **Auto-extract manifests**, **Auto-prepare** and **Auto-crawl the FIN 'Eventi' calendar**: in the dashboard **System status** zone and on the Season board header. Off = nothing is crawled, extracted or prepared by itself (and the FIN alert never closes by itself); every button keeps working. **Needs you** shows **Automation paused** while the master switch is off. The calendar switch alone stops only the automatic "Eventi" calendar crawl (after a FIN change and the daily one).
+- `ADMIN2_AUTOMATION=0` in the server environment forces all four off without touching the stored switches (restart the server to apply or remove it); the switches then show off and cannot be flipped.
 - **Auto-prepare** on a board row: off stops the automatic preparation of that meeting only.
 - **Operations** (dashboard **System status** zone and the **Operations** page header): off hides the **Fix** buttons and refuses the applies; turn it back on from the same places.
 

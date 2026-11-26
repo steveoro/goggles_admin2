@@ -27,7 +27,7 @@ Each source turns local facts into `Inbox::Item`s; `Inbox::Builder` merges them:
 - 25 items shown, the rest counted per source ("N more", linking to the source's `more_path`);
 - a source that raises becomes one `failed`-band item ("Inbox source X failed: ..."), never an error page.
 
-v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift` (since 08 `Drift::InboxSource`: the last DB sync verdict, red = blocked band, amber = notice; see `docs/db_sync.md`); phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
+v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change` (0.10.103: only while the FIN alert is shown), `fin_notice` (0.10.103: one notice per FIN change acknowledged with nothing to crawl, with **Dismiss**: ops setting `fin_watch.notice_dismissed_ids`), `drift` (since 08 `Drift::InboxSource`: the last DB sync verdict, red = blocked band, amber = notice; see `docs/db_sync.md`); phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
 
 ### Adding a source (phases 06, 10)
 

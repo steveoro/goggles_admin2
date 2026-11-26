@@ -51,6 +51,9 @@ module Shell
       item(:sources, :import, 'fa-folder-open', 'sources.nav', -> { sources_results_path },
            match: %w[sources/results sources/calendars sources/manifests sources/pdfs sources/crawler sources/crawls sources/files],
            keywords: %w[pull crawler crawl calendar csv microplus ficr goandswim pdf scan manifests extract files results json]),
+      # (0.10.104: the clean-up of the redundant files, a contextual child of Sources reached from its Results tab and the board)
+      item(:sources_cleanup, :import, 'fa-broom', 'sources.cleanup.nav', -> { sources_results_path },
+           match: %w[sources/cleanups], parent: :sources, sidebar: false, keywords: %w[clean cleanup redundant duplicate tidy backup]),
       item(:data_fix, :import, 'fa-wand-magic', 'shell.nav.data_fix', -> { sources_results_path },
            match: %w[data_fix data_fix/sessions data_fix/teams data_fix/swimmers data_fix/events data_fix/results data_fix/commits
                      data_fix/commit_reports],

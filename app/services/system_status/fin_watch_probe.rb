@@ -7,8 +7,9 @@ module SystemStatus
   # FIN "Riepilogo Eventi" watcher (FedernuotoWatchJob, hourly), read inline from its local state file.
   #
   # Levels: :error the last check failed ('last_error'), with "Check now"; :warn a pending (not yet acknowledged)
-  # change, linking to the Season board, or no check for longer than FRESH_FOR (the recurring job is not running),
-  # with "Check now"; :ok checked less than FRESH_FOR ago; :unknown never checked, with "Check now".
+  # change whose alert is shown (0.10.103: FedernuotoWatch::Progress.alert_shown?, so not a change the automation found
+  # nothing actionable in), linking to the Season board, or no check for longer than FRESH_FOR (the recurring job is not
+  # running), with "Check now"; :ok checked less than FRESH_FOR ago; :unknown never checked, with "Check now".
   #
   class FINWatchProbe < Probe
     # The watcher runs every hour: a last check older than this means it is not running.
@@ -22,7 +23,7 @@ module SystemStatus
       return failed_result(state['last_error'], last_checked) if state['last_error'].present?
 
       change = state['change'].presence
-      return pending_result(change, last_checked) if change.is_a?(Hash)
+      return pending_result(change, last_checked) if change.is_a?(Hash) && alert_shown?(change, state)
       return result(:unknown, detail: detail_text(:never), action: check_action) unless last_checked
       return result(:ok, detail: detail_text(:ok, time: format_time(last_checked)), checked_at: last_checked) if last_checked >= now - FRESH_FOR
 
@@ -30,6 +31,10 @@ module SystemStatus
     end
 
     private
+
+    def alert_shown?(change, state)
+      FedernuotoWatch::Progress.alert_shown?(change, FedernuotoWatch::Progress.read(state['digest']))
+    end
 
     def failed_result(error, last_checked)
       result(:error, detail: detail_text(:failed, error: error.to_s.truncate(120)), checked_at: last_checked, action: check_action)

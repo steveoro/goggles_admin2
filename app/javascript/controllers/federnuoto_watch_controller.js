@@ -8,13 +8,15 @@ import { Controller } from '@hotwired/stimulus'
  * - connect(): the alert may be live-broadcasted (rendered outside of any user session), so its
  *   forms are rendered without CSRF tokens: this adds the current page token to each of them;
  * - dismiss(): removes the alert & acknowledges the change server-side (so that it won't be
- *   shown again on the next page loads).
+ *   shown again on the next page loads). The digest of the snapshot shown is posted with it: the server
+ *   acknowledges nothing when a newer change landed meanwhile (that one shows again on the next page load).
  *
  * == Values:
  * - ackUrl: URL for the POST acknowledge request
+ * - ackDigest: digest of the FIN page snapshot the alert shows (optional)
  */
 export default class extends Controller {
-  static values = { ackUrl: String }
+  static values = { ackUrl: String, ackDigest: String }
 
   connect() {
     const token = this.csrfToken()
@@ -37,10 +39,13 @@ export default class extends Controller {
     this.element.remove()
     if (!this.hasAckUrlValue) return
 
+    const body = new FormData()
+    if (this.hasAckDigestValue && this.ackDigestValue) body.append('digest', this.ackDigestValue)
     fetch(this.ackUrlValue, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'X-CSRF-Token': this.csrfToken() || '', Accept: 'application/json' }
+      headers: { 'X-CSRF-Token': this.csrfToken() || '', Accept: 'application/json' },
+      body
     }).catch((error) => console.error('FedernuotoWatch: acknowledge failed', error))
   }
 

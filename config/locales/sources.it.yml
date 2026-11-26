@@ -238,6 +238,10 @@ it:
         invalid_url_ficr: "l'URL deve essere una pagina risultati FICR (https://nuoto.ficr.it/#/NUO/...)"
         invalid_url_goandswim: "l'URL deve essere la pagina di un evento Go&Swim (https://risultati.goandswim.it/evento/...)"
       already_queued: "%{label} è già in coda o in corso."
+      auto_kind_refused: "rifiutato: uno scaricamento automatico può essere solo un calendario FIN (tipo %{kind})"
+      calendar_check:
+        no_file: "nessun nuovo file di calendario: la pagina FIN potrebbe essere vuota o non ancora supportata"
+        no_rows: "il nuovo calendario non ha righe di meeting (%{names})"
       queued: "%{label}: scansione in coda."
       queued_behind:
         one: "%{label}: scansione in coda, dopo 1 scansione in coda o in corso."
@@ -250,6 +254,7 @@ it:
       toast:
         done: "Scansione terminata: %{label}"
         failed: "Scansione fallita: %{label}"
+        warning: "Scansione terminata con un avviso: %{label}"
         open_file: "Apri %{name}"
         open_crawler: "Apri la scheda crawler"
         close: "Chiudi"
@@ -302,6 +307,7 @@ it:
   inbox:
     pipeline_rows:
       non_fin: "Sorgente non FIN preparata dalla pagina Sorgenti"
+      off_board: "FIN %{fin_event_id} · non sulla Plancia stagione (preparata dalla sua lista fuori plancia)"
   ops:
     events:
       sources:

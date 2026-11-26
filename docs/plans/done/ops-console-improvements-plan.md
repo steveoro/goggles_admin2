@@ -1,6 +1,6 @@
 # goggles_admin2: operations console improvements (round 2)
 
-**Status:** approved 2026-11-26; in progress on `feature/ops-console-improvements`. Requirements: [ops-console-improvements.md](ops-console-improvements.md).
+**Status:** done 2026-11-26 (0.10.98-0.10.104) on `feature/ops-console-improvements`. Requirements: [ops-console-improvements.md](ops-console-improvements.md).
 
 | Step | Status |
 |---|---|
@@ -10,9 +10,9 @@
 | 3 status pills | done (0.10.100) |
 | 4 switches and filter | done (0.10.101) |
 | 5 link adoption | done (0.10.102) |
-| 6 calendar automation | planned |
-| 7 clean-up | planned |
-| 8 docs | planned |
+| 6 calendar automation | done (0.10.103) |
+| 7 clean-up | done (0.10.104) |
+| 8 docs | done |
 
 ## Context
 

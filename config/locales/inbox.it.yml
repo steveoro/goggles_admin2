@@ -18,6 +18,7 @@ it:
       unmatched_sources: "file senza id FIN"
       data_fix_sessions: "sessioni Data-Fix"
       fin_change: "calendario FIN"
+      fin_notice: "note sul calendario FIN"
       drift: "sync DB"
     builder:
       source_failed: "La sorgente '%{source}' non ha funzionato: %{error}"
@@ -49,6 +50,8 @@ it:
         extract_lost: "Estrazione del manifesto persa (non più in coda): %{name}"
         prepare_lost: "Preparazione persa (non più in coda): %{name}"
         prepare_stuck: "Preparazione apparentemente bloccata: %{name}"
+      calendar:
+        failed: "Scaricamento automatico fallito: %{label}"
       job_title: "Job fallito: %{job}"
       retry: "Riprova"
       discard: "Scarta"
@@ -100,6 +103,23 @@ it:
         zero: "La pagina del calendario FIN è cambiata"
         one: "Calendario FIN cambiato (1 riga)"
         other: "Calendario FIN cambiato (%{count} righe)"
+      open_board: "Apri la plancia"
+      progress: "%{done} dei %{total} meeting modificati con un link sono già nella pipeline: l'avviso si chiude da solo dopo l'ultimo."
+    fin_notice:
+      title: "Calendario FIN: %{parts}"
+      removed:
+        one: "1 meeting rimosso"
+        other: "%{count} meeting rimossi"
+      without_link:
+        one: "1 meeting nuovo o modificato senza link"
+        other: "%{count} meeting nuovi o modificati senza link"
+      results_in_review:
+        one: "1 meeting con i risultati pubblicati mentre è in revisione (scaricalo di nuovo a mano se serve)"
+        other: "%{count} meeting con i risultati pubblicati mentre sono in revisione (scaricali di nuovo a mano se serve)"
+      text_only: "cambiato il testo della pagina, nessuna riga di meeting"
+      detail: "Niente da scaricare: %{names}"
+      detail_text_only: "Niente da scaricare: è cambiato solo il testo della pagina."
+      dismiss: "Ignora"
       open_board: "Apri la plancia"
     drift:
       red_title: "Sync DB rosso: il DB locale non rispecchia più la produzione (i commit della Fase 6 sono rifiutati)"

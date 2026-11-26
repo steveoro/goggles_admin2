@@ -149,10 +149,15 @@ module SeasonBoard
       lt2, lt4 = %i[lt2 lt4].map { |role| facts.find { |f| f[:role] == role } || {} }
       Source.new(
         base:, lt2_path: lt2[:path], lt4_path: lt4[:path],
-        has_results: facts.any? { |f| f[:has_results] }, meeting_only: lt4.fetch(:meeting_only, false),
+        has_results: facts.any? { |f| f[:has_results] }, meeting_only: lt4.fetch(:meeting_only, false), **probe_flags(facts),
         phase: phases.keys.max, phase_paths: phases.sort.to_h,
         mtime: [lt2[:path], lt4[:path], *phases.values].compact.map { |path| File.mtime(path) }.max
       )
+    end
+
+    # (0.10.104) The clean-up facts of a source: any file unparsable / written by the PDF scan (SourceProbe).
+    def probe_flags(facts)
+      { unparsable: facts.any? { |f| f[:unparsable] }, pdf_derived: facts.any? { |f| f[:pdf_derived] } }
     end
 
     # Returns the facts of the LT2 & LT4 files of a base in a folder (LT2 first).

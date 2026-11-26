@@ -9,12 +9,15 @@ module DataFix
   #
   # - :enabled      ('automation.enabled', master): automatic crawls, extractions and prepares;
   # - :auto_extract ('automation.auto_extract'): unattended manifest extraction (LLM engine);
-  # - :auto_prepare ('automation.auto_prepare'): unattended Data-Fix prepares (phases 1-5, never a commit).
+  # - :auto_prepare ('automation.auto_prepare'): unattended Data-Fix prepares (phases 1-5, never a commit);
+  # - :auto_calendar ('automation.auto_calendar', 0.10.103): the unattended crawl of the FIN 'Eventi' calendar after a
+  #   FIN change and once a day (SeasonBoard::CalendarPlanner, through SeasonBoard::Scheduler.calendar_crawl!).
   #
   # Every switch defaults to on (Ops::Setting keys, values true/false). The environment variable ADMIN2_AUTOMATION=0
   # (also 'false' / 'off') forces all of them off, without touching the stored values. Without the ops DB (not
   # configured / not migrated) the master switch keeps its default (the automatic crawls work as before), while
-  # :auto_extract and :auto_prepare are off: their attempt counts, leases and run rows live in the ops DB.
+  # :auto_extract, :auto_prepare and :auto_calendar are off: their attempt counts, leases, run rows and attempt times
+  # live in the ops DB.
   #
   # Fail closed: a switch that cannot be READ (e.g. a locked ops SQLite DB, any error after one retry) counts as OFF,
   # so a stored "off" can never be read as "on" by automatic work. The operator buttons do not read the switches.
@@ -25,7 +28,7 @@ module DataFix
   #   DataFix::Automation.store!(:auto_extract, false, user_id: current_user.id)
   #
   module Automation
-    SWITCHES = %i[enabled auto_extract auto_prepare].freeze
+    SWITCHES = %i[enabled auto_extract auto_prepare auto_calendar].freeze
     KEYS = SWITCHES.index_with { |switch| "automation.#{switch}" }.freeze
     ENV_KEY = 'ADMIN2_AUTOMATION'
     ENV_OFF_VALUES = %w[0 false off no].freeze
@@ -79,7 +82,7 @@ module DataFix
       ENV_OFF_VALUES.include?(ENV.fetch(ENV_KEY, '').to_s.strip.downcase)
     end
 
-    # The three switches (Array of Switch), for the dashboard and the Season board header.
+    # The switches (Array of Switch), for the dashboard and the Season board header.
     def switches
       SWITCHES.map { |switch| Switch.new(key: switch, stored: stored(switch), effective: enabled?(switch)) }
     end

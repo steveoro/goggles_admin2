@@ -28,6 +28,13 @@
         %span.badge.text-bg-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
         = link_to(t('season_board.header.board_sql_pending_link'),
                   SeasonBoard::ActionPaths.outbox_focus_path(@board.pending_board_sql_paths.min_by { |path| File.basename(path.to_s) }))
+    -# (0.10.104: rows flagged "redundant file" / "PDF pending" lead to the Sources clean-up page, a dry run first)
+    - cleanup_rows = @board.rows.count { |row| row.flags.intersect?(%i[redundant_result_free_source manifest_pdf_pending]) }
+    - if cleanup_rows.positive?
+      %br
+      %span#season-board-cleanup{ title: t('sources.cleanup.board.tooltip') }
+        %span.badge.text-bg-secondary= t('sources.cleanup.board.rows', count: cleanup_rows)
+        = link_to(t('sources.cleanup.board.link'), sources_cleanup_path(season_id: @season.id), id: 'season-board-cleanup-link')
 
   %div{ data: { controller: 'season-board', 'season-board-interval-value': 20_000,
                 'season-board-ping-id-value': 'season-board-ping' } }

@@ -12,7 +12,9 @@ module Sources
   #   is logged under the PDF source key ('src:<sha1>', label: the file name). A PDF already queued or running under
   #   either key is skipped;
   # - #enqueue_next: the next +count+ pending PDFs (oldest name first, each one inside 'manifests/<season>' of the data
-  #   root: Sources::FileGuard) not already queued or running, at priority BATCH_PRIORITY.
+  #   root: Sources::FileGuard) not already queued or running, at priority BATCH_PRIORITY. A PDF of a FIN meeting already
+  #   linked locally is left out (0.10.104: its structure is committed, an extraction would only spend an LLM run; the
+  #   clean-up page archives it). The single-file #enqueue stays the operator's explicit choice.
   #
   class ManifestQueue
     # Priority of the "next 20" batch (the board crawls, priority 0, go first on the serial 'background' worker).
@@ -37,9 +39,16 @@ module Sources
       true
     end
 
-    # Queues the next +count+ pending PDFs; returns how many were queued.
+    # Queues the next +count+ pending PDFs (never one of a linked meeting); returns how many were queued.
     def enqueue_next(count, engine: nil)
-      pending_paths.lazy.select { |path| enqueue(path, engine:, priority: BATCH_PRIORITY) }.first(count).size
+      pending_paths.lazy.reject { |path| linked_meeting?(path) }
+                   .select { |path| enqueue(path, engine:, priority: BATCH_PRIORITY) }.first(count).size
+    end
+
+    # True when the PDF belongs to a FIN calendar row whose meeting is linked locally (SeasonBoard::DbIndex).
+    def linked_meeting?(pdf_path)
+      fin_event_id = disk_index.fin_event_id_for_base(SeasonBoard::RedundantFiles.manifest_base(pdf_path))
+      fin_event_id.present? && (db_index.calendar_for(fin_event_id)&.linked? || false)
     end
 
     private
@@ -62,6 +71,10 @@ module Sources
 
     def disk_index
       @disk_index ||= SeasonBoard::DiskIndex.new(season_id: @season_id, data_dir: @data_root)
+    end
+
+    def db_index
+      @db_index ||= SeasonBoard::DbIndex.new(season_id: @season_id)
     end
   end
 end

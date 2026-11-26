@@ -1,0 +1,141 @@
+it:
+  sources:
+    manifests:
+      badges:
+        linked: "meeting collegato"
+        linked_tooltip: "Il meeting è già collegato in locale: nessuna estrazione necessaria (escluso da \"Estrai i prossimi\"; la pagina di pulizia lo archivia)"
+    cleanup:
+      nav: "Pulizia dei file ridondanti"
+      title: "Pulizia dei file ridondanti"
+      subtitle: "Stagione %{season}: quello che una scansione del calendario ha lasciato e che non serve più"
+      back: "Torna a Sorgenti"
+      link:
+        one: "Pulisci i file ridondanti (1)"
+        other: "Pulisci i file ridondanti (%{count})"
+      link_none: "Pulisci i file ridondanti"
+      link_tooltip: "Mostra prima l'elenco: nulla si sposta finché non confermi"
+      board:
+        rows:
+          one: "1 riga con file ridondanti"
+          other: "%{count} righe con file ridondanti"
+        link: "Pulisci (prima l'elenco)"
+        tooltip: "Righe con \"file ridondante\" o \"PDF in attesa\": la pagina di pulizia di Sorgenti elenca cosa si sposterebbe, nulla si sposta prima della tua conferma"
+      intro:
+        nothing_deleted: "Nulla viene cancellato: ogni file viene spostato, e puoi rimetterlo a posto."
+        results: "I file di risultati non più necessari vanno in %{folder} (una cartella nuova per ogni pulizia)."
+        manifests: "I PDF di manifesto dei meeting già collegati vanno in %{folder}, come dopo un'estrazione."
+        calendars: "I vecchi file di calendario vanno in %{folder}."
+        duplicates: "Un file già presente a destinazione con lo stesso contenuto va invece in %{folder}; con un contenuto diverso resta dov'è."
+        undo_title: "Per annullare:"
+        undo: "rimetti i file al loro posto: da results.backup/%{season}/cleanup-<ora>/ a results.new/%{season}/, da manifests.done/%{season}/ a manifests/%{season}/, da calendar.done/%{season}/ a calendar.new/%{season}/. Il file %{file} nella cartella della pulizia elenca ogni spostamento."
+        automatic: "Dopo ogni scansione la stessa regola gira da sola sui file appena scritti da quella scansione (una scansione senza risultati di un meeting già collegato); la cartella dei calendari viene riordinata dopo ogni scansione del calendario. Questa pagina si occupa di quello che è già su disco."
+      no_ops: "Il DB ops non è disponibile: la pulizia non può verificare cosa è in uso, quindi è disattivata."
+      blocked: "La pulizia è in pausa: %{reason}. Ricarica la pagina quando ha finito."
+      moves:
+        title:
+          one: "Da spostare (1 file)"
+          other: "Da spostare (%{count} file)"
+        empty: "Nulla da pulire per la stagione %{season}."
+      apply:
+        button:
+          one: "Sposta 1 file"
+          other: "Sposta %{count} file"
+        confirm:
+          one: "Spostare 1 file come elencato? Nulla viene cancellato."
+          other: "Spostare %{count} file come elencato? Nulla viene cancellato."
+      table:
+        file: "File"
+        rule: "Perché"
+        age: "Età"
+        destination: "Va in"
+        companion: "con %{file}"
+        duplicate: "(lo stesso file è già lì)"
+      actions:
+        move: "sposta"
+        archive: "archivia"
+        list_only: "solo elencato"
+      rules:
+        result_free_source: "scansione senza risultati di un meeting già collegato (nessuna copia di lavoro, nessun passo)"
+        pending_manifest: "PDF di manifesto di un meeting già collegato"
+        calendar_superseded: "file di calendario più vecchio (ne esiste uno più recente dello stesso tipo)"
+        calendar_selection: "selezione di meeting la cui scansione è finita"
+        calendar_leftover: "righe saltate da una scansione del calendario"
+        duplicate_bases: "più scansioni per lo stesso meeting"
+        result_pdf: "PDF dei risultati"
+      listed:
+        title:
+          one: "Solo elencati (1)"
+          other: "Solo elencati (%{count})"
+        why: "La pulizia non sposta mai questi file: solo tu puoi dire quale scansione di un meeting tenere, o se un PDF dei risultati serve ancora. Usa la scheda File se vuoi spostarli."
+        duplicate_bases:
+          one: "Più scansioni per un meeting (1 file)"
+          other: "Più scansioni per un meeting (%{count} file)"
+        result_pdf:
+          one: "PDF dei risultati (1)"
+          other: "PDF dei risultati (%{count})"
+      kept:
+        title:
+          one: "Lasciati (1)"
+          other: "Lasciati (%{count})"
+        why: "Una regola sceglierebbe questi file, ma restano dove sono per il motivo indicato."
+        show:
+          one: "Mostra il file lasciato"
+          other: "Mostra i %{count} file lasciati"
+      reasons:
+        ops_unavailable: "il DB ops non è disponibile"
+        activity_unreadable: "il registro delle attività in background non è leggibile"
+        crawler_busy: "il crawler sta eseguendo una scansione"
+        crawl_busy: "una scansione è in coda o in corso"
+        outside: "fuori da crawler/data"
+        missing: "file non trovato"
+        blank: "nessun file"
+        not_a_file: "non è un file"
+        sql_file: "script SQL (lo segue la Outbox)"
+        archive_folder: "cartella di archivio o di backup"
+        not_cleanable: "non è in una cartella su cui lavora la pulizia"
+        file_policy: "in sola lettura per il gestore dei file"
+        symlink: "collegamento simbolico"
+        phase_file: "file di un passo Data-Fix"
+        lt4_working_copy: "il meeting ha una copia di lavoro LT4"
+        backup_copy: "copia di backup di una sorgente"
+        commit_log: "log del commit"
+        phase_files: "il meeting ha file dei passi Data-Fix"
+        in_review: "la sorgente è in revisione"
+        edited: "la sorgente contiene tue modifiche"
+        leased: "una preparazione sta usando la sorgente"
+        prepare_busy: "una preparazione, un'estrazione o un commit è in coda o in corso"
+        busy_activity: "una sua scansione, estrazione o preparazione è in coda o in corso"
+        unlinked_meeting: "il meeting non è ancora collegato: il PDF serve ancora per l'estrazione"
+        too_recent: "modificato meno di 10 minuti fa"
+        name_collision: "a destinazione c'è già un file diverso con lo stesso nome"
+        unreadable_json: "JSON illeggibile (troncato o scritto a metà: può contenere risultati)"
+        pdf_derived: "scritto dalla scansione del PDF"
+        modified_after_crawl: "modificato dopo la scansione (una modifica?)"
+        cleanup_running: "è in corso una pulizia di questa stagione"
+        apply_running: "è già in corso un'altra pulizia di questa stagione: riprova quando ha finito"
+        exists: "a destinazione è comparso un file con quel nome"
+        digest_mismatch: "i file sono cambiati da quando l'elenco è stato mostrato: controlla il nuovo elenco"
+        nothing_to_move: "non c'è nulla da spostare"
+      flash:
+        done: "Pulizia fatta: %{moved} file spostati, %{skipped} lasciati. Cartella: %{folder}"
+        failed: "Pulizia interrotta da un errore (%{error}): %{moved} file spostati prima, %{skipped} lasciati. Cartella: %{folder}"
+        refused: "Pulizia non applicata: %{reason}."
+      crawl_summary:
+        prefix: "Pulizia: %{parts}."
+        moved:
+          one: "1 file di risultati ridondante spostato in %{folder}"
+          other: "%{count} file di risultati ridondanti spostati in %{folder}"
+        archived:
+          one: "1 file di manifesto archiviato"
+          other: "%{count} file di manifesto archiviati"
+        calendar:
+          one: "1 file di calendario spostato in calendar.done"
+          other: "%{count} file di calendario spostati in calendar.done"
+        skipped:
+          one: "1 lasciato"
+          other: "%{count} lasciati"
+        refused: "Pulizia saltata: %{reason}."
+  ops:
+    events:
+      sources:
+        cleanup_applied: "File ridondanti ripuliti"

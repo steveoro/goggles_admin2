@@ -49,6 +49,9 @@ en:
       auto_prepare:
         label: 'Auto-prepare (Data-Fix steps 1-5)'
         help: 'Unattended Data-Fix preparation up to "ready to commit" or "needs review". It never commits and never pushes.'
+      auto_calendar:
+        label: "Auto-crawl the FIN 'Eventi' calendar"
+        help: 'Crawls the FIN "Eventi" calendar by itself after a FIN change (at most once every 6 hours while the change is pending) and once a day, so the meetings without a link can take theirs from it. Off: only the Crawl button of Sources › Crawler does it.'
     worker_mode:
       puma: 'Jobs run inside Puma (default).'
       separate: 'Jobs run in a separate bin/jobs process (SOLID_QUEUE_IN_PUMA=false).'

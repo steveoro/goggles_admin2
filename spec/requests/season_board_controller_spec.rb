@@ -126,6 +126,28 @@ RSpec.describe SeasonBoardController do
         end
       end
 
+      context 'with a pending source whose FIN id is on no board row (0.10.103)' do
+        let(:data_dir) { Dir.mktmpdir('board-off-board') }
+        let(:result) do
+          dir = File.join(data_dir, 'results.new', season.id.to_s)
+          FileUtils.mkdir_p(dir)
+          File.write(File.join(dir, 'eventi-only.json'),
+                     { 'layoutType' => 2, 'sections' => [], 'meetingURL' => 'https://www.federnuoto.it/x.html#/risultati/150700:eventi-only.html' }.to_json)
+          entries = SeasonBoard::DiskIndex.new(season_id: season.id, data_dir:).entries.values
+          SeasonBoard::Builder::Result.new(season:, rows:, orphans:, unmatched_sources: [], snapshot_checked_at: nil, warnings: [],
+                                           active_activities: [], off_board_sources: entries)
+        end
+
+        after(:each) { FileUtils.rm_rf(data_dir) }
+
+        it 'lists it under the board with its actions (no board warning any more)' do
+          line = page.at_css('#season-board-off-board li[data-off-board-fin-event-id="150700"]')
+          expect(line.text).to include('FIN 150700', 'eventi-only')
+          expect(line.at_css('form[action="/sources/prepare"] input[name="authenticity_token"]')).to be_present
+          expect(page.at_css('#season-board-warnings')).to be_nil
+        end
+      end
+
       it 'renders the right action control for each state' do
         crawl_form = page.at_css('#season-board-row-1 form[action="/season_board/crawl"]')
         expect(crawl_form.at_css('input[name=fin_event_id]')['value']).to eq('1')

@@ -5,7 +5,7 @@ module SeasonBoard
   # = SeasonBoard::Scheduler
   #
   # Single entry point for enqueuing the Season board background work (manual buttons,
-  # CrawlPlanner, PipelinePlanner & SeasonRecheckJob), so that every request is recorded as 'queued'
+  # CrawlPlanner, CalendarPlanner, PipelinePlanner & SeasonRecheckJob), so that every request is recorded as 'queued'
   # (ActivityLog, plus an Ops::PipelineRun row for the automatic extractions and every prepare) before
   # the job is enqueued and a second request for the same FIN id / source is refused while the first one
   # is still queued or running.
@@ -22,14 +22,46 @@ module SeasonBoard
     # Prepare modes of DataFixPrepareJob.
     PREPARE_MODES = %w[prepare rebuild_stale refresh_new_entities].freeze
 
+    # Job priorities on the serial 'background' worker (lower first, 0.10.103): the operator's work goes first, the board
+    # buttons (0, the jobs' default) then the Sources crawls and the "Extract next 20" batch (10); then the automatic
+    # 'Eventi' calendar crawl (AUTO_CALENDAR_PRIORITY: the links it brings let the next planner pass crawl the meetings
+    # without one) and last the automatic meeting crawls and manifest extractions (AUTO_PRIORITY). So a crawl the
+    # operator asks for never waits behind the automatic queue, only behind the job running now.
+    AUTO_CALENDAR_PRIORITY = 15
+    AUTO_PRIORITY = 20
+
     # Enqueues a MeetingCrawlJob for the FIN results URL.
-    # - origin: :manual (board button) or :auto (watcher / daily re-check)
+    # - origin: :manual (board button, priority 0) or :auto (watcher / daily re-check, AUTO_PRIORITY)
     def self.crawl!(season_id:, fin_event_id:, url:, origin:) # rubocop:disable Naming/PredicateMethod
       log = ActivityLog.new
       return false if log.busy?(fin_event_id, kind: :crawl)
 
+      auto = origin.to_s == 'auto'
       record_and_enqueue(log, fin_event_id, season_id:, kind: :crawl, origin:, url:) do
-        MeetingCrawlJob.perform_later(season_id:, fin_event_id: fin_event_id.to_s, url:, origin: origin.to_s)
+        (auto ? MeetingCrawlJob.set(priority: AUTO_PRIORITY) : MeetingCrawlJob).perform_later(season_id:, fin_event_id: fin_event_id.to_s, url:, origin: origin.to_s)
+      end
+      true
+    end
+
+    # Enqueues a SourceCrawlJob of the season's default FIN 'Eventi' calendar (Sources::CrawlRequest.eventi_calendar:
+    # the request of the crawler tab's FIN calendar form left on its defaults, same ActivityLog key, so a manual and an
+    # automatic crawl never run twice). 0.10.103.
+    # - origin: :auto (SeasonBoard::CalendarPlanner: after a FIN change, and the daily one) or :manual.
+    # Returns false (doing nothing) while that crawl is queued or running or when the request is invalid (e.g. a season
+    # unknown to the local DB), true once enqueued. The job refuses an automatic run with the 'auto_calendar' switch off.
+    # Never names the 'calendar_results' kind (processing a whole calendar stays an operator click).
+    def self.calendar_crawl!(season:, origin:) # rubocop:disable Naming/PredicateMethod
+      request = Sources::CrawlRequest.eventi_calendar(season)
+      return false unless request.valid?
+
+      log = ActivityLog.new
+      return false if log.busy?(request.key, kind: :crawl)
+
+      auto = origin.to_s == 'auto'
+      args = request.to_job_args.merge(key: request.key, label: request.label, origin: auto ? 'auto' : 'operator')
+      record_and_enqueue(log, request.key, season_id: season.id, kind: :crawl, origin: auto ? :auto : :manual, url: request.target,
+                                           label: request.label) do
+        (auto ? SourceCrawlJob.set(priority: AUTO_CALENDAR_PRIORITY) : SourceCrawlJob).perform_later(**args)
       end
       true
     end
@@ -41,7 +73,8 @@ module SeasonBoard
     #   it is refused without the ops DB.
     # - pdf_path: the pending PDF (required for :auto, to key the run row; when given, a Sources extraction of the
     #   same PDF, logged under its 'src:' key, also refuses the request);
-    # - priority: optional job priority (phase 15: the Sources "Extract next 20" batch uses 10).
+    # - priority: optional job priority (phase 15: the Sources "Extract next 20" batch uses 10; an automatic extraction
+    #   defaults to AUTO_PRIORITY, 0.10.103).
     # rubocop:disable-next Naming/PredicateMethod, Metrics/ParameterLists
     def self.extract!(season_id:, fin_event_id:, engine: nil, origin: :manual, pdf_path: nil, priority: nil)
       log = ActivityLog.new
@@ -49,6 +82,7 @@ module SeasonBoard
 
       run = nil
       if origin.to_s == 'auto'
+        priority ||= AUTO_PRIORITY
         run = create_run(kind: 'extract', subject_key: File.basename(pdf_path.to_s), origin: 'auto', message: pdf_path.to_s)
         return false unless run
       end
@@ -141,8 +175,9 @@ module SeasonBoard
     private_class_method :create_run
 
     # (a prepare entry keeps the id of its run: SeasonBoard::ActivityReconciler closes it from the run when the job could not)
-    def self.record_and_enqueue(log, fin_event_id, season_id:, kind:, origin:, url: nil, run: nil) # rubocop:disable Metrics/ParameterLists
-      log.queue!(fin_event_id, kind:, origin:, url:, run_id: (run.id if kind == :prepare && run)) if fin_event_id
+    # (+label+: shown instead of the key by the activity strip, for a Sources key such as the calendar crawl's)
+    def self.record_and_enqueue(log, fin_event_id, season_id:, kind:, origin:, url: nil, run: nil, label: nil) # rubocop:disable Metrics/ParameterLists
+      log.queue!(fin_event_id, kind:, origin:, url:, label:, run_id: (run.id if kind == :prepare && run)) if fin_event_id
       begin
         yield
       rescue StandardError => e

@@ -16,7 +16,8 @@ module Inbox
     #
     # 0.10.102: the summary's +off_board_sources+ (pending files whose FIN id is on no board row: a meeting only on the
     # 'Eventi' calendar, or an adopted link no longer taken) get the same items with their own titles, keyed
-    # 'off_board:<fin_event_id>:<base>', so their pending work never vanishes from the dashboard.
+    # 'off_board:<fin_event_id>:<base>', so their pending work never vanishes from the dashboard (0.10.103: one prepared
+    # from the board's off-board list is left to the pipeline sources, as an unmatched one).
     #
     # Key: 'unmatched:<base>' (and 'off_board:<fin_event_id>:<base>').
     #
@@ -30,7 +31,7 @@ module Inbox
         return [] unless summary
 
         summary.unmatched_sources.filter_map { |source| item_for(source, summary, context) unless source.pipeline_state } +
-          off_board_sources(summary).filter_map { |source| item_for(source, summary, context) }
+          off_board_sources(summary).filter_map { |source| item_for(source, summary, context) unless source.pipeline_state }
       end
 
       private

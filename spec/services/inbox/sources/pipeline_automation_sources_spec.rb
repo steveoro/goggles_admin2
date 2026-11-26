@@ -147,6 +147,15 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
       expect(item.action.path).to start_with('/data_fix/review_teams?').and include('filter_state=review')
     end
 
+    it 'ReadyToCommit also lists an off-board FIN source prepared from the board list (0.10.103), not UnmatchedSources' do
+      payload = board_summary.payload.merge('off_board_sources' => [unmatched('eventi-only', :ready_to_commit).merge('fin_event_id' => '150700')])
+      summary = SeasonBoard::Snapshot::Summary.from_payload(payload, stored: true, taken_at: Time.current)
+      off_board = inbox_context(board_snapshot: summary)
+      item = Inbox::Sources::ReadyToCommit.new.items(off_board).sole
+      expect(item).to have_attributes(key: 'off_board:150700:eventi-only:commit', detail: I18n.t('inbox.pipeline_rows.off_board', fin_event_id: '150700'))
+      expect(Inbox::Sources::UnmatchedSources.new.items(off_board)).to eq([])
+    end
+
     it 'PrepareFailed retries through the Sources "Prepare" (a POST, never a commit)' do
       item = Inbox::Sources::PrepareFailed.new.items(context).sole
       expect(item).to have_attributes(band: :failed, title: 'goandswim-x: Preparation failed at step 3: boom')

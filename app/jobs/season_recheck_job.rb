@@ -19,6 +19,10 @@
 # 0.10.102: a row whose link is adopted from the FIN 'Eventi' calendar (flag :link_adopted) is skipped once its crawls
 # failed SeasonBoard::CrawlFailures::MAX_ADOPTED_FAILURES times in a row (or the count can't be read): then only the
 # operator's Crawl button, or the link published later on the 'Riepilogo Eventi' page, crawls it again.
+# 0.10.103: first asks for the daily crawl of the FIN 'Eventi' calendar (SeasonBoard::CalendarPlanner#call_daily, switch
+# 'auto_calendar': links appear there with no change on the watched page, and an adoption needs a calendar file at most
+# 14 days old); a row FIN removed from the page (flag :removed_from_fin) is never crawled; at most what
+# SeasonBoard::CrawlBudget leaves (15 automatic crawls queued or running at any time) is queued.
 #
 class SeasonRecheckJob < ApplicationJob
   queue_as :background
@@ -35,11 +39,21 @@ class SeasonRecheckJob < ApplicationJob
     return [] unless season
 
     activity_log = SeasonBoard::ActivityLog.new
+    queue_daily_calendar(season, activity_log)
     rows = SeasonBoard::Snapshot.build!(season, builder: SeasonBoard::Builder.new(season:, activity_log:)).rows
-    candidates(rows, activity_log).first(MAX_CRAWLS_PER_RUN).select { |row| enqueue_crawl(season, row) }.map(&:fin_event_id)
+    limit = [MAX_CRAWLS_PER_RUN, SeasonBoard::CrawlBudget.remaining(activity_log.reload!)].min
+    candidates(rows, activity_log).first(limit).select { |row| enqueue_crawl(season, row) }.map(&:fin_event_id)
   end
 
   private
+
+  # The daily 'Eventi' calendar crawl (never raises).
+  def queue_daily_calendar(season, activity_log)
+    outcome = SeasonBoard::CalendarPlanner.new(season:, activity_log:).call_daily
+    Rails.logger.info("[SeasonRecheckJob] daily FIN 'Eventi' calendar crawl: #{outcome}")
+  rescue StandardError => e
+    Rails.logger.error("[SeasonRecheckJob] daily calendar crawl not queued: #{e.class}: #{e.message}")
+  end
 
   def enqueue_crawl(season, row)
     SeasonBoard::Scheduler.crawl!(season_id: season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)
@@ -56,7 +70,7 @@ class SeasonRecheckJob < ApplicationJob
   end
 
   def skipped?(row, activity_log)
-    row.busy? || recently_crawled?(row, activity_log) || adopted_given_up?(row)
+    row.busy? || row.flag?(:removed_from_fin) || recently_crawled?(row, activity_log) || adopted_given_up?(row)
   end
 
   # An adopted row whose last crawls kept failing (SeasonBoard::CrawlFailures, fail closed).

@@ -30,10 +30,10 @@ module SeasonBoard
       end
 
       # Pending disk entries whose FIN id is on no board row (Builder::Result#off_board_sources, 0.10.102), as the
-      # unmatched ones plus their 'fin_event_id'.
+      # unmatched ones plus their 'fin_event_id' (and, since 6, their pipeline state).
       def off_board_payload(result)
         entries = result.respond_to?(:off_board_sources) ? Array(result.off_board_sources) : []
-        entries.map { |entry| unmatched_payload(entry).merge('fin_event_id' => entry.fin_event_id) }
+        entries.map { |entry| unmatched_payload(entry, pipeline_for(result, entry)).merge('fin_event_id' => entry.fin_event_id) }
       end
 
       # Row members copied as plain values (see Snapshot::Row).
