@@ -17,7 +17,7 @@ RSpec.describe APICapabilities do
     SystemStatus::APISnapshot.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
   end
 
-  it 'reports the environment and the capabilities of an API 0.10.81 or later' do
+  it 'reports the environment and the capabilities of an API 0.10.82 or later' do
     store_status(msg: 'OK', version: '7.3', environment: 'Production', capabilities: %w[iq_batch_outcome db_fingerprint])
     caps = described_class.for("#{api_url}/")
     expect(caps.environment).to eq('production')

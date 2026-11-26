@@ -21,7 +21,7 @@ A **full** check (count + max id + max updated_at) runs every 30 minutes (`Drift
 | green | same count and max id everywhere; or the local DB is ahead while scripts are still to apply on the server ("local ahead by N scripts") |
 | amber | same max id, different count; remote-only writes since the last green check (or acknowledgement); an import-owned table updated on the server after the last applied script; local ahead with nothing left to push; a remote max id above the local one on a table the commits never insert into (e.g. `users`); a script deleted on the server; a green check older than 2 hours |
 | red | a remote max id above the local one on a table the Phase 6 commit inserts into (e.g. laps added by users: the next commit would collide); a script failed on the server (or one that was not a single transaction: it may be partially applied); failed SQL batches on the server; different schema versions |
-| unknown | no comparison: API unreachable, no or expired background JWT (sign in again), an API without the `db_fingerprint` capability (older than goggles_api 0.10.81), ops DB not ready |
+| unknown | no comparison: API unreachable, no or expired background JWT (sign in again), an API without the `db_fingerprint` capability (older than goggles_api 0.10.82), ops DB not ready |
 
 The remote UPDATEs are invisible to counts and max ids: that is why admin2's own remote writes turn the verdict amber until you **Acknowledge** them (here or on `/remote_writes`), and why a red verdict is solved by restoring a fresh production dump (phase 14), not by a quick fix.
 
@@ -53,4 +53,4 @@ A warning needs the operator's tick (the push confirmation, the board link confi
 
 ## After an API upgrade
 
-The verdict stays **unknown** until the API answers its `status` with the `db_fingerprint` capability (goggles_api 0.10.81): the status refresh (every 5 minutes) stores it, then the next check compares.
+The verdict stays **unknown** until the API answers its `status` with the `db_fingerprint` capability (goggles_api 0.10.82): the status refresh (every 5 minutes) stores it, then the next check compares.

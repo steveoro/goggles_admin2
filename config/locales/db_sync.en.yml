@@ -7,7 +7,7 @@ en:
     never: 'No DB sync check yet.'
     none: 'never'
     check_pending: 'Check queued: this page updates when it is done.'
-    capability_missing: 'This API does not offer DB fingerprints (it needs goggles_api 0.10.81 or later): the verdict stays unknown.'
+    capability_missing: 'This API does not offer DB fingerprints (it needs goggles_api 0.10.82 or later): the verdict stays unknown.'
     capability_unknown: 'The API capabilities are not known yet (no status answer stored): the verdict stays unknown until the next status check.'
     past_check: 'This is an older check.'
     local_ahead:
@@ -104,7 +104,7 @@ en:
         one: '1 SQL batch failed on the server (not pushed from this registry)'
         other: '%{count} SQL batches failed on the server (not pushed from this registry)'
       schema_mismatch: 'Schema version differs: local %{local}, remote %{remote}'
-      no_capability: 'This API does not offer DB fingerprints (needs goggles_api 0.10.81 or later)'
+      no_capability: 'This API does not offer DB fingerprints (needs goggles_api 0.10.82 or later)'
       no_credentials: 'No valid background credentials: sign in again'
       unreachable: 'API unreachable: %{remote}'
       unauthorized: 'The API rejected the background credentials (401): sign in again'

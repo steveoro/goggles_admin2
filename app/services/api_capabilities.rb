@@ -7,7 +7,7 @@
 # 'api.status:<base_url>' (SystemStatus::APISnapshot; refreshed by SystemStatus::RefreshJob every 5 minutes and by
 # the Outbox push confirmation). Never calls the network, never raises.
 #
-# The API (goggles_api 0.10.81 and later) answers <tt>GET status</tt> with
+# The API (goggles_api 0.10.82 and later) answers <tt>GET status</tt> with
 #   { "msg": "OK", "version": "...", "environment": "production",
 #     "capabilities": ["iq_batch_outcome", "iq_batch_filters", "db_fingerprint"] }
 # An older API reports neither key: #environment is nil and #supports? is always false, so every caller keeps
@@ -60,7 +60,7 @@ class APICapabilities
     capabilities.include?(name.to_s)
   end
 
-  # True when the last answer reported the capabilities at all (an API 0.10.81 or later).
+  # True when the last answer reported the capabilities at all (an API 0.10.82 or later).
   def reported?
     payload.key?('capabilities') && !payload['capabilities'].nil?
   end

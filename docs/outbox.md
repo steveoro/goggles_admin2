@@ -20,7 +20,7 @@ The files keep their conventions: `crawler/data/results.new/<folder>/NNNN-<name>
 
 ## Pushing
 
-1. **Push next**, **Push all (N)**, **Push selected** (checkboxes) or **Push this script** open the confirmation page: the ordered list, the total size, the target API URL, its environment, a fresh ping (reachability, maintenance flag, API version), the validity of your API session and the [DB sync](db_sync.md) verdict. The ping is stored as the `api.status` snapshot first: an API 0.10.81 or later reports its own environment ("reported by the API"); an older one gets the port guess, labelled "unverified".
+1. **Push next**, **Push all (N)**, **Push selected** (checkboxes) or **Push this script** open the confirmation page: the ordered list, the total size, the target API URL, its environment, a fresh ping (reachability, maintenance flag, API version), the validity of your API session and the [DB sync](db_sync.md) verdict. The ping is stored as the `api.status` snapshot first: an API 0.10.82 or later reports its own environment ("reported by the API"); an older one gets the port guess, labelled "unverified".
 2. Type the environment label only for an unverified or non-production target. When the DB sync check warns (amber, red or unknown: a push is never blocked by it, the server now stops at a colliding script and reports it), tick "I have read the DB sync warning". Confirm.
 3. The push runs as `Outbox::PushJob` on its own single-thread `outbox` worker: one script after the other, in sequence order, **stopping at the first error**.
 
@@ -61,9 +61,9 @@ Rules:
 - **in doubt**: a push was interrupted (the job died between the POST and the move). It is never re-posted automatically (an explicit-id INSERT would fail, an UPDATE-only script would apply twice): look it up in the remote import queue, then **mark sent** (with its id), **back to pending** or **discard**.
 - **discarded**: with a note; the file goes to `results.new/discarded/<folder>/`, never scanned again.
 - **missing**: the file is gone from disk; it gets its previous state back when it reappears.
-- **sent → executed_unreported**: `Outbox::RemoteStatusJob` (recurring every 2 minutes, also queued by the page) asks `GET import_queue/:id` with the stored admin JWT for every script pushed to the configured API at least 5 minutes ago; a null answer (the row was processed and deleted) means executed. With an expired JWT it changes nothing ("sign in to refresh"). This is the behaviour against an API older than 0.10.81.
+- **sent → executed_unreported**: `Outbox::RemoteStatusJob` (recurring every 2 minutes, also queued by the page) asks `GET import_queue/:id` with the stored admin JWT for every script pushed to the configured API at least 5 minutes ago; a null answer (the row was processed and deleted) means executed. With an expired JWT it changes nothing ("sign in to refresh"). This is the behaviour against an API older than 0.10.82.
 
-## Outcomes (goggles_api / goggles_main 0.10.81)
+## Outcomes (goggles_api / goggles_main 0.10.82)
 
 With an API that reports the batch outcomes (capability `iq_batch_outcome` in its `status` answer, see `APICapabilities`), the Main app runs the queued scripts in id order, stops at the first failure and keeps the rows (applied ones for 14 days). `Outbox::RemoteStatusJob` reads each `sent` script's row (`Outbox::RemoteStatus`: queued, running, applied, failed, gone):
 
@@ -119,7 +119,7 @@ bin/rails outbox:status             # counts per state, next script, last runs
 ## Dashboard and other links
 
 - The "Needs you" source in the `pending_sql` slot is `Outbox::InboxSource` (`Inbox::Registry.replace(:pending_sql, ...)`), reading `Outbox::Summary.call` (`pending`, `held`, `in_doubt`, `sent_unverified`, `oldest_pending`, `failed`): one failed-band "push failed" item (first failed script), one push item (oldest script focused), one failed-band item for pushes in doubt, one notice for held-only scripts. Without the ops DB it falls back to the disk list (`Inbox::Sources::PendingSql`).
-- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag and links a pushed batch to its Outbox entry (by remote id); with an API 0.10.81 or later also the attached file name and an excerpt of the server error (full text as tooltip). The dashboard "Import queues" counter counts the unfinished rows only (`done=false`).
+- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag and links a pushed batch to its Outbox entry (by remote id); with an API 0.10.82 or later also the attached file name and an excerpt of the server error (full text as tooltip). The dashboard "Import queues" counter counts the unfinished rows only (`done=false`).
 
 ## Tables (ops DB)
 
