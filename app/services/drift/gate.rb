@@ -5,7 +5,7 @@ module Drift
   # = Drift::Gate
   #
   # The DB sync gate run before an action that writes the local DB or sends SQL to the server
-  # (contract: docs/plans/contracts.md, "Drift and restore"; docs/db_sync.md).
+  # (contract: docs/plans/done/00-ops-console-masterplan-contracts.md, "Drift and restore"; docs/db_sync.md).
   #
   # == Usage
   #   result = Drift::Gate.check(scope: :push, acknowledged: params[:drift_ack] == '1')
