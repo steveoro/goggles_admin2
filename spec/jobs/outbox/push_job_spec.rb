@@ -33,6 +33,25 @@ RSpec.describe Outbox::PushJob do
     expect(run.error).to include('boom')
   end
 
+  # The dashboard counter of the import queues counts the rows still to process: a push adds rows on the server.
+  it 'refreshes the dashboard counters after the run, also when the run stops on an error' do
+    run = Ops::PushRun.create!(user_id: 1, script_ids: [], status: 'running', started_at: Time.current)
+    allow(Outbox::Pusher).to receive(:new).and_return(instance_double(Outbox::Pusher, call: nil))
+    expect { described_class.perform_now(run.id) }.to have_enqueued_job(KpiRefreshJob)
+
+    stopped = Ops::PushRun.create!(user_id: 1, script_ids: [], status: 'running', started_at: Time.current)
+    allow(Outbox::Pusher).to receive(:new).and_raise(RuntimeError, 'boom')
+    expect { described_class.perform_now(stopped.id) }.to have_enqueued_job(KpiRefreshJob)
+  end
+
+  it 'never fails the run because the counters refresh cannot be enqueued' do
+    run = Ops::PushRun.create!(user_id: 1, script_ids: [], status: 'running', started_at: Time.current)
+    allow(Outbox::Pusher).to receive(:new).and_return(instance_double(Outbox::Pusher, call: nil))
+    allow(KpiRefreshJob).to receive(:perform_later).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
+    expect { described_class.perform_now(run.id) }.not_to raise_error
+    expect(run.reload.status).to eq('running') # (the stubbed Pusher left it as it was: no 'stopped' from the refresh)
+  end
+
   it 'does nothing for a run that is not running' do
     run = Ops::PushRun.create!(user_id: 1, script_ids: [], status: 'finished', started_at: Time.current)
     allow(Outbox::Pusher).to receive(:new)

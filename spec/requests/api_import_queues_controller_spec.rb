@@ -56,6 +56,66 @@ RSpec.describe APIImportQueuesController do
       end
     end
 
+    context 'with a logged-in user filtering the list' do
+      include AdminSignInHelpers
+
+      before(:each) do
+        sign_in_admin(prepare_admin_user)
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: [].to_json))
+      end
+
+      def api_params
+        params = nil
+        expect(APIProxy).to have_received(:call) { |**args| params = args[:params] }
+        params
+      end
+
+      # The filters go to the API, so that they cover every row and not only the current page.
+      it 'asks the API for the rows still to process with done=NO, the applied ones with done=YES, all of them without it' do
+        get(api_import_queues_path(import_queues_grid: { done: 'NO' }))
+        expect(api_params).to include(done: false)
+      end
+
+      it 'asks for the done rows with done=YES' do
+        get(api_import_queues_path(import_queues_grid: { done: 'YES' }))
+        expect(api_params).to include(done: true)
+      end
+
+      it 'sends no done filter when none is chosen, and the SQL batch filter when chosen' do
+        get(api_import_queues_path(import_queues_grid: { batch_sql: 'YES' }))
+        expect(api_params).not_to have_key(:done)
+        expect(api_params).to include(batch_sql: true)
+      end
+    end
+
+    context 'with a logged-in user looking at SQL batch rows' do
+      include AdminSignInHelpers
+
+      # (a real micro-transaction row of the test DB: its text label parses its request data)
+      let(:micro_row) { GogglesDb::ImportQueue.where(batch_sql: false).first || FactoryBot.create(:import_queue) }
+
+      before(:each) { sign_in_admin(prepare_admin_user) }
+
+      # API 0.10.82 encoding: queued = done false + 0 runs; running = done false + runs > 0; applied = done true
+      # (the row is kept 14 days on the server); failed = done false + error_messages.
+      it 'shows the state of each SQL batch row in words, and keeps the flag of the other rows' do
+        rows = [{ 'id' => 1, 'batch_sql' => true, 'done' => false, 'process_runs' => 0 },
+                { 'id' => 2, 'batch_sql' => true, 'done' => false, 'process_runs' => 1 },
+                { 'id' => 3, 'batch_sql' => true, 'done' => true, 'process_runs' => 1 },
+                { 'id' => 4, 'batch_sql' => true, 'done' => false, 'process_runs' => 1, 'error_messages' => 'ERROR 1062' },
+                micro_row.as_json]
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: rows.to_json))
+        get(api_import_queues_path)
+        cells = response.parsed_body.css('table.datagrid-table tbody td[data-column="state_flag"]')
+        states = cells.first(4).map { |cell| cell.at_css('[data-batch-state]')&.[]('data-batch-state') }
+        expect(states).to eq(%w[queued running applied failed])
+        expect(cells[2].at_css('[data-batch-state]').text.strip).to eq(I18n.t('grids.import_queues.batch_states.applied'))
+        expect(cells[2].at_css('[data-batch-state]')['title']).to eq(I18n.t('grids.import_queues.batch_states.applied_tooltip'))
+        expect(cells[4].at_css('[data-batch-state]')).to be_nil
+        expect(cells[4].text.strip).to eq(GogglesDb::ImportQueueDecorator.new(micro_row).state_flag.to_s)
+      end
+    end
+
     it_behaves_like('an API grid index showing an API error in place', 'import_queues') do
       let(:index_path) { api_import_queues_path }
       let(:api_params) { { page: anything, per_page: anything } }

@@ -15,7 +15,7 @@ it:
       refresh: "Aggiorna contatori"
       refresh_tooltip: "Richiede di nuovo i quattro contatori all'API (con un job in background e le sue credenziali)"
       api_uses: "Uso API"
-      import_queues: "Code di import"
+      import_queues: "Code di import da elaborare"
       issues: "Segnalazioni"
       users: "Utenti"
       as_of: "Contatori aggiornati al %{time} (%{ago} fa)"

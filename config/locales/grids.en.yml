@@ -63,8 +63,18 @@ en:
       filters:
         search: "Search"
     import_queues:
+      # State of an SQL batch row (goggles_api 0.10.82 encoding; ImportQueuesGrid.batch_state)
+      batch_states:
+        queued: "queued"
+        queued_tooltip: "Waiting for the server: production processes the import queue every 3 minutes"
+        running: "running"
+        running_tooltip: "The server is running this script now"
+        applied: "applied"
+        applied_tooltip: "Applied on the server: the row is kept 14 days, then purged (it no longer counts among the rows to process)"
+        failed: "failed"
+        failed_tooltip: "The server stopped on an error: the later scripts wait until this one is retried or deleted"
       id: "Id"
-      state_flag: "State flag"
+      state_flag: "State"
       user_id: "User"
       text_label: "Text label"
       process_runs: "Process runs"

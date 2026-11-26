@@ -123,6 +123,15 @@ RSpec.describe Outbox::RemoteStatusJob do
       expect(Ops::Event.find_by(kind: 'outbox.failed').level).to eq('error')
     end
 
+    it 'refreshes the dashboard counters when an outcome changed, not when the scripts are still queued' do
+      sent_script('results.sent/262/0010-a-lt4.sql')
+      allow(APIProxy).to receive(:call).and_return(row_answer(process_runs: 1))
+      expect { described_class.perform_now }.not_to have_enqueued_job(KpiRefreshJob)
+
+      allow(APIProxy).to receive(:call).and_return(row_answer(done: true, process_runs: 1))
+      expect { described_class.perform_now }.to have_enqueued_job(KpiRefreshJob)
+    end
+
     it 'keeps a queued or running script as sent' do
       script = sent_script('results.sent/262/0010-a-lt4.sql')
       allow(APIProxy).to receive(:call).and_return(row_answer(process_runs: 1))

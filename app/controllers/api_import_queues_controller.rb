@@ -17,7 +17,7 @@ class APIImportQueuesController < ApplicationController
   def index
     result = APIProxy.call(
       method: :get, url: 'import_queues', jwt: current_user.jwt,
-      params: { page: index_params[:page], per_page: index_params[:per_page] }
+      params: { page: index_params[:page], per_page: index_params[:per_page] }.merge(api_filter_params)
     )
     render_api_index(ImportQueuesGrid, GogglesDb::ImportQueue, result, csv_name: 'iq') do |domain, parsed_response|
       ImportQueuesGrid.outbox_scripts = ImportQueuesGrid.outbox_scripts_for(domain)
@@ -113,5 +113,15 @@ class APIImportQueuesController < ApplicationController
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
     index_params_for(:import_queues_grid)
+  end
+
+  # The Yes/No filters of the grid ('done', 'batch_sql'), sent to the API (goggles_api 0.10.82 filters on both
+  # true and false) so they cover every row, not only the current page. A filter not chosen is not sent.
+  def api_filter_params
+    %i[done batch_sql].each_with_object({}) do |name, filters|
+      value = index_params[name].to_s.downcase
+      filters[name] = true if Datagrid::Filters::ExtendedBooleanFilter::TRUTH_VALUES.include?(value)
+      filters[name] = false if Datagrid::Filters::ExtendedBooleanFilter::FALSE_VALUES.include?(value)
+    end
   end
 end

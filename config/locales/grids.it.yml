@@ -63,6 +63,16 @@ it:
       filters:
         search: "Cerca"
     import_queues:
+      # Stato di una riga batch SQL (codifica di goggles_api 0.10.82; ImportQueuesGrid.batch_state)
+      batch_states:
+        queued: "in coda"
+        queued_tooltip: "In attesa del server: la produzione elabora la coda di import ogni 3 minuti"
+        running: "in esecuzione"
+        running_tooltip: "Il server sta eseguendo ora questo script"
+        applied: "applicato"
+        applied_tooltip: "Applicato sul server: la riga resta 14 giorni, poi viene eliminata (non conta più tra le righe da elaborare)"
+        failed: "fallito"
+        failed_tooltip: "Il server si è fermato su un errore: gli script successivi attendono finché questo non viene riprovato o eliminato"
       id: "Id"
       state_flag: "Stato"
       user_id: "Utente"

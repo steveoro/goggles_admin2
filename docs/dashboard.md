@@ -4,7 +4,7 @@ The landing page (`/`, `DashboardController`). It never calls the API: every rem
 
 | Zone | Frame (`GET`) | Reads |
 |---|---|---|
-| Counters | `dashboard/kpis` | `KpiRefreshJob.read(api_url)`: snapshot `kpi:<api_url>` (every 15 min, after sign-in, "Refresh counters") |
+| Counters | `dashboard/kpis` | `KpiRefreshJob.read(api_url)`: snapshot `kpi:<api_url>` (every 15 min, after sign-in, "Refresh counters", after each push run and whenever the Outbox learns a script outcome) |
 | Needs you | `dashboard/needs_you` | `Inbox::Builder` over the `Inbox::Registry` sources |
 | In progress | `dashboard/in_progress` | `SeasonBoard::ActivityLog#active`, Solid Queue running/queued jobs (`Dashboard::QueueActivity`), next scheduled runs |
 | Season progress | `dashboard/season_progress` | `SeasonBoard::Snapshot` state counts |

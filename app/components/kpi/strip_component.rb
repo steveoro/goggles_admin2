@@ -13,10 +13,12 @@ module Kpi
   # (its own fetch failed) or "no data yet" (no snapshot for this API URL).
   #
   class StripComponent < ViewComponent::Base
-    # Counter key => [label key, icon, grid route helper], in display order.
+    # Counter key => [label key, icon, grid route helper, route params], in display order.
+    # The import queues counter counts the rows still to process (KpiRefreshJob: done=false), so its tile opens the
+    # list filtered the same way (the applied SQL batch rows stay on the server 14 days).
     COUNTERS = {
       'api_uses' => ['dashboard.kpis.api_uses', 'fa-chart-line', :stats_path],
-      'import_queues' => ['dashboard.kpis.import_queues', 'fa-list-check', :api_import_queues_path],
+      'import_queues' => ['dashboard.kpis.import_queues', 'fa-list-check', :api_import_queues_path, { import_queues_grid: { done: 'NO' } }],
       'issues' => ['dashboard.kpis.issues', 'fa-bug', :api_issues_path],
       'users' => ['dashboard.kpis.users', 'fa-users', :api_users_path]
     }.freeze
@@ -39,10 +41,11 @@ module Kpi
 
     # One Kpi::TileComponent per counter.
     def tiles
-      COUNTERS.map do |key, (label_key, icon, route)|
+      COUNTERS.map do |key, (label_key, icon, route, route_params)|
         value = values[key]
         TileComponent.new(key:, label: t(label_key), icon:, value: value.is_a?(Integer) ? value : nil,
-                          fetched_at: parse_time(fetched_at[key]), state: state_for(key, value), path: @offline ? nil : helpers.public_send(route))
+                          fetched_at: parse_time(fetched_at[key]), state: state_for(key, value),
+                          path: @offline ? nil : helpers.public_send(route, **route_params.to_h))
       end
     end
 

@@ -119,7 +119,7 @@ bin/rails outbox:status             # counts per state, next script, last runs
 ## Dashboard and other links
 
 - The "Needs you" source in the `pending_sql` slot is `Outbox::InboxSource` (`Inbox::Registry.replace(:pending_sql, ...)`), reading `Outbox::Summary.call` (`pending`, `held`, `in_doubt`, `sent_unverified`, `oldest_pending`, `failed`): one failed-band "push failed" item (first failed script), one push item (oldest script focused), one failed-band item for pushes in doubt, one notice for held-only scripts. Without the ops DB it falls back to the disk list (`Inbox::Sources::PendingSql`).
-- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag and links a pushed batch to its Outbox entry (by remote id); with an API 0.10.82 or later also the attached file name and an excerpt of the server error (full text as tooltip). The dashboard "Import queues" counter counts the unfinished rows only (`done=false`).
+- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag, the state of each SQL batch row in words (queued / running / applied / failed; an applied row stays on the server 14 days), Yes/No filters on "done" and "SQL batch" applied by the API (so they cover every page), and links a pushed batch to its Outbox entry (by remote id); with an API 0.10.82 or later also the attached file name and an excerpt of the server error (full text as tooltip). The dashboard "Import queues to process" counter counts the unfinished rows only (`done=false`) and its tile opens this list filtered the same way.
 
 ## Tables (ops DB)
 

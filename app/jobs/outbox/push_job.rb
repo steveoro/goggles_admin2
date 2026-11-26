@@ -31,9 +31,19 @@ module Outbox
       @run = run
       run.update!(job_id:)
       Outbox::Pusher.new(run:).call
+    ensure
+      refresh_counters if @run
     end
 
     private
+
+    # The dashboard counter of the import queues counts the rows the server still has to process: a push adds
+    # some, so refresh it now instead of at the next 15-minute run. Never fails the push run.
+    def refresh_counters
+      KpiRefreshJob.perform_later
+    rescue StandardError => e
+      Rails.logger.warn("[Outbox::PushJob] counters refresh not enqueued: #{e.class}: #{e.message}")
+    end
 
     def record_failure(error)
       Rails.logger.error("[Outbox::PushJob] run #{@run&.id}: #{error.class}: #{error.message}")

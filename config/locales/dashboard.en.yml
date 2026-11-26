@@ -15,7 +15,7 @@ en:
       refresh: "Refresh counters"
       refresh_tooltip: "Ask the API for the four counters again (a background job, with the background credentials)"
       api_uses: "API uses"
-      import_queues: "Import queues"
+      import_queues: "Import queues to process"
       issues: "Issues"
       users: "Users"
       as_of: "Counters as of %{time} (%{ago} ago)"

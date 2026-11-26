@@ -39,12 +39,36 @@ class ImportQueuesGrid < BaseGrid
 
   decorate { |row| GogglesDb::ImportQueueDecorator.new(row) }
 
+  # (the Yes/No filters are applied by the API: APIImportQueuesController#api_filter_params)
   filter(:user_id, :integer)
-  filter(:done, :boolean)
+  filter(:done, :xboolean)
+  filter(:batch_sql, :xboolean)
+
+  # State of an SQL batch row in the goggles_api 0.10.82 encoding (nil for the other rows):
+  # failed = error_messages; applied = done (kept 14 days on the server); running = process_runs > 0; else queued.
+  def self.batch_state(row)
+    return unless row.respond_to?(:batch_sql) && row.batch_sql
+    return :failed if row.error_messages.present?
+    return :applied if row.done
+    return :running if row.process_runs.to_i.positive?
+
+    :queued
+  end
+
+  BATCH_STATE_CSS = { queued: 'text-bg-secondary', running: 'text-bg-info', applied: 'text-bg-success', failed: 'text-bg-danger' }.freeze
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
-  column(:state_flag, align: :center, html: true, mandatory: true)
+  column(:state_flag, align: :center, html: true, mandatory: true) do |asset|
+    state = ImportQueuesGrid.batch_state(asset)
+    if state
+      content_tag(:span, I18n.t("grids.import_queues.batch_states.#{state}"), class: "badge #{ImportQueuesGrid::BATCH_STATE_CSS[state]}",
+                                                                              title: I18n.t("grids.import_queues.batch_states.#{state}_tooltip"),
+                                                                              data: { batch_state: state })
+    else
+      asset.state_flag
+    end
+  end
   column(:user_id, align: :right, mandatory: true)
   column(:text_label, align: :center, html: true, mandatory: true)
   column(:process_runs, align: :right, mandatory: true)

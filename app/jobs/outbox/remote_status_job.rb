@@ -123,11 +123,22 @@ module Outbox
     def run(scripts, in_doubt, jwt)
       resolve_in_doubt(in_doubt, jwt) if in_doubt.any?
       scripts.each { |script| check_one(script, jwt) }
-      Outbox::Notifier.ping if @counts.except('checked').values.sum.positive?
+      notify_changes
       store('status' => 'ok')
     rescue Halt => e
-      Outbox::Notifier.ping if @counts.except('checked').values.sum.positive?
+      notify_changes
       store(e.payload)
+    end
+
+    # When an outcome changed: pings the Outbox pages and refreshes the dashboard counters (an applied or failed
+    # script changes the number of import queue rows still to process). Never raises.
+    def notify_changes
+      return unless @counts.except('checked').values.sum.positive?
+
+      Outbox::Notifier.ping
+      KpiRefreshJob.perform_later
+    rescue StandardError => e
+      Rails.logger.warn("[Outbox::RemoteStatusJob] counters refresh not enqueued: #{e.class}: #{e.message}")
     end
 
     def get(url, jwt, params: nil)

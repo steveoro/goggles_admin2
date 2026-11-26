@@ -34,7 +34,8 @@ RSpec.describe 'Sign-in & dashboard' do
       expect(page).to have_css('#user-menu')
       {
         '#kpi-tile-api-uses[href="/stats"]' => '11',
-        '#kpi-tile-import-queues[href="/api_import_queues"]' => '5',
+        # (the import queues counter counts the rows still to process: its tile opens the list filtered the same way)
+        '#kpi-tile-import-queues[href="/api_import_queues?import_queues_grid%5Bdone%5D=NO"]' => '5',
         '#kpi-tile-issues[href="/api_issues"]' => '0',
         '#kpi-tile-users[href="/api_users"]' => '3'
       }.each do |selector, total|
