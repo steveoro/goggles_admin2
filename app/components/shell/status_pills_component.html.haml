@@ -1,0 +1,6 @@
+- attention_results.each do |result|
+  = render(Shell::StatusPillComponent.new(result:))
+- if summary?
+  %a{ summary_attributes }
+    %i.fa-solid{ class: Shell::StatusPillComponent::LEVEL_ICON.fetch(:ok), 'aria-hidden' => 'true' }
+    %span.app-status-summary-label= summary_label

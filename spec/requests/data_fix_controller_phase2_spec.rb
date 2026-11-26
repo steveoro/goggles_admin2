@@ -184,7 +184,9 @@ RSpec.describe DataFixController do
         # Delete phase file to force rescan
         FileUtils.rm_f(phase2_file)
 
-        expect(Import::Solvers::TeamSolver).to receive(:new).with(season: anything).and_call_original # rubocop:disable RSpec/MessageSpies
+        # (the solver reports through the request's own progress sink: one op of the progress strip)
+        expect(Import::Solvers::TeamSolver).to receive(:new) # rubocop:disable RSpec/MessageSpies
+          .with(season: anything, progress: an_instance_of(Import::Progress::Cable)).and_call_original
 
         get review_teams_path(file_path: source_file, phase2_v2: 1, rescan: '1')
         # After rescan, redirects without rescan parameter to prevent cascading rescans

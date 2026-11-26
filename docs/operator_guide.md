@@ -14,7 +14,7 @@ admin2 runs only on your own computer. It works on a **local copy of the product
 6. Open the **Commit summary** and press **Commit**.
 7. Read the **Commit report**.
 8. Push the script from the **Outbox**.
-9. Confirm: the script shows **applied** and the **DB sync** pill stays green.
+9. Confirm: the script shows **applied** and the **DB sync** check stays green (no **DB sync** pill of its own in the top bar).
 
 The sections below follow the same order.
 
@@ -24,7 +24,7 @@ Open the app in the browser on your computer and sign in with your admin account
 
 If the API can't be reached (wrong URL, server down), you still get in, but in an **API-offline** session: a banner says so, and only the pages that need no API open (Dashboard, Outbox, DB sync, Settings, Remote writes). Fix the API URL in **System > Settings**, then sign in again.
 
-The top bar shows, from left to right: the API target, the **status pills** (API, crawler, jobs, live updates, FIN watcher, ops DB, DB sync; hover one to read it), a search button (**Ctrl+K**, see [Finding things](#finding-things)), the theme toggle and your user menu (language, version, log out).
+The top bar shows, from left to right: the API target, the **status pills** (API, crawler, jobs, live updates, FIN watcher, ops DB, DB sync: a single green **All OK** pill while every check is fine, otherwise one pill per check needing attention plus an **N OK** pill for the others; hover one to read it; the OK pill opens the dashboard System column), a search button (**Ctrl+K**, see [Finding things](#finding-things)), the theme toggle and your user menu (language, version, log out).
 
 ## 2. Dashboard: what needs you
 
@@ -71,6 +71,8 @@ Meetings that are not on the FIN calendar (Microplus, FICR, Go&Swim, PDF results
 
 Each step lists what it matched in the database and what is new. With the review filter on, you see only what needs a decision; **j** / **k** (or the arrows next to the counter) jump to the next and previous issue. Fix a wrong match, confirm a new team or swimmer, save. What you edit is kept: no automatic build ever overwrites a step you changed.
 
+While a step builds (opening a step not built yet, **Rescan**, **Rebuild**, **Verify all**), a thin progress strip under the top bar shows what it is doing and how far it got. It never blocks the page: it floats over the top of the page without moving it, clicks go through it, it closes by itself when the work ends (or after a minute without news), and its **×** hides it. **Rescan** (in the menu of the active step) asks for a confirmation first.
+
 **Import > Data-Fix sessions** lists every source with a review in progress (highest step, last change), with **Resume** and the purge of its staging rows.
 
 Details: [data_fix/README.md](data_fix/README.md) and [data_fix/PHASES.md](data_fix/PHASES.md).
@@ -98,7 +100,7 @@ Details, every state and action: [outbox.md](outbox.md).
 ## 9. Confirm
 
 - In the Outbox, a pushed script is **sent** ("not verified") until the server reports it: then **applied**, or **failed** with the database error (nothing after it runs on the server until you **Retry**, **Withdraw** or delete it).
-- After each push, a DB sync check runs: the **DB sync** pill should stay green.
+- After each push, a DB sync check runs: it should stay green (no **DB sync** pill of its own in the top bar).
 - The board row turns **Done** (the meeting has results) or **Structure committed** (a manifest-only meeting: its results come later, see below).
 
 A meeting first committed from its manifest (structure only) is crawled again when FIN publishes the results; it then comes back as **Results ready** and goes through the same routine.
@@ -138,7 +140,7 @@ Details: [HOWTO_prepare_new_season_at_championship_start.md](HOWTO_prepare_new_s
 
 ## DB sync and the guided restore
 
-**Data quality > DB sync** answers one question: does the local database still mirror production? Its verdict (also the **DB sync** pill):
+**Data quality > DB sync** answers one question: does the local database still mirror production? Its verdict (in the top bar a green one is part of the **All OK** pill; amber or red shows a **DB sync** pill):
 
 - **green**: fine;
 - **amber**: something to read (for example remote edits made from admin2: **Acknowledge** them once checked);

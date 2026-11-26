@@ -19,7 +19,7 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
       row('2', :needs_review, :resume_review, detail: { step: 3, count: 4, blocked: false }, name: 'Trofeo Review', file_path: '/d/262/b.json',
                                               phase: 3, filter_state: 'review'),
       row('3', :prepare_failed, :prepare, detail: { phase: 4, message: 'solver exploded' }, name: 'Trofeo Rotto', file_path: '/d/262/c.json'),
-      row('4', :ready_to_commit, :commit, name: 'Busy one', busy: true, file_path: '/d/262/d.json'),
+      row('4', :ready_to_commit, :commit, name: 'Busy one', busy: true, locked: true, file_path: '/d/262/d.json'),
       row('5', :manifest_pending, :extract_manifest, name: 'Manifest', pdf_path: '/m/262/manifest-e.pdf')
     ]
   end
@@ -27,7 +27,7 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
 
   it 'ReadyToCommit: "Ready to commit · +2 teams, +37 swimmers" opening the commit summary (never committing)' do
     items = Inbox::Sources::ReadyToCommit.new.items(context)
-    expect(items.size).to eq(1) # (the busy row is skipped)
+    expect(items.size).to eq(1) # (the locked row is skipped)
     item = items.first
     expect(item).to have_attributes(key: 'board:1:commit', kind: :ready_to_commit, band: :review, subject: hash_including(file_path: '/d/262/a.json'))
     expect(item.title).to eq('Trofeo Pronto: Ready to commit · +2 teams, +37 swimmers')
@@ -45,6 +45,27 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
     item = Inbox::Sources::PrepareFailed.new.items(context).sole
     expect(item).to have_attributes(band: :failed, title: 'Trofeo Rotto: Preparation failed at step 4: solver exploded')
     expect(item.action).to have_attributes(label: 'Retry', http_method: :post, path: '/season_board/prepare', params: { fin_event_id: '3' })
+  end
+
+  # 0.10.99: a prepare merely queued (busy, not locked) no longer hides a review / commit item; a POST (Retry) still waits.
+  it 'keeps the needs-review and ready-to-commit items of a busy row that is not locked, never a busy Retry' do
+    queued = [
+      row('6', :ready_to_commit, :commit, name: 'Queued ready', busy: true, file_path: '/d/262/f.json'),
+      row('7', :needs_review, :resume_review, detail: { step: 2, count: 1 }, name: 'Queued review', busy: true, file_path: '/d/262/g.json',
+                                              phase: 2, filter_state: 'review'),
+      row('8', :prepare_failed, :prepare, detail: { phase: 2 }, name: 'Queued retry', busy: true, file_path: '/d/262/h.json')
+    ]
+    queued_context = inbox_context(board_snapshot: board_summary(rows: queued))
+    expect(Inbox::Sources::ReadyToCommit.new.items(queued_context).map(&:key)).to eq(['board:6:commit'])
+    expect(Inbox::Sources::NeedsReview.new.items(queued_context).map(&:key)).to eq(['board:7:resume_review'])
+    expect(Inbox::Sources::PrepareFailed.new.items(queued_context)).to eq([])
+  end
+
+  it 'labels a ready-to-commit row whose checks are outdated "Checks outdated", not "step 5 · 0 issues"' do
+    outdated = row('9', :needs_review, :resume_review, detail: { step: 5, count: 0, blocked: false, outdated: true }, name: 'Trofeo Vecchio',
+                                                       file_path: '/d/262/i.json', phase: 5, filter_state: 'review')
+    item = Inbox::Sources::NeedsReview.new.items(inbox_context(board_snapshot: board_summary(rows: [outdated]))).sole
+    expect(item.title).to eq('Trofeo Vecchio: Checks outdated')
   end
 
   it 'BoardRows leaves the three pipeline states to their own sources' do
@@ -107,7 +128,8 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
                                                     unmatched('microplus-riccione', :ready_to_commit, new_teams: 1),
                                                     unmatched('ficr-brescia', :needs_review, step: 2, count: 3),
                                                     unmatched('goandswim-x', :prepare_failed, phase: 3, message: 'boom'),
-                                                    unmatched('busy-one', :preparing)
+                                                    unmatched('busy-one', :preparing),
+                                                    unmatched('queued-retry', :prepare_queued)
                                                   ]))
     end
 

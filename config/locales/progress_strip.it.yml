@@ -1,0 +1,7 @@
+it:
+  shell:
+    # Striscia di avanzamento sotto la barra superiore (Shell::ProgressStripComponent, progress_strip_controller.js):
+    progress_strip:
+      label: 'Avanzamento'
+      working: 'Elaborazione in corso...'
+      close: "Nascondi l'avanzamento"

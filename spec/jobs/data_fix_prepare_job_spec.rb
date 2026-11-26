@@ -7,6 +7,7 @@ require 'rails_helper'
 # real meeting in the DB). Everything happens under a temporary '<tmp>/results.new/242/' folder.
 RSpec.describe DataFixPrepareJob do
   include ActiveJob::TestHelper
+  include ActiveSupport::Testing::TimeHelpers
 
   let(:tmp_dir) { Dir.mktmpdir('prepare-job-') }
   let(:pipeline) { pipeline_from_fixture('clean_fin', dir: File.join(tmp_dir, 'results.new')) }
@@ -299,6 +300,129 @@ RSpec.describe DataFixPrepareJob do
     end
   end
 
+  # 0.10.99: the Scheduler passes the FIN id, and every way out of the job closes the board activity entry (before, the
+  # entry stayed 'queued' for 12 hours when the source row had no FIN id yet, or when a start guard refused the run).
+  describe 'board activity entry (closed on every exit path)' do
+    let(:fin_id) { '150091' }
+    let(:log) { SeasonBoard::ActivityLog.new }
+
+    # Queues the run and its activity entry as SeasonBoard::Scheduler.prepare! does, then performs the job.
+    # Returns [run, entry] after the run.
+    def queued_perform(origin: 'auto', source: pipeline)
+      run = FactoryBot.create(:ops_pipeline_run, kind: 'prepare', origin:, subject_key: source.base, status: 'queued')
+      log.queue!(fin_id, kind: :prepare, origin: origin == 'auto' ? :auto : :manual, run_id: run.id)
+      described_class.perform_now(source_path: source.source_path, season_id: 242, origin:, run_id: run.id, fin_event_id: fin_id)
+      [run.reload, log.reload!.entry(fin_id, :prepare)]
+    end
+
+    it 'goes queued -> running -> done, keeping the run id' do
+      seen = []
+      stub_later_phases(on_build: ->(_pipe, phase) { seen << SeasonBoard::ActivityLog.new.entry(fin_id, :prepare).status if phase == 4 })
+      run, entry = queued_perform
+      expect(seen).to eq([:running])
+      expect(entry).to have_attributes(status: :done, origin: :auto, run_id: run.id, message: run.message)
+      expect(entry).not_to be_busy
+    end
+
+    it 'uses the FIN id stored on the source row when the job carries none (a job queued before 0.10.99)' do
+      stub_later_phases
+      pipeline.source_row.update!(fin_event_id: fin_id)
+      run = FactoryBot.create(:ops_pipeline_run, kind: 'prepare', origin: 'auto', subject_key: pipeline.base, status: 'queued',
+                                                 pipeline_source: pipeline.source_row)
+      log.queue!(fin_id, kind: :prepare, origin: :auto)
+      allow(DataFix::Automation).to receive(:env_off?).and_return(true)
+      described_class.perform_now(source_path: source_path, season_id: 242, origin: 'auto', run_id: run.id)
+      expect(log.reload!.entry(fin_id, :prepare)).to have_attributes(status: :failed, message: include(I18n.t('pipeline_automation.reasons.automation_paused')))
+    end
+
+    {
+      'automation paused' => -> { allow(DataFix::Automation).to receive(:env_off?).and_return(true) },
+      'DB sync red' => lambda {
+        allow(DataFix::Guards).to receive(:check)
+          .and_return(DataFix::Guards::Result.new(level: :block, reasons: ['id collision'], verdict: nil, acknowledged: false))
+      },
+      'DB restore (guard)' => lambda {
+        allow(DataFix::Guards).to receive(:check)
+          .and_return(DataFix::Guards::Result.new(level: :block, reasons: ['restoring'], verdict: :restore, acknowledged: false))
+      },
+      'source missing' => -> { FileUtils.rm_f(source_path) },
+      'lease busy' => -> { pipeline.source_row.acquire_lease!('operator:1:abcd') },
+      'commit pending' => -> { FactoryBot.create(:ops_commit_report, source_base: pipeline.base, status: 'queued') },
+      'yield to a queued commit' => -> { FactoryBot.create(:ops_commit_report, source_base: 'another-meeting', status: 'queued') },
+      'failure' => -> { stub_later_phases(on_build: ->(_pipe, phase) { raise StandardError, 'boom' if phase == 4 }) }
+    }.each do |exit_path, arrange|
+      it "closes the entry on: #{exit_path}" do
+        stub_later_phases
+        instance_exec(&arrange)
+        run, entry = queued_perform
+        expect(run.status).to be_in(%w[refused yielded failed])
+        expect(entry.status).to eq(run.status == 'yielded' ? :done : :failed)
+        expect(entry).to have_attributes(run_id: run.id, finished_at: be_present)
+        expect(entry).not_to be_busy
+      end
+    end
+
+    it 'closes the entry on an edited source (adopted phase files, automatic run)' do
+      adopted = pipeline_from_fixture('clean_fin', dir: File.join(tmp_dir, 'adopted', 'results.new'), stamped: false)
+      stub_later_phases
+      run, entry = queued_perform(source: adopted)
+      expect(run).to have_attributes(status: 'refused', error: 'edited')
+      expect(entry).to have_attributes(status: :failed, message: include(I18n.t('pipeline_automation.reasons.edited')))
+    end
+
+    it 'closes the entry first: a failing closing step (source row, stage, event) never leaves it open' do
+      stub_later_phases(on_build: ->(_pipe, phase) { raise StandardError, 'boom' if phase == 4 })
+      allow_any_instance_of(described_class).to receive(:fail_source!).and_raise(RuntimeError, 'row gone') # rubocop:disable RSpec/AnyInstance
+      allow_any_instance_of(described_class).to receive(:record_event).and_raise(RuntimeError, 'events locked') # rubocop:disable RSpec/AnyInstance
+      run, entry = queued_perform
+      expect(run.status).to eq('failed')
+      expect(entry).to have_attributes(status: :failed, finished_at: be_present)
+    end
+
+    it 'closes the entry without the ops DB (nothing else can be recorded)' do
+      allow(Ops).to receive(:available?).and_return(false)
+      described_class.perform_now(source_path:, season_id: 242, origin: 'auto', fin_event_id: fin_id)
+      expect(log.reload!.entry(fin_id, :prepare)).to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.ops_unavailable'))
+    end
+
+    it 'closes the run (refused, db_restore) and the entry when a DB restore skips the job, touching no phase file' do
+      stub_later_phases
+      lock_with_run(status: 'loading')
+      run, entry = queued_perform
+      expect(run).to have_attributes(status: 'refused', error: 'db_restore')
+      expect(entry).to have_attributes(status: :failed, message: include(I18n.t('pipeline_automation.reasons.db_restore')))
+      expect(DataFix::Pipeline::Recipes).not_to have_received(:build)
+      expect(Ops::Event.where(kind: 'db_restore.job_skipped')).to exist
+    ensure
+      Ops::Database.reset_state!
+    end
+
+    it 'never raises when a DB restore skips a job without arguments' do
+      lock_with_run(status: 'loading')
+      expect { described_class.new.perform_now }.not_to raise_error
+    ensure
+      Ops::Database.reset_state!
+    end
+
+    # The board scenario behind the fix: the five verdicts are cached and reused while their own files are unchanged, so
+    # the verdict of step 1 is older than the step 5 file of a source prepared in one go (here: the files of steps 1-3
+    # and their verdicts are one and two hours old, steps 4-5 are built now). The board must read "ready to commit".
+    it 'ends ready_to_commit on the board after a real prepare with time-spaced phase files' do
+      stub_later_phases
+      old = 2.hours.ago
+      [source_path, *(1..3).map { |phase| pipeline.phase_path(phase) }].each { |path| File.utime(old.to_time, old.to_time, path) }
+      travel_to(1.hour.ago) { DataFix::Pipeline.for(source_path, progress: Import::Progress::Null.new, actor: :auto).summary }
+      expect(Ops::PhaseVerdict.where(pipeline_source_id: pipeline.source_row.id).minimum(:checked_at)).to be < 50.minutes.ago
+
+      run, = queued_perform
+      expect(run.status).to eq('done')
+      disk_entry = SeasonBoard::DiskIndex.new(season_id: 242, data_dir: tmp_dir).unmatched.sole
+      facts = SeasonBoard::PipelineIndex.new(season_id: 242).for_entry(disk_entry)
+      expect(facts).to have_attributes(stage: 'ready_to_commit', fresh?: true, leased?: false)
+      expect(facts.state_and_detail.first).to eq(:ready_to_commit)
+    end
+  end
+
   describe 'failures' do
     it 'never raises: a failing build closes the run as failed, with the stage and the source SHA256' do
       stub_later_phases(on_build: ->(_pipe, phase) { raise StandardError, 'solver exploded' if phase == 4 })
@@ -313,6 +437,23 @@ RSpec.describe DataFixPrepareJob do
     it 'enqueues no planner pass after a failure' do
       stub_later_phases(on_build: ->(_pipe, phase) { raise StandardError, 'boom' if phase == 4 })
       expect { perform }.not_to have_enqueued_job(PipelinePlannerJob)
+    end
+  end
+
+  describe 'progress (the run row, never the progress strip of the open pages)' do
+    it "never broadcasts on 'ImportStatusChannel', even when it builds phases 2 and 3 for real" do
+      stub_later_phases
+      FileUtils.rm_f([pipeline.phase_path(2), pipeline.phase_path(3)])
+      channels = []
+      allow(ActionCable.server).to receive(:broadcast).and_wrap_original do |original, channel, payload, **options|
+        channels << channel
+        original.call(channel, payload, **options)
+      end
+
+      expect(perform.status).to eq('done')
+      expect(DataFix::Pipeline::Recipes).to have_received(:build).with(anything, 2)
+      expect(DataFix::Pipeline::Recipes).to have_received(:build).with(anything, 3)
+      expect(channels).not_to include(Import::Progress::Cable::CHANNEL)
     end
   end
 end

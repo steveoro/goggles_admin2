@@ -99,6 +99,7 @@ it:
       prepare_failed_no_phase: 'Preparazione fallita'
       needs_review: 'Da rivedere al passo %{step}'
       blocked: 'Bloccato al passo %{step}'
+      outdated: 'Controlli da aggiornare'
       issues:
         one: '1 problema'
         other: '%{count} problemi'
@@ -121,6 +122,7 @@ it:
       prepare_queued: 'Preparazione in coda'
       prepare_running: 'In preparazione dalle %{time}'
       prepare_stuck: 'La preparazione sembra bloccata dalle %{time}'
+      lost_message: 'perso: il job non è più in coda'
       kinds:
         prepare: 'preparazione'
     strip:

@@ -3,13 +3,13 @@
 # Helpers building SeasonBoard::Snapshot::Summary objects (the board summary read by the inbox sources) from plain
 # payload rows, plus an Inbox::Context around them.
 module InboxSummaryFixtures
-  # +options+: name, busy, last_date (row attributes); any other key goes into the next action params.
+  # +options+: name, busy, locked, last_date (row attributes); any other key goes into the next action params.
   def board_row_payload(fin_event_id, state, kind = nil, **options)
-    params = options.except(:name, :busy, :last_date)
+    params = options.except(:name, :busy, :locked, :last_date)
     {
       'fin_event_id' => fin_event_id, 'name' => options.fetch(:name, "Meeting #{fin_event_id}"), 'state' => state.to_s,
       'url' => "https://fin.example/#{fin_event_id}", 'date_text' => '08/11', 'year' => '2026', 'place' => 'Roma',
-      'last_date' => options.fetch(:last_date, '2026-11-08'), 'busy' => options.fetch(:busy, false),
+      'last_date' => options.fetch(:last_date, '2026-11-08'), 'busy' => options.fetch(:busy, false), 'locked' => options.fetch(:locked, false),
       'next_action' => kind && { 'kind' => kind.to_s, 'params' => { 'fin_event_id' => fin_event_id }.merge(params.stringify_keys) }
     }
   end

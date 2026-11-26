@@ -161,6 +161,46 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       expect(page.css('form')).to be_empty
       expect(page.css('button[disabled]')).not_to be_empty
     end
+
+    # 0.10.99: "Riprendi passo N" stayed disabled while a prepare was merely queued (the Data-Fix pages refuse edits only
+    # while a job holds the source lease).
+    describe 'link actions of a busy row' do
+      def needs_review_row(**overrides)
+        build_row(state: :needs_review, state_detail: { step: 2, count: 1 }, busy: true,
+                  next_action: action(:resume_review, file_path: '/a.json', phase: 2, filter_state: 'review'),
+                  activity: { crawl: nil, extract: nil, prepare: entry(kind: :prepare, status: :queued) }, **overrides)
+      end
+
+      it 'keeps the review link enabled while a prepare is only queued, saying so in its tooltip' do
+        page = render_row(needs_review_row)
+        link = page.at_css('a.btn')
+        expect(link['href']).to start_with('/data_fix/review_teams?').and include('filter_state=review')
+        expect(link.text).to eq('Resume step 2')
+        expect(link['title']).to eq(I18n.t('season_board.actions.queued_link_tooltip'))
+        expect(page.css('button[disabled]')).to be_empty
+        expect(page.text).to include('Preparation queued')
+      end
+
+      it 'keeps the commit link enabled while busy, and both disabled while the row is locked' do
+        commit = build_row(state: :ready_to_commit, busy: true, next_action: action(:commit, file_path: '/a.json'))
+        expect(render_row(commit).at_css('a.btn')['href']).to start_with('/data_fix/commit_summary?')
+
+        [needs_review_row(locked: true), commit.with(locked: true)].each do |row|
+          page = render_row(row)
+          expect(page.css('a.btn')).to be_empty
+          button = page.at_css('button[disabled]')
+          expect(button['data-row-lock']).to eq('locked')
+          expect(button['title']).to eq(I18n.t('season_board.actions.locked_tooltip'))
+        end
+      end
+
+      it 'keeps the POST actions disabled while busy (the busy tooltip)' do
+        page = render_row(build_row(state: :prepare_failed, busy: true, next_action: action(:prepare, file_path: '/a.json')))
+        expect(page.css('form')).to be_empty
+        expect(page.at_css('button[disabled]')).to have_attributes(text: include('Retry'))
+        expect(page.at_css('button[disabled]')['data-row-lock']).to eq('busy')
+      end
+    end
   end
 
   describe 'activity badges' do

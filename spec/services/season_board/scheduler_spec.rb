@@ -80,12 +80,18 @@ RSpec.describe SeasonBoard::Scheduler do
       run = nil
       expect { run = prepare!(up_to: 1, mode: 'rebuild_stale', phases: [5]) }
         .to have_enqueued_job(DataFixPrepareJob).on_queue('pipeline')
-        .with(source_path:, season_id: 262, origin: 'auto', up_to: 1, mode: 'rebuild_stale', phases: [5], run_id: Integer)
+        .with(source_path:, season_id: 262, origin: 'auto', up_to: 1, mode: 'rebuild_stale', phases: [5], fin_event_id: fin_id, run_id: Integer)
       expect(run).to have_attributes(kind: 'prepare', origin: 'auto', status: 'queued', subject_key: 'm', message: 'rebuild_stale')
       expect(run.pipeline_source).to have_attributes(season_id: 262, base: 'm')
       expect(run.job_id).to be_present
-      expect(activity_log.entry(fin_id, :prepare)).to have_attributes(status: :queued, origin: :auto)
+      expect(activity_log.entry(fin_id, :prepare)).to have_attributes(status: :queued, origin: :auto, run_id: run.id)
       expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
+    end
+
+    it 'passes the FIN id to the job (0.10.99: the job closes the board entry itself), nil for a non-FIN source' do
+      expect { prepare! }.to have_enqueued_job(DataFixPrepareJob).with(hash_including(fin_event_id: fin_id))
+      expect { described_class.prepare!(season_id: 262, source_path: '/tmp/results.new/262/n-lt4.json', origin: :operator) }
+        .to have_enqueued_job(DataFixPrepareJob).with(hash_including(fin_event_id: nil))
     end
 
     it 'refuses a second request while the first run is queued' do

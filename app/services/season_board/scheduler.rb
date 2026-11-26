@@ -70,7 +70,8 @@ module SeasonBoard
     end
     private_class_method :source_extraction_busy?
 
-    # Enqueues a DataFixPrepareJob for the source (phases 1..up_to, never a commit).
+    # Enqueues a DataFixPrepareJob for the source (phases 1..up_to, never a commit), passing it the FIN id so that the job
+    # closes the activity entry itself, whatever the way it ends (0.10.99).
     # Refused (false) without the ops DB, while the source lease is held or a prepare run of the source is queued or
     # running, while a commit of the source is pending, and while the FIN id has a busy :prepare log entry.
     # - source_path: the source to prepare (LT2, LT4 or phase file: the job resolves the canonical working copy);
@@ -89,7 +90,8 @@ module SeasonBoard
       run = source && create_run(kind: 'prepare', subject_key: source.base, origin:, source:, message: mode.to_s)
       return false unless run
 
-      job_args = { source_path: source_path.to_s, season_id:, origin:, up_to: up_to.to_i, mode: mode.to_s, phases: phases&.map(&:to_i) }
+      job_args = { source_path: source_path.to_s, season_id:, origin:, up_to: up_to.to_i, mode: mode.to_s, phases: phases&.map(&:to_i),
+                   fin_event_id: fin_event_id.presence&.to_s }
       record_and_enqueue(log, fin_event_id.presence, season_id:, kind: :prepare, origin: origin == 'auto' ? :auto : :manual, run:) do
         enqueue_prepare(run, job_args)
       end
@@ -138,8 +140,9 @@ module SeasonBoard
     end
     private_class_method :create_run
 
+    # (a prepare entry keeps the id of its run: SeasonBoard::ActivityReconciler closes it from the run when the job could not)
     def self.record_and_enqueue(log, fin_event_id, season_id:, kind:, origin:, url: nil, run: nil) # rubocop:disable Metrics/ParameterLists
-      log.queue!(fin_event_id, kind:, origin:, url:) if fin_event_id
+      log.queue!(fin_event_id, kind:, origin:, url:, run_id: (run.id if kind == :prepare && run)) if fin_event_id
       begin
         yield
       rescue StandardError => e

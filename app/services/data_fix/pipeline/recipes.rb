@@ -18,10 +18,11 @@ module DataFix
         send(:"build_phase#{Integer(phase)}", pipeline)
       end
 
-      # Keyword passed to the solvers / populator: nothing for the default ActionCable sink (the interactive
-      # requests build exactly as before), the sink itself otherwise (jobs).
+      # Keyword passed to the solvers / populator: always the pipeline's own sink, so that one operation covers the
+      # whole build (an interactive request: its Import::Progress::Cable, one +op+ of the progress strip; a job: its
+      # Null / Ops sink).
       def progress_option(pipeline)
-        pipeline.progress.is_a?(Import::Progress::Cable) ? {} : { progress: pipeline.progress }
+        { progress: pipeline.progress }
       end
 
       def build_phase1(pipeline)
@@ -62,7 +63,8 @@ module DataFix
         )
         pipeline.progress.call('Populating phase 5...', 0, 100)
         stats = populator.populate!
-        verify = DataFix::ResultVerifier.new(source_path: pipeline.source_path, season_id: pipeline.season&.id).verify_all!
+        verify = DataFix::ResultVerifier.new(source_path: pipeline.source_path, season_id: pipeline.season&.id)
+                                        .verify_all!(progress: pipeline.progress)
         {
           notice: "Phase 5 rebuilt. Populated DB: #{stats[:mir_created]} results, #{stats[:laps_created]} laps",
           stats: stats.merge(auto_verify: verify)

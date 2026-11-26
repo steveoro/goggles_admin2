@@ -42,7 +42,7 @@ end
 
 The Phase 1 category action is implemented as a service boundary rather than controller-level JSON mutation. It validates a non-empty LT4 `swimmers` array, computes individual categories with the reviewed Phase 1 date/season, and traverses non-relay result references. `PdfResults::CategoriesCache` stores plain season-scoped snapshots in `Rails.cache`; all in-scope import callers accept an injected cache and reuse the same object when provided.
 
-Progress is emitted through `ImportStatusChannel` with `{ msg, progress, total }` for each swimmer. The source is first written to a temporary sibling, then the current working file is renamed to a never-overwritten `.orig.json`/numbered backup before the temporary file is atomically moved into place. Only after a successful replacement are Phase 3–5 JSON files and source-scoped temporary import rows deleted; Phase 1/2 remain available.
+Progress is emitted through `ImportStatusChannel` for each swimmer, with the request's progress sink (see *Progress* below). The source is first written to a temporary sibling, then the current working file is renamed to a never-overwritten `.orig.json`/numbered backup before the temporary file is atomically moved into place. Only after a successful replacement are Phase 3–5 JSON files and source-scoped temporary import rows deleted; Phase 1/2 remain available.
 
 ### 2. Hybrid Storage Strategy
 
@@ -128,8 +128,22 @@ pipeline.refresh_new_entities!           # re-resolves only the nil-id teams / s
 
 - **Recipes** (`Pipeline::Recipes`): Phase1Solver, TeamSolver, SwimmerSolver, EventSolver, Phase5Populator (+
   `DataFix::ResultVerifier`). Post-build: the Phase 2 <=> 3 harmonizer after a Phase 2 or 3 build, and after a
-  Phase 2 save. Interactive builds pass no `progress:` (ActionCable default, as before); jobs pass
-  `Import::Progress::Null` / `Import::Progress::Ops` (throttled ops row): **no job broadcasts on ImportStatusChannel**.
+  Phase 2 save. Every build passes the pipeline's own sink to the solvers and the populator (`Recipes.progress_option`):
+  an interactive request its `Import::Progress::Cable`; jobs `Import::Progress::Null` / `Import::Progress::Ops`
+  (throttled ops row): **no job broadcasts on ImportStatusChannel**.
+- **Progress** (interactive requests): `DataFix::BaseController#progress_sink` is one `Import::Progress::Cable` per
+  request (scope: the source base name), the only place creating a Cable: every `progress:` default (pipeline,
+  solvers, populator, committer) is `Import::Progress.default`, a Null sink. Each tick broadcasts
+  `{ op, seq, scope, msg, progress, total }` (`op`: one id per operation, `seq` from 1); the `finish_progress`
+  around_action sends `{ op, state: 'done' }` once the action ends (also on an exception or a rescued failure), only
+  when a tick was sent: a review GET that builds nothing broadcasts nothing. `done` closes the operation (a later
+  tick starts a new op). The long silent steps tick too (the post-build harmonizer, `ResultVerifier#verify_all!`
+  every 25 rows). The progress strip under the top bar (`Shell::ProgressStripComponent`,
+  `progress_strip_controller.js`) shows the ticks as an overlay that never moves the page and lets the clicks
+  through (except on its ×): a new `op` starts over, an older or repeated `seq` and any tick of a finished op are
+  ignored; it hides on `done`, before Turbo caches the page, and after 60 s without a message (a safety net; the
+  value lives only in `Shell::ProgressStripComponent::SILENCE_DELAY`). The layout turns off Turbo's hover prefetch
+  (`turbo-prefetch` meta): review GETs may build phases or write metadata.
 - **Edit markers** (in the phase file `_meta`, authoritative; mirrored in `Ops::PhaseVerdict#operator_edited_at`):
   `built` = `{ by: auto|operator|adopted, at, digest, inputs, db_generation }`, `operator_edit` =
   `{ at, user_id, actions (last 20) }`. `edited?` is true with an `operator_edit`, a data digest differing from

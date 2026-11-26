@@ -87,7 +87,7 @@ The thin `DataFixController` actions 302 to `data_fix_legacy`, which requires a 
 
 ## Phase timings
 
-First `review_results` visit auto-runs the phase5 build synchronously inside the GET (~8 s for 298 results) then 302s back — expect a slow first load with a client-side progress modal. `commit_phase6` for ~300 results finishes in ~1.2 s and lands on `commit_phase6_report`.
+First `review_results` visit auto-runs the phase5 build synchronously inside the GET (~8 s for 298 results) then 302s back — expect a slow first load, with its progress in the strip under the top bar. `commit_phase6` for ~300 results finishes in ~1.2 s and lands on `commit_phase6_report`.
 
 ## Query-count evidence
 

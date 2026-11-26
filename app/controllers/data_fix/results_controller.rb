@@ -235,9 +235,6 @@ module DataFix
       # Maps: {mrr_import_key => {relay_order => {name, key}}}
       relay_import_keys = @all_relay_results.to_set(&:import_key)
       @relay_swimmer_names = DataFix::RelayNamesBuilder.new(source_resolver).build_from_source(source_path, relay_import_keys)
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review results: ready', 100, 100)
     end
 
     # Toggle the opt-in Phase 5 individual-result overwrite reconciliation.
@@ -432,9 +429,10 @@ module DataFix
     # Phase 5 populate; never touches a merge target, never commits), then reopens Step 5 with its filters and the
     # counts (fixed, partial = possible duplicates left to review, none). The program cards are rendered again.
     def verify_all_results
-      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 0, 1)
-      outcome = DataFix::ResultVerifier.new(source_path: @source_path, season_id: pipeline.season&.id).verify_all!
-      progress_sink.call(I18n.t('data_fix.verify_all.progress'), 1, 1)
+      message = I18n.t('data_fix.verify_all.progress')
+      progress_sink.call(message, 0, 1) # (at once: the season lookup comes first)
+      outcome = DataFix::ResultVerifier.new(source_path: @source_path, season_id: pipeline.season&.id)
+                                       .verify_all!(progress: progress_sink, message:)
       kept = params.slice(:filter_issues, :filter_new, :filter_unmatched, :page).permit!.to_h
       back = review_results_path(kept.merge(file_path: @source_path, phase5_v2: 1))
       return redirect_to(back, flash: { error: I18n.t('data_fix.verify_all.failed', error: outcome['error']) }) if outcome['error'].present?

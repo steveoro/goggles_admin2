@@ -6,10 +6,13 @@
 # One pass of SeasonBoard::PipelinePlanner on the Season board season (phase 10): queues the prepares and the
 # automatic manifest extractions the rows need next (through SeasonBoard::Scheduler). Never commits, never pushes.
 #
-# Enqueued (PipelinePlannerJob.enqueue_after) at the end of MeetingCrawlJob, ManifestExtractJob, a successful
-# DataFixPrepareJob and FedernuotoWatchJob, by the board's "Prepare all" button, and every 15 minutes as the
-# recurring task 'pipeline_planner' (the safety net). Does nothing with the master switch off
+# Enqueued (PipelinePlannerJob.enqueue_after) at the end of MeetingCrawlJob, SourceCrawlJob, ManifestExtractJob, a
+# successful DataFixPrepareJob and FedernuotoWatchJob, by the board's "Prepare all" button, and every 15 minutes as the
+# recurring task 'pipeline_planner' (the safety net). Queues nothing with the master switch off
 # (DataFix::Automation, or ADMIN2_AUTOMATION=0). Never raises.
+#
+# Every pass starts with SeasonBoard::ActivityReconciler, BEFORE the switch check (it queues nothing): it closes the
+# board activity entries a job could not close (a finished prepare run, a queued job no longer in the queue).
 #
 class PipelinePlannerJob < ApplicationJob
   queue_as :default
@@ -32,6 +35,7 @@ class PipelinePlannerJob < ApplicationJob
   # - trigger: what asked for the pass ('schedule', 'board', or the job class name), logged only.
   # Returns the SeasonBoard::PipelinePlanner::Plan (empty when paused or without a season).
   def perform(trigger: 'schedule')
+    reconcile_activity
     return SeasonBoard::PipelinePlanner::Plan.empty unless DataFix::Automation.enabled?
 
     season = SeasonBoard::Builder.latest_season
@@ -46,6 +50,16 @@ class PipelinePlannerJob < ApplicationJob
   end
 
   private
+
+  # Never raises (a failure only skips the reconciliation of this pass).
+  def reconcile_activity
+    closed = SeasonBoard::ActivityReconciler.new.call
+    return if closed.empty?
+
+    Rails.logger.info("[PipelinePlannerJob] activity entries closed: #{closed.map { |row| "#{row.kind} #{row.key} #{row.status}" }.join(', ')}")
+  rescue StandardError => e
+    Rails.logger.warn("[PipelinePlannerJob] activity reconciliation skipped: #{e.class}: #{e.message}")
+  end
 
   def log_plan(plan, trigger)
     return unless plan.queued?

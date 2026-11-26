@@ -40,6 +40,11 @@ require 'digest'
 # - Progress: Import::Progress::Ops on the run row (about 1 write per second), SeasonBoard::Notifier pings at the
 #   phase boundaries; never ImportStatusChannel.
 # - A run ending 'done' enqueues PipelinePlannerJob (the next source); a refused, failed or yielded run does not.
+# - Activity log (SeasonBoard::ActivityLog, kind :prepare, under the FIN id passed by the Scheduler, else the one stored
+#   on the run's source row): every way out of #perform closes the entry (refusals before the run starts and a missing
+#   ops DB included), and so does a run skipped by a DB restore (#skipped_by_db_restore: the run is closed 'refused',
+#   reason 'db_restore', and the job is dropped as every job skipped by a restore; the planner queues it again later).
+#   SeasonBoard::ActivityReconciler closes what a killed job could not.
 #
 class DataFixPrepareJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   queue_as :pipeline
@@ -131,8 +136,14 @@ class DataFixPrepareJob < ApplicationJob # rubocop:disable Metrics/ClassLength
     end
 
     Ops.safely { @run.update!(status: 'running', started_at: Time.current, job_id:, origin: @origin) }
+    @fin_event_id ||= run_fin_event_id
     activity_start
     true
+  end
+
+  # FIN id stored on the source row of the run (a job queued before 0.10.99 carries none), or nil.
+  def run_fin_event_id
+    Ops.safely { @run&.pipeline_source&.fin_event_id.presence&.to_s }
   end
 
   def find_or_create_run
@@ -314,20 +325,28 @@ class DataFixPrepareJob < ApplicationJob # rubocop:disable Metrics/ClassLength
 
   # Closes the run once (status: done | failed | refused | yielded), updates the source row, the activity log and the
   # event log. Never raises.
-  def close!(status, reason: nil, error: nil, stage: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  # The activity entry is closed first, and each step runs on its own (#close_step): a failing step never leaves the
+  # board row "queued" or "running".
+  def close!(status, reason: nil, error: nil, stage: nil)
     return if @closed
 
     @closed = true
     @status = status
-    message = close_message(status, reason, stage)
     unsuccessful = %w[failed refused].include?(status)
-    close_run(status, message, error || (reason if unsuccessful))
-    fail_source!(error || reason) if status == 'failed'
-    release_stage! if %w[refused yielded].include?(status)
+    message = close_step(status.to_s) { close_message(status, reason, stage) }
     activity_finish(unsuccessful ? :failed : :done, message)
-    record_event(status, message)
+    close_step { close_run(status, message, error || (reason if unsuccessful)) }
+    close_step { fail_source!(error || reason) } if status == 'failed'
+    close_step { release_stage! } if %w[refused yielded].include?(status)
+    close_step { record_event(status, message) }
+  end
+
+  # Runs one closing step, logging (never raising) its error; returns its value, or +fallback+ on error.
+  def close_step(fallback = nil)
+    yield
   rescue StandardError => e
-    Rails.logger.error("[DataFixPrepareJob] cannot close the run: #{e.class}: #{e.message}")
+    Rails.logger.error("[DataFixPrepareJob] closing step failed: #{e.class}: #{e.message}")
+    fallback
   end
 
   def close_run(status, message, error)
@@ -390,6 +409,26 @@ class DataFixPrepareJob < ApplicationJob # rubocop:disable Metrics/ClassLength
     path.present? && File.exist?(path) ? Digest::SHA256.file(path).hexdigest : ''
   rescue SystemCallError
     ''
+  end
+
+  # == DB restore
+
+  # Called by ApplicationJob instead of #perform while a DB restore holds the lock (DbRestore::JobGuard has recorded the
+  # skip): closes the queued run as 'refused' (reason 'db_restore') and its activity entry, so that the board row does
+  # not stay "prepare queued". Reads the ops DB and the activity log only (never MySQL). Never raises.
+  def skipped_by_db_restore
+    options = arguments.first.is_a?(Hash) ? arguments.first.symbolize_keys : {}
+    setup(**options.slice(:source_path, :season_id, :origin, :mode, :run_id, :fin_event_id).reverse_merge(
+      source_path: nil, season_id: nil, origin: nil, mode: nil, run_id: nil, fin_event_id: nil
+    ))
+    @run = Ops.safely { Ops::PipelineRun.find_by(id: @run_id) if @run_id && Ops.available? }
+    @fin_event_id ||= run_fin_event_id
+    return unless @run || @fin_event_id # (nothing was queued for it: nothing to close)
+
+    close!('refused', reason: 'db_restore')
+    after_run
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixPrepareJob] DB restore skip not recorded: #{e.class}: #{e.message}")
   end
 
   # == Activity log, events, follow-up

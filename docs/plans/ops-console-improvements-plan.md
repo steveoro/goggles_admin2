@@ -5,9 +5,9 @@
 | Step | Status |
 |---|---|
 | 0 branch | done |
-| 1 progress strip | planned |
-| 2 board rows | planned |
-| 3 status pills | planned |
+| 1 progress strip | done (0.10.98) |
+| 2 board rows | done (0.10.99) |
+| 3 status pills | done (0.10.100) |
 | 4 switches and filter | planned |
 | 5 link adoption | planned |
 | 6 calendar automation | planned |

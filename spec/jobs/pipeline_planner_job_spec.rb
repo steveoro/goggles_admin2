@@ -37,6 +37,24 @@ RSpec.describe PipelinePlannerJob do
     expect { described_class.perform_now }.not_to raise_error
   end
 
+  describe 'activity reconciliation (0.10.99)' do
+    let(:reconciler) { instance_double(SeasonBoard::ActivityReconciler, call: []) }
+
+    before(:each) { allow(SeasonBoard::ActivityReconciler).to receive(:new).and_return(reconciler) }
+
+    it 'reconciles the board activity first, also with the master switch off (it queues nothing)' do
+      DataFix::Automation.store!(:enabled, false)
+      described_class.perform_now
+      expect(reconciler).to have_received(:call)
+      expect(SeasonBoard::PipelinePlanner).not_to have_received(:new)
+    end
+
+    it 'runs the planner pass even when the reconciliation fails' do
+      allow(reconciler).to receive(:call).and_raise(RuntimeError, 'boom')
+      expect(described_class.perform_now).to eq(plan)
+    end
+  end
+
   describe '.enqueue_after' do
     it 'enqueues a pass after a job when the automation is on' do
       expect { expect(described_class.enqueue_after('MeetingCrawlJob')).to be true }

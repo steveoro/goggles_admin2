@@ -9,6 +9,11 @@ module Inbox
     # - Season board crawls & manifest extractions (SeasonBoard::ActivityLog) whose latest attempt failed or is
     #   stale (stuck), while the board row still asks for that action => "Retry": a POST to the same board action
     #   (SeasonBoard::ActionPaths), keyed like the BoardRows item it replaces ('board:<fin_event_id>:<kind>');
+    # - Season board prepares (0.10.99) whose latest attempt is stuck (stale) or was closed as lost by
+    #   SeasonBoard::ActivityReconciler (its job was no longer in the queue), on a row whose next action names its
+    #   source => "Retry": a POST to season_board/prepare, keyed 'board:<fin_event_id>:prepare' like the PrepareFailed
+    #   item (a :prepare_failed row is left to that source; any other failed prepare is a refusal or a failure the row
+    #   state already shows);
     # - Solid Queue failed executions => "Discard" (POST dashboard#discard_failed_job), plus a secondary "Retry"
     #   (POST dashboard#retry_failed_job) only for the jobs outside PROTECTED_JOBS.
     #
@@ -19,10 +24,11 @@ module Inbox
       # Jobs offered "Discard" only (class names; they exist from phases 07, 09, 11 and 14 on).
       PROTECTED_JOBS = %w[DataFixCommitJob Outbox::PushJob Maintenance::RunJob RestoreJob].freeze
 
-      # Board action kinds that a retry of each activity kind stands for.
-      RETRY_KINDS = { crawl: %i[crawl check_results], extract: %i[extract_manifest] }.freeze
+      # Board action kinds that a retry of each activity kind stands for (a prepare is retried with the board :prepare
+      # action on any row whose next action names a source: see #prepare_retry_kind).
+      RETRY_KINDS = { crawl: %i[crawl check_results], extract: %i[extract_manifest], prepare: %i[prepare] }.freeze
       # Action kind used when the board row is unknown (no board summary).
-      DEFAULT_KINDS = { crawl: :crawl, extract: :extract_manifest }.freeze
+      DEFAULT_KINDS = { crawl: :crawl, extract: :extract_manifest, prepare: :prepare }.freeze
 
       # True when a failed job of the class (String) may be retried from the dashboard.
       def self.retriable?(class_name)
@@ -42,7 +48,7 @@ module Inbox
         SeasonBoard::ActivityLog.new.all_entries.filter_map do |entry|
           # (a Sources crawl or extraction is no board row: its end is a toast and an event, phase 15)
           next if entry.source?
-          next unless entry.failed? || entry.stale?(context.now)
+          next unless reported?(entry, context.now)
 
           row = summary&.row_for(entry.fin_event_id)
           kind = retry_kind(entry, row, summary)
@@ -57,17 +63,37 @@ module Inbox
         nil
       end
 
+      # A failed or stuck crawl / extraction; a stuck or lost prepare (the other failed prepares are refusals, or failures
+      # shown by the row state and Inbox::Sources::PrepareFailed).
+      def reported?(entry, now)
+        return entry.stale?(now) || entry.lost? if entry.kind == :prepare
+
+        entry.failed? || entry.stale?(now)
+      end
+
       # Board action kind to retry, or nil when the row no longer needs it (or is busy, or gone).
       def retry_kind(entry, row, summary)
         return DEFAULT_KINDS[entry.kind] if summary.nil?
         return if row.nil? || row.busy?
+        return prepare_retry_kind(row) if entry.kind == :prepare
 
         row_kind = row.next_action&.kind
         row_kind if RETRY_KINDS.fetch(entry.kind, []).include?(row_kind)
       end
 
+      # :prepare when the row's next action names its source (season_board/prepare reads it from there), except on a
+      # :prepare_failed row (Inbox::Sources::PrepareFailed shows it, under the same key).
+      def prepare_retry_kind(row)
+        return if row.state == :prepare_failed || row.next_action&.params&.dig(:file_path).blank?
+
+        RETRY_KINDS[:prepare].first
+      end
+
       def board_item(entry, row, kind, summary, context)
-        status = entry.failed? ? :failed : :stuck
+        status = if entry.lost? then :lost
+                 elsif entry.failed? then :failed
+                 else :stuck
+                 end
         item(
           key: "board:#{entry.fin_event_id}:#{kind}", kind: :"#{entry.kind}_#{status}", band: :failed,
           title: t("board.#{entry.kind}_#{status}", name: row&.name.presence || "FIN ##{entry.fin_event_id}"),

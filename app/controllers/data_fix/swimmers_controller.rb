@@ -108,9 +108,6 @@ module DataFix
         review_swimmers_path(file_path: @file_path, phase3_v2: 1, filter_state: @filter_state, q: @q.presence,
                              swimmers_per_page: @per_page, swimmers_page: page, anchor: "swimmer-card-#{position}")
       end
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review swimmers: ready', @total_count, @total_count)
     end
 
     # Update a single Phase 3 swimmer entry by key

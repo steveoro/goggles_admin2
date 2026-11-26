@@ -35,8 +35,10 @@ RSpec.describe Inbox::Sources::UnmatchedSources do
   it 'leaves a source prepared from the Sources page (any pipeline state) to the pipeline sources (phase 15)' do
     prepared = unmatched('in-rev', 'in_review', review_path: '/d/262/in-rev.json', phase: 2).merge('pipeline' => { 'state' => 'needs_review' })
     preparing = unmatched('src', 'source', review_path: '/d/262/src-lt4.json').merge('pipeline' => { 'state' => 'preparing' })
-    other = board_summary(unmatched: [prepared, preparing])
-    expect(other.unmatched_sources.map(&:pipeline_state)).to eq(%i[needs_review preparing])
+    queued = unmatched('queued', 'source', review_path: '/d/262/queued-lt4.json').merge('pipeline' => { 'state' => 'prepare_queued' })
+    other = board_summary(unmatched: [prepared, preparing, queued])
+    expect(other.unmatched_sources.map(&:pipeline_state)).to eq(%i[needs_review preparing prepare_queued])
+    expect(other.unmatched_sources.map(&:preparing?)).to eq([false, true, true])
     expect(described_class.new.items(inbox_context(board_snapshot: other))).to be_empty
   end
 

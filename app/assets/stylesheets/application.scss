@@ -5,7 +5,7 @@
 // Local partials, by folder:
 // - base/:       design tokens (CSS custom properties), web fonts, links, generic helpers & animations;
 // - compat/:     the Bootstrap 4 classes of the goggles_db engine partials, scoped to `.goggles-db-partial`;
-// - shell/:      app shell (sidebar, top bar, page header, command palette);
+// - shell/:      app shell (sidebar, top bar, page header, command palette, progress strip);
 // - components/: widgets shared by several pages (table tints, tom-select, datagrid, switches, ...);
 // - pages/:      page-specific rules.
 
@@ -19,6 +19,7 @@
 
 @use 'shell/layout';
 @use 'shell/palette';
+@use 'shell/progress_strip';
 
 @use 'components/tables';
 @use 'components/tom_select';

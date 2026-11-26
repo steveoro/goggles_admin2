@@ -53,6 +53,16 @@ module SeasonBoard
       LINK_ACTIONS.include?(kind&.to_sym)
     end
 
+    # True when the next action of the row (a Row or a Snapshot::Row) must wait for a job: the row is locked (a job
+    # works on its files right now), or busy (a crawl/extraction/prepare queued or running) and its action is not a link
+    # action. A review / commit link stays reachable while a job is merely queued: the Data-Fix pages refuse edits only
+    # while a job holds the source lease (0.10.99).
+    def blocked?(row)
+      return true if row.locked?
+
+      row.busy? && !link?(row.next_action&.kind)
+    end
+
     # POST path for a POST action (nil for any other action or a nil +next_action+).
     def post_path(next_action)
       helper = next_action && POST_ACTIONS[next_action.kind&.to_sym]

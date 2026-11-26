@@ -5,7 +5,8 @@ module Shell
   # = Shell::StatusController
   #
   # Renders the top bar status frame (<tt>turbo-frame#shell-status</tt>, lazy-loaded by Shell::TopBarComponent)
-  # with one pill per SystemStatus::Registry probe.
+  # with the SystemStatus::Registry probes as compact pills (Shell::StatusPillsComponent: one "All OK" pill, or one
+  # pill per probe needing attention plus an "N OK" one).
   #
   # Reads only local data (session, local files, local queue DB, ops snapshots): no API call. When a snapshot
   # is missing or older than 2 minutes it enqueues SystemStatus::RefreshJob (a read-only probe refresh).

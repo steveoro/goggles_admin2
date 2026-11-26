@@ -9,8 +9,9 @@ module SeasonBoard
   # SeasonBoard::Row per FIN calendar row, each with a pipeline state & one next action
   # (see SeasonBoard::StateResolver for the states, the rules & the NextAction payloads).
   #
-  # Being busy (a queued/running crawl, extraction or prepare in the ActivityLog, or a prepare job holding the
-  # source lease) is an overlay (Row#busy? + :busy flag), not a state. The ops pipeline facts of each row's source
+  # Being busy (a queued/running crawl, extraction or prepare in the ActivityLog, a prepare run queued or running, or a
+  # prepare job holding the source lease) is an overlay (Row#busy? + :busy flag), not a state; being locked (a job working on the row's files
+  # right now: the lease, or a running entry) is the subset that also disables the review links (Row#locked?). The ops pipeline facts of each row's source
   # (SeasonBoard::PipelineIndex, phase 10) feed the :prepare_failed / :needs_review / :ready_to_commit states.
   #
   class Builder # rubocop:disable Metrics/ClassLength
@@ -145,13 +146,18 @@ module SeasonBoard
     end
 
     def assemble_row(facts, outcome, activity)
-      busy = activity.values.compact.any?(&:busy?) || facts.pipeline&.preparing? || false
+      busy = activity.values.compact.any?(&:busy?) || facts.pipeline&.preparing? || facts.pipeline&.prepare_queued? || false
       Row.new(
         **snapshot_attributes(facts), **meeting_attributes(facts.calendar, facts.meeting),
         state: outcome.state, state_detail: outcome.detail, next_action: outcome.next_action,
         activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk,
-        pipeline: facts.pipeline
+        pipeline: facts.pipeline, locked: locked?(facts, activity)
       )
+    end
+
+    # A job works on the row's files right now: a prepare job holds the source lease, or an entry is running (not stale).
+    def locked?(facts, activity)
+      facts.pipeline&.leased? || activity.values.compact.any? { |entry| entry.running? && entry.busy? } || false
     end
 
     def snapshot_attributes(facts)

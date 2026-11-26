@@ -22,7 +22,7 @@ module DataFix
   # without a 'built' stamp (any file that existed when this shipped) is adopted as edited.
   #
   # == Usage
-  #   pipeline = DataFix::Pipeline.for(source_path, progress: Import::Progress::Cable.new, actor: :operator)
+  #   pipeline = DataFix::Pipeline.for(source_path, progress: progress_sink, actor: :operator) # (a request; jobs: Null/Ops)
   #   pipeline.build_phase!(2, force: true)   # => DataFix::Verdict
   #   pipeline.summary.stage                   # => 'needs_review'
   #
@@ -50,10 +50,11 @@ module DataFix
 
     # == Params
     # - file_path: the canonical working source path (already resolved by DataFix::SourceResolver);
-    # - progress: an Import::Progress sink (Cable for interactive requests, Null/Ops for jobs);
+    # - progress: an Import::Progress sink (DataFix::BaseController#progress_sink, a Cable, for interactive requests;
+    #   Null/Ops for jobs; default: Null, so a caller passing none broadcasts nothing);
     # - actor: :operator (interactive request) or :auto (job); user_id: the operator, for the edit markers;
     # - lease_owner: the build lease owner (default: a random one per instance; a prepare job passes 'job:<id>').
-    def self.for(file_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil,
+    def self.for(file_path, progress: Import::Progress.default, actor: :operator, user_id: nil, source_resolver: nil,
                  lease_owner: nil)
       new(file_path, progress:, actor:, user_id:, source_resolver:, lease_owner:)
     end
@@ -72,12 +73,12 @@ module DataFix
       end
     end
 
-    def initialize(source_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil,
+    def initialize(source_path, progress: Import::Progress.default, actor: :operator, user_id: nil, source_resolver: nil,
                    lease_owner: nil)
       raise ArgumentError, "unknown actor #{actor.inspect}" unless ACTORS.include?(actor.to_sym)
 
       @source_path = source_path.to_s
-      @progress = progress || Import::Progress::Null.new
+      @progress = progress || Import::Progress.default
       @actor = actor.to_sym
       @user_id = user_id
       @source_resolver = source_resolver
@@ -604,6 +605,7 @@ module DataFix
       return unless [2, 3].include?(phase)
       return if actor == :auto && edited?(2)
 
+      progress.call('Harmonizing teams and swimmers', 0, 1) # (silent step: keeps the progress strip alive)
       harmonize!
     end
 

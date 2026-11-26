@@ -248,7 +248,7 @@ module Import
         [total_distance, stroke_code, event_code]
       end
 
-      # Progress updates through the injected sink (see Import::Progress; Cable by default)
+      # Progress updates through the injected sink (see Import::Progress; Null by default)
       def broadcast_progress(message, current, total)
         @progress.call(message, current, total)
       end

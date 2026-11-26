@@ -142,6 +142,40 @@ RSpec.describe SourceCrawlJob do
     end
   end
 
+  # 0.10.99: the board rows' "last crawl" badge reads the FIN id entries, not the 'src:' one.
+  it 'records a done crawl entry under each FIN id of the new LT2 result files only, skipping an id with a busy crawl' do
+    fin_url = ->(id) { "https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/#{id}:x.html" }
+    crawler.on_pull = lambda {
+      dir = data_root.join('results.new', season_id.to_s)
+      FileUtils.mkdir_p(dir)
+      File.write(dir.join('a.json'), { 'layoutType' => 2, 'meetingURL' => fin_url.call('150091') }.to_json)
+      File.write(dir.join('b.json'), { 'layoutType' => 2, 'meetingURL' => fin_url.call('150092') }.to_json)
+      File.write(dir.join('c-lt4-phase1.json'), { 'meetingURL' => fin_url.call('150093') }.to_json)
+      # (a working copy and an LT4-content file rewritten meanwhile, e.g. by a prepare on the pipeline queue)
+      File.write(dir.join('d-lt4.json'), { 'layoutType' => 4, 'meetingURL' => fin_url.call('150095') }.to_json)
+      File.write(dir.join('e.json'), { 'layoutType' => 4, 'meetingURL' => fin_url.call('150096') }.to_json)
+      FileUtils.mkdir_p(data_root.join('calendar.new', season_id.to_s))
+      File.write(data_root.join('calendar.new', season_id.to_s, 'cal.csv'), "x;#{fin_url.call('150094')}\n")
+    }
+    activity_log.queue!('150092', kind: :crawl, origin: :auto)
+    req = request
+    perform(req)
+
+    expect(activity_log.reload!.entry('150091', :crawl)).to have_attributes(status: :done, origin: :manual, message: req.label)
+    expect(activity_log.entry('150092', :crawl)).to be_queued
+    expect(activity_log.entry('150093', :crawl)).to be_nil
+    expect(activity_log.entry('150094', :crawl)).to be_nil
+    expect(activity_log.entry('150095', :crawl)).to be_nil
+    expect(activity_log.entry('150096', :crawl)).to be_nil
+    expect(activity_log.entry(req.key, :crawl)).to be_done
+  end
+
+  it 'records no FIN entry for a failed crawl' do
+    crawler.pull_result = CrawlerClient::Result.new(ok: false, code: 400, body: nil, error: 'Missing season_id')
+    perform
+    expect(activity_log.all_entries.map(&:fin_event_id)).to all(start_with('src:'))
+  end
+
   it 'waits while the crawler is busy with another crawl, then starts' do
     crawler.statuses = [running_now, running_now, idle_status]
     perform

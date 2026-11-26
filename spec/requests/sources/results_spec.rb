@@ -89,6 +89,22 @@ RSpec.describe 'Sources results' do
     end
   end
 
+  # 0.10.99: a non-FIN source has no board activity entry: its queued run is what says "queued".
+  it 'shows a disabled "Preparation queued" instead of Prepare / Retry while the prepare of a non-FIN source is queued' do
+    source = FactoryBot.create(:ops_pipeline_source, season_id: 242, base: '2025-06-24-Riccione', source_path: microplus.to_s)
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', origin: 'operator', status: 'queued', subject_key: source.base)
+    get(sources_results_path(season_id: 242))
+    row = row_for(microplus.basename.to_s)
+    expect(row.at_css("form[action='#{sources_prepare_path}']")).to be_nil
+    expect(row.at_css('td:last-child span.disabled[aria-disabled="true"]').text).to include(I18n.t('season_board.activity.prepare_queued'))
+
+    source.update!(stage: 'failed')
+    get(sources_results_path(season_id: 242))
+    row = row_for(microplus.basename.to_s)
+    expect(row.at_css("form[action='#{sources_prepare_path}']")).to be_nil
+    expect(row.text).to include(I18n.t('season_board.activity.prepare_queued'))
+  end
+
   it 'shows the pipeline state of a prepared non-FIN source with its next step' do
     source = FactoryBot.create(:ops_pipeline_source, season_id: 242, base: '2025-06-24-Riccione', source_path: microplus.to_s,
                                                      stage: 'needs_review', review_phase: 2, review_count: 3)

@@ -63,6 +63,17 @@ en:
         start_crawler: 'Start crawler'
         check_fin: 'Check now'
       on_dashboard: '%{action} (on the dashboard)'
+      # Shell::StatusPillsComponent: the summary pill (all the probes OK, or the OK ones next to the others)
+      summary:
+        all_ok: 'All OK'
+        all_ok_aria:
+          one: 'The only check is OK'
+          other: 'All %{count} checks OK'
+        some_ok: '%{count} OK'
+        some_ok_aria:
+          one: '1 more check OK'
+          other: '%{count} more checks OK'
+        details: 'Details on the dashboard'
       api:
         label: 'API'
         offline: 'API-offline session: no valid JWT for this API, so its state is unknown here'

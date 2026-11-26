@@ -19,6 +19,7 @@ RSpec.describe 'Data-Fix review journey' do
   let(:swimming_pool) { FactoryBot.create(:swimming_pool) }
   let(:meeting_code) { "specwizard#{rand(100_000)}" }
   let(:candidates) { FactoryBot.create_list(:swimmer, 2) }
+  let(:progress_broadcasts) { [] }
   let(:phase1_data) do
     {
       'season_id' => season.id, 'name' => 'Wizard Journey Meeting', 'code' => meeting_code,
@@ -60,16 +61,36 @@ RSpec.describe 'Data-Fix review journey' do
     PhaseFileManager.new(source_file.sub('.json', "-phase#{phase}.json")).write!(data:, meta: { 'generator' => 'spec' })
   end
 
-  # (no progress modal in the way: the interactive progress sink is silenced, see the before block)
-  def wait_for_progress_modal
-    expect(page).to have_no_css('#modal-progress.show', wait: 6)
-    expect_no_modal_backdrop
+  # Collects the ImportStatusChannel broadcasts from now on (server side) and logs, in the browser, every message the
+  # page receives with the strip state once every listener handled it (the window outlives the Turbo visits).
+  def record_progress_strip
+    allow(ActionCable.server).to receive(:broadcast).and_wrap_original do |original, channel, payload, **options|
+      progress_broadcasts << payload if channel == Import::Progress::Cable::CHANNEL
+      original.call(channel, payload, **options)
+    end
+    page.execute_script(<<~JS)
+      window.__stripLog = []
+      document.addEventListener('import-status', (event) => {
+        const entry = { op: event.detail.op, done: event.detail.state === 'done' }
+        setTimeout(() => {
+          const panel = document.getElementById('progress-strip-panel')
+          window.__stripLog.push({ ...entry, hidden: panel ? panel.hidden : null })
+        }, 0)
+      })
+    JS
+  end
+
+  # The browser log of #record_progress_strip for +op_id+, once it holds its +count+ messages.
+  def recorded_progress_strip(op_id:, count:)
+    log = nil
+    page.document.synchronize(10) do
+      log = page.evaluate_script('window.__stripLog').select { |entry| entry['op'] == op_id }
+      raise Capybara::ExpectationNotMet, "#{log.size}/#{count} messages received" if log.size < count
+    end
+    log
   end
 
   before(:each) do
-    # The review pages broadcast "ready" on ImportStatusChannel (whose subscription outlives the Turbo visits): the
-    # progress modal would pop up over the next click. The journey checks the pages, not the modal.
-    allow(Import::Progress::Cable).to receive(:new).and_return(Import::Progress::Null.new)
     allow(Outbox).to receive(:data_root).and_return(data_root)
     allow(Outbox::RemoteStatusJob).to receive(:perform_later)
     allow(APIProxy).to receive(:ping).and_return(APIProxy::Result.new(DummyResponse.new(body: { msg: 'OK', version: '7.0.1' }.to_json)))
@@ -94,7 +115,6 @@ RSpec.describe 'Data-Fix review journey' do
     expect(page).to have_css('ul.nav-tabs .nav-link.active', text: 'Step 3')
     expect(page).to have_checked_field('turbo-filter-state-swimmers-per-page-review', visible: :all)
     expect(page).to have_css('[id^="swimmer-card-"][data-issue]', count: 2)
-    wait_for_progress_modal
     page.execute_script('window.__journeyNoReload = true')
 
     # 2-3. Next issue (button, then the j key), save each card in place
@@ -118,10 +138,8 @@ RSpec.describe 'Data-Fix review journey' do
     expect(swimmers.pluck('confirmed')).to all(be(true))
 
     # 4. Edit an event in Step 4 (its begin time and event type)
-    wait_for_progress_modal
     click_link('Step 4 • Events')
     expect(page).to have_css('#event-card-0')
-    wait_for_progress_modal
     find_by_id('event-header-0').click
     expect(page).to have_css('#event-panel-0.show')
     sleep(0.4)
@@ -138,17 +156,27 @@ RSpec.describe 'Data-Fix review journey' do
     click_button(I18n.t('data_fix.wizard.buttons.save_event'))
     expect(page).to have_css('#flash-messages-container .toast', wait: 10) # (the save redirects back with a notice)
     expect(page).to have_css('ul.nav-tabs .nav-link.active', text: 'Step 4')
-    wait_for_progress_modal
     expect(PhaseFileManager.new(source_file.sub('.json', '-phase4.json')).data.dig('sessions', 0, 'events', 0, 'begin_time')).to eq('09:15')
 
     # 5. Step 5 is stale: rebuild it from the banner
     click_link('Step 5 • Results')
     expect(page).to have_css('#data-fix-step-stale', text: I18n.t('data_fix.stepper.inputs.events'))
-    wait_for_progress_modal
+    record_progress_strip
     click_button('btn-data-fix-rebuild-phase')
     expect(page).to have_no_css('#data-fix-step-stale')
     expect(page).to have_css('ul.nav-tabs .nav-link.active', text: 'Step 5')
-    wait_for_progress_modal
+    # The rebuild broadcasts its progress for real (one op: ticks, then 'done'); the strip showed it, then hid on the
+    # 'done', and nothing is modal.
+    op = progress_broadcasts.first[:op]
+    expect(progress_broadcasts.first).to include(op:, seq: 1, scope: File.basename(source_file, '.json'))
+    expect(progress_broadcasts.last).to eq({ op:, state: 'done' })
+    expect(progress_broadcasts.pluck(:op)).to all(eq(op))
+    strip_log = recorded_progress_strip(op_id: op, count: progress_broadcasts.size)
+    done_at = strip_log.index { |entry| entry['done'] }
+    expect(strip_log.first(done_at)).to all(include('hidden' => false)) # (each tick received before the 'done' showed it)
+    expect(strip_log.drop(done_at)).to all(include('hidden' => true)) # (the 'done' hid it; a late tick never reopens it)
+    expect(page).to have_css('#progress-strip-panel', visible: :hidden)
+    expect_no_modal_backdrop
 
     # 6-8. Commit summary, commit, report
     click_link('btn-commit-summary-link')

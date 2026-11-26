@@ -83,6 +83,7 @@ end
 ```
 
 - A result has `label`, `level` (`:ok`, `:warn`, `:error`, `:unknown`), `detail`, `checked_at` ("as of") and an optional `action` (`{ label:, path:, http_method: }`). A `:post` action is a button in the System zone; the top bar pill never runs it and links to the dashboard System zone instead.
+- The top bar compacts the results (`Shell::StatusPillsComponent`): all `:ok` → a single "All OK" pill (`#status-pill-all`, tooltip listing each probe and its detail, link to `/#dashboard-system`); otherwise one `Shell::StatusPillComponent` per probe not `:ok` (`#status-pill-<key>`, `:unknown` included, registry order) followed by an "N OK" pill (same id) for the others.
 - `mode`: `:inline` (cheap local reads, the default) or `:snapshot` (anything needing the network: implement `#refresh!`, run only by `SystemStatus::RefreshJob`, and read only `#snapshot` in `#evaluate`).
 - Texts: `shell.status.<key>.*` in `config/locales/shell.{en,it}.yml`. Keep the labels short: the top bar shows them only from 1600 px.
 

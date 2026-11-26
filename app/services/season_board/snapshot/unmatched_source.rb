@@ -14,8 +14,9 @@ module SeasonBoard
     # - review_path: file to open in the Data-Fix review (review_sessions_path(file_path:)), nil for
     #   :sql and :manifest; phase: highest phase file number (or nil);
     # - paths: every pending file (absolute path Strings);
-    # - pipeline_state (phase 15): :preparing, :prepare_failed, :needs_review or :ready_to_commit for a source prepared
-    #   from the Sources page (nil otherwise), with its pipeline_detail Hash (Symbol keys, see SeasonBoard::StateText).
+    # - pipeline_state (phase 15): :preparing, :prepare_queued (0.10.99), :prepare_failed, :needs_review or
+    #   :ready_to_commit for a source prepared from the Sources page (nil otherwise), with its pipeline_detail Hash
+    #   (Symbol keys, see SeasonBoard::StateText).
     #
     UnmatchedSource = Data.define(:base, :bases, :pending, :review_path, :phase, :paths, :pipeline_state, :pipeline_detail) do
       def initialize(pipeline_state: nil, pipeline_detail: {}, **) = super
@@ -33,7 +34,7 @@ module SeasonBoard
       def manifest_only? = pending == :manifest
 
       # True while a prepare of the source is queued or running.
-      def preparing? = pipeline_state == :preparing
+      def preparing? = %i[preparing prepare_queued].include?(pipeline_state)
     end
   end
 end

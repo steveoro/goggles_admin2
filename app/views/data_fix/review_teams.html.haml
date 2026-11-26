@@ -1,7 +1,5 @@
 -# frozen_string_literal: true
 
-= render(partial: 'goggles/modal_progress')
-
 - page_params = { filter_state: @filter_state, q: @q, teams_per_page: @per_page, file_path: @file_path, phase2_v2: 1 }
 .container-fluid
   = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 2, name: t('data_fix.steps.teams')),

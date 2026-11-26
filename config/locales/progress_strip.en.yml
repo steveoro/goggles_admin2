@@ -1,0 +1,7 @@
+en:
+  shell:
+    # Progress strip under the top bar (Shell::ProgressStripComponent, progress_strip_controller.js):
+    progress_strip:
+      label: 'Progress'
+      working: 'Working...'
+      close: 'Hide the progress'

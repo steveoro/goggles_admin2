@@ -1,7 +1,5 @@
 -# frozen_string_literal: true
 
-= render(partial: 'goggles/modal_progress')
-
 :ruby
   basename = File.basename(@file_path).split('.json').first
   results_params = { file_path: @file_path, phase5_v2: 1 }

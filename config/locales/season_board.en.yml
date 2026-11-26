@@ -75,6 +75,7 @@ en:
       outside_season: 'outside season'
       unparsable_date: 'bad date'
       possible_unlinked_meeting: 'a local meeting on this date is not linked yet'
+      newer_crawl: 'newer crawl on disk'
     flag_tooltips:
       busy: 'A crawl or an extraction is queued or running'
       crawl_failed: 'The latest crawl attempt failed'
@@ -88,6 +89,7 @@ en:
       outside_season: 'The row dates fall outside the season dates'
       unparsable_date: 'The row date could not be parsed'
       possible_unlinked_meeting: 'A season calendar row without FIN id falls on these dates: the meeting may already exist (e.g. imported from FICR/Microplus). Link it instead of crawling; automatic crawls skip this row.'
+      newer_crawl: 'The crawl file (LT2) is newer than the LT4 working copy the Data-Fix steps read, so the steps and their checks ignore it. To use the newer crawl, delete the -lt4.json working copy (Sources › Files) and open or prepare the meeting again: the working copy is rebuilt from the crawl. Nothing changes by itself.'
     counts:
       mir: 'MIR'
       mrr: 'MRR'
@@ -123,6 +125,8 @@ en:
       link_select_prompt: 'Select a calendar row...'
       no_link_candidates: 'no unlinked calendar to link to'
       busy_tooltip: 'A crawl, extraction or preparation is already queued or running for this meeting'
+      locked_tooltip: 'A job is working on the files of this meeting right now (crawl, extraction or preparation): the step opens again when it ends'
+      queued_link_tooltip: 'A job is queued for this meeting: you can review now, the step is refreshed when the job runs'
       no_url: 'No FIN link available'
     orphans:
       title: 'Calendar rows not on the FIN list (%{count})'

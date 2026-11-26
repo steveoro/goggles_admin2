@@ -36,7 +36,8 @@ module SeasonBoard
       def row_payload(row)
         ROW_ATTRIBUTES.to_h { |attr| [attr.to_s, plain(row.public_send(attr))] }.merge(
           'state' => row.state.to_s, 'state_detail' => plain(row.state_detail || {}),
-          'next_action' => action_payload(row.next_action), 'busy' => row.busy? || false, 'flags' => Array(row.flags).map(&:to_s)
+          'next_action' => action_payload(row.next_action), 'busy' => row.busy? || false, 'flags' => Array(row.flags).map(&:to_s),
+          'locked' => (row.respond_to?(:locked?) && row.locked?) || false
         )
       end
 

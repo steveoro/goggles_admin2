@@ -53,7 +53,6 @@ RSpec.describe 'Data-Fix review pages' do
 
   describe 'step 1: copy pool & city from another session' do
     it 'copies the fields of a session on the page and says when nothing was copied' do
-      allow(Import::Progress::Cable).to receive(:new).and_return(Import::Progress::Null.new)
       visit(review_sessions_path(file_path: source_path, phase_v2: 1, issues_only: '0'))
       find_by_id('session-header-1').click unless page.has_css?('#session-collapse-1.show', wait: 0)
       expect(page).to have_css('#session-collapse-1.show')
@@ -100,8 +99,6 @@ RSpec.describe 'Data-Fix review pages' do
     end
 
     before(:each) do
-      # (no progress modal over the clicks: the "ready" broadcast of the review GET is silenced)
-      allow(Import::Progress::Cable).to receive(:new).and_return(Import::Progress::Null.new)
       snapshot = { 'version' => DataFix::IndividualResultOverwriteReconciler::SNAPSHOT_VERSION, 'candidates' => [candidate] }
       File.write(phase5_path, JSON.generate('name' => 'phase5', 'source_file' => File.basename(source_path), 'programs' => [],
                                             '_meta' => { 'individual_result_overwrite' => { 'enabled' => true, 'snapshot' => snapshot } }))

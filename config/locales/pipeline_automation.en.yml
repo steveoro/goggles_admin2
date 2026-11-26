@@ -99,6 +99,7 @@ en:
       prepare_failed_no_phase: 'Preparation failed'
       needs_review: 'Needs review at step %{step}'
       blocked: 'Blocked at step %{step}'
+      outdated: 'Checks outdated'
       issues:
         one: '1 issue'
         other: '%{count} issues'
@@ -121,6 +122,7 @@ en:
       prepare_queued: 'Preparation queued'
       prepare_running: 'Preparing since %{time}'
       prepare_stuck: 'Preparation seems stuck since %{time}'
+      lost_message: 'lost: the job is no longer in the queue'
       kinds:
         prepare: 'preparation'
     strip:

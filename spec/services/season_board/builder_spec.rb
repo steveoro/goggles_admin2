@@ -194,6 +194,33 @@ RSpec.describe SeasonBoard::Builder do
       expect(board_row.flags).to include(:extract_failed)
     end
 
+    # 0.10.99: busy (POST buttons off) vs locked (review links off too).
+    it 'is busy but not locked while a prepare is only queued (also without a log entry), locked while a job works' do
+      prepared_files!
+      source = pipeline!(stage: 'needs_review', review_phase: 2, run_status: 'queued')
+      row = board_row
+      expect(row).to have_attributes(state: :needs_review, busy?: true, locked?: false)
+
+      source.acquire_lease!('job:abc', ttl: 5.minutes)
+      expect(board_row).to have_attributes(busy?: true, locked?: true)
+      source.release_lease!('job:abc')
+      Ops::PipelineRun.update_all(status: 'done') # rubocop:disable Rails/SkipsModelValidations
+      activity_log.start!(fin_id, kind: :crawl, origin: :auto)
+      expect(board_row).to have_attributes(busy?: true, locked?: true)
+    end
+
+    it 'flags a crawl file (LT2) newer than the LT4 working copy, informational only (:newer_crawl)' do
+      prepared_files!
+      pipeline!(stage: 'needs_review', review_phase: 2)
+      expect(board_row.flags).not_to include(:newer_crawl)
+      File.utime(1.hour.ago.to_time, 1.hour.ago.to_time, path_for('results.new', 'm-lt4.json'))
+      row = board_row
+      expect(row.flags).to include(:newer_crawl)
+      expect(row.state).to eq(:needs_review)
+      FileUtils.rm_f(path_for('results.new', 'm-lt4.json'))
+      expect(board_row.flags).not_to include(:newer_crawl)
+    end
+
     it 'exposes the active entries for the page strip' do
       activity_log.start!('150555', kind: :extract)
       expect(build.active_activities.map(&:fin_event_id)).to eq(['150555'])

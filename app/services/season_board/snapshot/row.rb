@@ -13,20 +13,24 @@ module SeasonBoard
     # - first_date, last_date: Date (or nil);
     # - state: Symbol (StateResolver::STATES); state_detail: Hash with Symbol keys (e.g. { phase: 3 });
     # - next_action: SeasonBoard::NextAction (kind Symbol, params Hash with Symbol keys) or nil;
-    # - busy: true while a crawl/extraction is queued or running; flags: Array of Symbols (RowFlags::FLAGS);
+    # - busy: true while a crawl/extraction/prepare is queued or running; locked: true while a job works on the row's
+    #   files right now (SeasonBoard::Row#locked?, format 4); flags: Array of Symbols (RowFlags::FLAGS);
     # - meeting_id, calendar_id: Integer (or nil).
     #
     Row = Data.define(
       :fin_event_id, :key, :name, :date_text, :year, :first_date, :last_date, :place, :url, :info,
-      :state, :state_detail, :next_action, :busy, :flags, :meeting_id, :calendar_id
+      :state, :state_detail, :next_action, :busy, :flags, :meeting_id, :calendar_id, :locked
     ) do
+      def initialize(locked: false, **) = super
+
       # Builds the Row from its stored Hash (String keys).
       def self.from_payload(hash)
         attributes = (Payload::ROW_ATTRIBUTES - %i[first_date last_date]).index_with { |attr| hash[attr.to_s] }
         attributes.merge!(
           first_date: parse_date(hash['first_date']), last_date: parse_date(hash['last_date']),
           state: hash['state'].to_s.to_sym, state_detail: (hash['state_detail'] || {}).deep_symbolize_keys,
-          next_action: parse_action(hash['next_action']), busy: hash['busy'] == true, flags: Array(hash['flags']).map(&:to_sym)
+          next_action: parse_action(hash['next_action']), busy: hash['busy'] == true, flags: Array(hash['flags']).map(&:to_sym),
+          locked: hash['locked'] == true
         )
         new(**attributes)
       end
@@ -42,6 +46,7 @@ module SeasonBoard
       end
 
       def busy? = busy
+      def locked? = locked
       def linked? = meeting_id.present?
       def flag?(flag) = flags.include?(flag.to_sym)
       def action?(kind) = next_action&.kind == kind&.to_sym

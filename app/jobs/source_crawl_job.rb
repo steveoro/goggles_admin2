@@ -10,7 +10,10 @@
 #
 # Tracking: SeasonBoard::ActivityLog, kind :crawl, under the request key ('src:<sha1>', see Sources::CrawlRequest#key)
 # with a label, so the activity strip and the dashboard "In progress" zone show it; a heartbeat is written at each
-# poll, so a long calendar crawl stays busy past ActivityLog::RUNNING_STALE_AFTER.
+# poll, so a long calendar crawl stays busy past ActivityLog::RUNNING_STALE_AFTER. A crawl that ends 'done' also
+# records a done :crawl entry under each FIN event id found in its new LT2 result files (the FIN crawler's own output:
+# never an LT4 working copy, a phase file or a log rewritten meanwhile by a prepare; ActivityLog#record_many!, one
+# write; an id with a busy crawl entry is skipped), so the board rows' "last crawl" is right after a Sources crawl.
 #
 # Serialisation: the same 'background' worker (one thread) and the same concurrency key AND group as MeetingCrawlJob
 # and ManifestExtractJob (Solid Queue prefixes a key with its group), so a manual crawl never runs together with a
@@ -46,7 +49,9 @@ class SourceCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   def perform(kind:, season_id:, key: nil, label: nil, **request_args) # rubocop:disable Metrics/AbcSize
     setup(Sources::CrawlRequest.from(request_args.merge(kind:, season_id:)), key, label)
     activity_log.start!(@key, kind: :crawl, url: @request.target, label: @label)
-    finish!(:done, crawl!)
+    message = crawl!
+    record_board_crawls
+    finish!(:done, message)
   rescue Failure => e
     finish!(:failed, e.message)
   rescue StandardError => e
@@ -96,6 +101,7 @@ class SourceCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   def start_crawl!
     baseline = client.status
     since = clock.call.change(usec: 0)
+    @started_at = since
     result = @request.start!(client)
     raise Failure, "crawler API call failed: #{result.error}".truncate(200) unless result.ok?
 
@@ -108,6 +114,25 @@ class SourceCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
 
     names = @new_files.map { |path| File.basename(path) }
     I18n.t('sources.crawl.done.files', count: names.size, names: names.first(5).join(', ')).truncate(250)
+  end
+
+  # A done :crawl entry under each FIN event id read from the new LT2 result files (never raises).
+  def record_board_crawls
+    probe = SeasonBoard::SourceProbe.new
+    fin_ids = @new_files.select { |path| crawled_lt2_file?(path, probe) }.filter_map { |path| probe.call(path, full: false)[:fin_event_id] }
+    activity_log.record_many!(fin_ids, kind: :crawl, status: :done, origin: :manual, message: @label, started_at: @started_at) if fin_ids.any?
+  rescue StandardError => e
+    Rails.logger.warn("[SourceCrawlJob] board crawl entries not recorded: #{e.class}: #{e.message}")
+  end
+
+  # A '<base>.json' of results.new holding LT2 data (what the FIN crawler writes): not an LT4 working copy, a phase
+  # file, a backup or an LT4-content file.
+  def crawled_lt2_file?(path, probe)
+    name = File.basename(path)
+    return false unless File.basename(File.dirname(path, 2)) == 'results.new' && name.end_with?('.json') && !name.end_with?('-lt4.json')
+    return false if SeasonBoard::DiskIndex::PHASE_REGEXP.match?(name) || SeasonBoard::DiskIndex::SKIPPED_JSON_REGEXP.match?(name)
+
+    probe.layout_type(path) == 2
   end
 
   def heartbeat
