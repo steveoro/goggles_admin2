@@ -8,8 +8,8 @@
 | 1 progress strip | done (0.10.98) |
 | 2 board rows | done (0.10.99) |
 | 3 status pills | done (0.10.100) |
-| 4 switches and filter | planned |
-| 5 link adoption | planned |
+| 4 switches and filter | done (0.10.101) |
+| 5 link adoption | done (0.10.102) |
 | 6 calendar automation | planned |
 | 7 clean-up | planned |
 | 8 docs | planned |

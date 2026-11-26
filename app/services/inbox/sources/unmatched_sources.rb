@@ -14,7 +14,11 @@ module Inbox
     # state, phase 15) is left to the pipeline sources (ReadyToCommit, NeedsReview, PrepareFailed), and skipped while
     # its prepare is queued or running.
     #
-    # Key: 'unmatched:<base>'.
+    # 0.10.102: the summary's +off_board_sources+ (pending files whose FIN id is on no board row: a meeting only on the
+    # 'Eventi' calendar, or an adopted link no longer taken) get the same items with their own titles, keyed
+    # 'off_board:<fin_event_id>:<base>', so their pending work never vanishes from the dashboard.
+    #
+    # Key: 'unmatched:<base>' (and 'off_board:<fin_event_id>:<base>').
     #
     class UnmatchedSources < Inbox::Source
       def self.more_path
@@ -25,21 +29,23 @@ module Inbox
         summary = context.board_snapshot
         return [] unless summary
 
-        summary.unmatched_sources.filter_map { |source| item_for(source, summary, context) unless source.pipeline_state }
+        summary.unmatched_sources.filter_map { |source| item_for(source, summary, context) unless source.pipeline_state } +
+          off_board_sources(summary).filter_map { |source| item_for(source, summary, context) }
       end
 
       private
+
+      def off_board_sources(summary)
+        summary.respond_to?(:off_board_sources) ? Array(summary.off_board_sources) : []
+      end
 
       def item_for(source, summary, context)
         kind, band, target = target_for(source, summary)
         return unless target
 
-        item(
-          key: "unmatched:#{source.base}", kind:, band:,
-          title: t("titles.#{kind}", name: source.base), detail: t(:detail),
-          subject: { file_path: source.review_path || source.paths.first, season_id: summary.season_id }.compact,
-          action: target, since: newest_mtime(source.paths) || summary.built_at || context.now
-        )
+        subject = { file_path: source.review_path || source.paths.first, season_id: summary.season_id }.compact
+        since = newest_mtime(source.paths) || summary.built_at || context.now
+        item(**texts_for(source, kind), kind:, band:, subject:, action: target, since:)
       end
 
       # [kind, band, Inbox::Action] for the pending kind, or nil.
@@ -54,6 +60,15 @@ module Inbox
         when :manifest
           [:manifest, :acquire, action(t('actions.manifests'), url_helpers.sources_manifests_path(season_id: summary.season_id))]
         end
+      end
+
+      # Key, title & detail of the item (a source with a FIN id is an off-board one).
+      def texts_for(source, kind)
+        fin_event_id = source.respond_to?(:fin_event_id) ? source.fin_event_id : nil
+        return { key: "unmatched:#{source.base}", title: t("titles.#{kind}", name: source.base), detail: t(:detail) } unless fin_event_id
+
+        { key: "off_board:#{fin_event_id}:#{source.base}", title: t("off_board_titles.#{kind}", name: source.base, fin_event_id:),
+          detail: t(:off_board_detail, fin_event_id:) }
       end
 
       def newest_mtime(paths)

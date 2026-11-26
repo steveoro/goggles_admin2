@@ -129,6 +129,54 @@ RSpec.describe SeasonRecheckJob do
     end
   end
 
+  # 0.10.102: a link adopted from the FIN 'Eventi' calendar
+  context 'with adopted rows whose crawls keep failing' do
+    let(:rows) do
+      [
+        board_row(fin_event_id: '150112', state: :link_not_crawled, action: :crawl, last_date: Date.current - 1, flags: [:link_adopted]),
+        board_row(fin_event_id: '150115', state: :link_not_crawled, action: :crawl, last_date: Date.current + 9, flags: [:link_adopted]),
+        board_row(fin_event_id: '150002', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      ]
+    end
+
+    def crawl_event!(fin_event_id, failed:, message: 'crawler error')
+      Ops.record_event!(kind: failed ? 'board.crawl_failed' : 'board.crawl_finished', subject_type: 'fin_event', subject_key: fin_event_id,
+                        data: { 'status' => failed ? 'failed' : 'done', 'message' => message })
+    end
+
+    before(:each) do
+      Ops::Event.where(subject_type: 'fin_event').delete_all
+      travel_to(21.hours.ago) do
+        %w[150112 150115 150002].each do |id|
+          activity_log.queue!(id, kind: :crawl, origin: :auto, url: rows.first.url)
+          activity_log.finish!(id, kind: :crawl, status: :failed)
+        end
+      end
+    end
+
+    it "stops the unattended crawls after #{SeasonBoard::CrawlFailures::MAX_ADOPTED_FAILURES} consecutive failures (linked rows unaffected)" do
+      2.times { crawl_event!('150112', failed: true) }
+      3.times { crawl_event!('150115', failed: true) }
+      3.times { crawl_event!('150002', failed: true) }
+      expect(described_class.perform_now).to eq(%w[150112 150002])
+      crawl_event!('150112', failed: true)
+      expect(described_class.perform_now).to eq(%w[150002])
+    end
+
+    it 'counts only the failures since the last successful crawl, and never a refusal with the automation paused' do
+      3.times { crawl_event!('150112', failed: true) }
+      crawl_event!('150112', failed: false)
+      2.times { crawl_event!('150112', failed: true) }
+      3.times { crawl_event!('150115', failed: true, message: I18n.t('pipeline_automation.reasons.automation_paused', locale: :it)) }
+      expect(described_class.perform_now).to eq(%w[150112 150002 150115])
+    end
+
+    it 'skips the adopted rows when the failures cannot be read (fail closed)' do
+      allow(Ops).to receive(:available?).and_return(false)
+      expect(described_class.perform_now).to eq(%w[150002])
+    end
+  end
+
   context 'when an enqueue fails' do
     let(:rows) do
       [

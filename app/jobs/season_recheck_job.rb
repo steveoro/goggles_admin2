@@ -16,6 +16,9 @@
 # crawls then run one at a time). A failed enqueue is logged and doesn't stop the other rows.
 # The full board build is stored as the board summary (SeasonBoard::Snapshot.build!).
 # Nothing is queued while the automation master switch is off (DataFix::Automation, phase 10).
+# 0.10.102: a row whose link is adopted from the FIN 'Eventi' calendar (flag :link_adopted) is skipped once its crawls
+# failed SeasonBoard::CrawlFailures::MAX_ADOPTED_FAILURES times in a row (or the count can't be read): then only the
+# operator's Crawl button, or the link published later on the 'Riepilogo Eventi' page, crawls it again.
 #
 class SeasonRecheckJob < ApplicationJob
   queue_as :background
@@ -49,7 +52,16 @@ class SeasonRecheckJob < ApplicationJob
     today = Date.current
     rechecks = rows.select { |row| recheck?(row, today) }.sort_by { |row| -row.last_date.jd }
     retries = (rows.select { |row| retry_failed?(row, activity_log) } - rechecks).sort_by { |row| retry_order(row) }
-    (rechecks + retries).reject { |row| row.busy? || recently_crawled?(row, activity_log) }.uniq(&:fin_event_id)
+    (rechecks + retries).reject { |row| skipped?(row, activity_log) }.uniq(&:fin_event_id)
+  end
+
+  def skipped?(row, activity_log)
+    row.busy? || recently_crawled?(row, activity_log) || adopted_given_up?(row)
+  end
+
+  # An adopted row whose last crawls kept failing (SeasonBoard::CrawlFailures, fail closed).
+  def adopted_given_up?(row)
+    row.flag?(:link_adopted) && SeasonBoard::CrawlFailures.adopted_exhausted?(row.fin_event_id)
   end
 
   # Soonest meeting first, undated rows last

@@ -42,6 +42,19 @@ RSpec.describe Inbox::Sources::UnmatchedSources do
     expect(described_class.new.items(inbox_context(board_snapshot: other))).to be_empty
   end
 
+  # 0.10.102
+  it 'emits the pending sources whose FIN id is on no board row, with their own key and titles' do
+    payload = { 'season_id' => 262, 'built_at' => '2026-11-23T09:00:00+01:00', 'rows' => [], 'unmatched_sources' => [],
+                'off_board_sources' => [unmatched('lignano', 'source', review_path: '/d/262/lignano.json').merge('fin_event_id' => '150244'),
+                                        unmatched('sql', 'sql', paths: ['/d/262/0002-x-lt4.sql']).merge('fin_event_id' => '150099')] }
+    summary = SeasonBoard::Snapshot::Summary.from_payload(payload, stored: true, taken_at: Time.current)
+    found = I18n.with_locale(:en) { described_class.new.items(inbox_context(board_snapshot: summary)) }
+    expect(found.map(&:key)).to eq(['off_board:150244:lignano'])
+    expect(found.first).to have_attributes(title: 'Source of FIN 150244, not on the board: lignano', band: :review)
+    expect(found.first.detail).to include('FIN 150244 is on no Season board row')
+    expect(found.first.action.path).to eq("/data_fix/review_sessions?file_path=#{CGI.escape('/d/262/lignano.json')}")
+  end
+
   it 'lists more on the Sources results tab' do
     expect(described_class.more_path).to eq('/sources/results')
   end

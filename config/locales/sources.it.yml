@@ -43,6 +43,8 @@ it:
         board_row: "Apri la riga della plancia stagione"
         non_fin: "non FIN"
         non_fin_tooltip: "Non presente nel calendario FIN: preparala da qui"
+        off_board: "FIN %{fin_event_id} · non in plancia"
+        off_board_tooltip: "Questo ID FIN non è su nessuna riga della plancia stagione (nessuna riga in \"Riepilogo Eventi\", o il suo link dal calendario \"Eventi\" non viene più preso): seguila da qui"
         phase: "passo %{phase}"
         staged:
           one: "1 risultato in staging"

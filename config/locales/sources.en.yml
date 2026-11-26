@@ -43,6 +43,8 @@ en:
         board_row: "Open the Season board row"
         non_fin: "non-FIN"
         non_fin_tooltip: "Not on the FIN calendar: prepare it from here"
+        off_board: "FIN %{fin_event_id} · not on the board"
+        off_board_tooltip: "This FIN id is on no Season board row (no \"Riepilogo Eventi\" row, or its \"Eventi\" link is no longer taken): follow it from here"
         phase: "step %{phase}"
         staged:
           one: "1 staged result"

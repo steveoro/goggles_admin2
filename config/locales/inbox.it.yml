@@ -79,6 +79,11 @@ it:
         review_source: "Sorgente senza id FIN: %{name}"
         manifest: "Manifesto senza id FIN: %{name}"
       detail: "Non presente nel calendario FIN della plancia stagione"
+      off_board_titles:
+        resume_review: "In revisione, FIN %{fin_event_id} non in plancia: %{name}"
+        review_source: "Sorgente di FIN %{fin_event_id}, non in plancia: %{name}"
+        manifest: "Manifesto di FIN %{fin_event_id}, non in plancia: %{name}"
+      off_board_detail: "FIN %{fin_event_id} non è su nessuna riga della plancia stagione (nessuna riga in \"Riepilogo Eventi\", o il suo link dal calendario \"Eventi\" non viene più preso)"
       actions:
         review: "Apri in Data-Fix"
         manifests: "Apri la scheda Manifesti"

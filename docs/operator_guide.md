@@ -55,7 +55,7 @@ With the automation on (the default), most of the work happens by itself:
 
 The automation never commits and never pushes: those two clicks are always yours.
 
-You can also act yourself on any row: **Crawl**, **Extract manifest**, **Prepare**, **Retry**, **Hold automation**. A crawl takes a while (the FIN server is slow: allow up to 30 minutes for a big meeting) and only one crawl runs at a time; the row shows when it is queued or running.
+You can also act yourself on any row: **Crawl**, **Extract manifest**, **Prepare**, **Retry**, and the **Auto-prepare** switch (off = the automation never prepares that meeting). The board remembers the state chip you chose (also after a button or a switch); **All** clears it. A link to one meeting's row (from the Outbox, Sources, a health finding) shows the whole board when that chip would hide the row. A crawl takes a while (the FIN server is slow: allow up to 30 minutes for a big meeting) and only one crawl runs at a time; the row shows when it is queued or running.
 
 Meetings that are not on the FIN calendar (Microplus, FICR, Go&Swim, PDF results) start from **Sources** instead: see [Sources](#sources).
 
@@ -159,10 +159,12 @@ The entity pages (**Entities**, **Support**) list the production data through th
 
 ## Kill switches
 
+Every switch is flipped in place (the page stays where it is) and logged in **Activity**.
+
 - **Automation** (master switch), **Auto-extract manifests** and **Auto-prepare**: in the dashboard **System status** zone and on the Season board header. Off = nothing is crawled, extracted or prepared by itself; every button keeps working. **Needs you** shows **Automation paused** while the master switch is off.
-- `ADMIN2_AUTOMATION=0` in the server environment forces all three off without touching the stored switches (restart the server to apply or remove it).
-- **Hold automation** on a board row stops the automatic preparation of that meeting only.
-- Operations: the ops setting `operations.enabled` set to false hides the **Fix** buttons and refuses the applies.
+- `ADMIN2_AUTOMATION=0` in the server environment forces all three off without touching the stored switches (restart the server to apply or remove it); the switches then show off and cannot be flipped.
+- **Auto-prepare** on a board row: off stops the automatic preparation of that meeting only.
+- **Operations** (dashboard **System status** zone and the **Operations** page header): off hides the **Fix** buttons and refuses the applies; turn it back on from the same places.
 
 Every toggle is logged in **Activity**.
 

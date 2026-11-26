@@ -14,6 +14,11 @@ module SeasonBoard
   # right now: the lease, or a running entry) is the subset that also disables the review links (Row#locked?). The ops pipeline facts of each row's source
   # (SeasonBoard::PipelineIndex, phase 10) feed the :prepare_failed / :needs_review / :ready_to_commit states.
   #
+  # Adopted links (0.10.102): a snapshot row without URL takes the meeting link of the FIN "Eventi" calendar row that
+  # matches it unambiguously (SeasonBoard::CalendarIndex, derived at every build, never stored in the watcher state).
+  # The row is then resolved with that URL exactly as a linked row (state, disk, DB, activity), flagged
+  # :link_adopted, and its FIN id counts as "on the snapshot" for the orphans. A row's own URL always wins.
+  #
   class Builder # rubocop:disable Metrics/ClassLength
     STATES = StateResolver::STATES
     ACTIONS = StateResolver::ACTIONS
@@ -32,9 +37,11 @@ module SeasonBoard
     # - pending_board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (optional, default [])
     # - unmatched_pipeline: Hash of unmatched source base => PipelineIndex::Facts (phase 15: the non-FIN sources
     #   prepared from the Sources page; optional, default {})
+    # - off_board_sources: Array of DiskIndex::Entry (0.10.102: pending files whose FIN id is on no board row, e.g. a
+    #   meeting only on the 'Eventi' calendar, or an adopted link gone since; optional, default [])
     Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities,
-                         :pending_board_sql_paths, :unmatched_pipeline) do
-      def initialize(pending_board_sql_paths: [], unmatched_pipeline: {}, **) = super
+                         :pending_board_sql_paths, :unmatched_pipeline, :off_board_sources) do
+      def initialize(pending_board_sql_paths: [], unmatched_pipeline: {}, off_board_sources: [], **) = super
 
       # Orphans that can be targets of the manual "Link to meeting" action (see Builder.link_candidates).
       def link_candidates
@@ -85,14 +92,18 @@ module SeasonBoard
     # - state_store: FedernuotoWatch::StateStore used when +rows+ is nil (default store when nil)
     # - snapshot_checked_at: overrides the 'last_checked' time read from the store
     # - pipeline_index: SeasonBoard::PipelineIndex (default: one for the season)
+    # - calendar_index: SeasonBoard::CalendarIndex (default: one for the season, on the data folder of the DiskIndex,
+    #   as of the last watcher check, else +today+)
     def initialize(season:, rows: nil, disk_index: nil, db_index: nil, activity_log: nil, today: Date.current, # rubocop:disable Metrics/ParameterLists
-                   state_store: nil, snapshot_checked_at: nil, pipeline_index: nil)
+                   state_store: nil, snapshot_checked_at: nil, pipeline_index: nil, calendar_index: nil)
       @season = season
       @rows = rows
       @disk_index = disk_index || DiskIndex.new(season_id: season.id)
       @db_index = db_index || DbIndex.new(season_id: season.id)
       @activity_log = activity_log || ActivityLog.new
       @pipeline_index = pipeline_index || PipelineIndex.new(season_id: season.id)
+      @calendar_index = calendar_index
+      @today = today
       @resolver = StateResolver.new(today:)
       @row_flags = RowFlags.new(season:, db_index: @db_index)
       @state_store = state_store
@@ -102,20 +113,33 @@ module SeasonBoard
     # Returns a Result.
     def call
       snapshot_rows = load_snapshot_rows
-      fin_ids = snapshot_rows.filter_map { |row| FINEventId.parse(row['url']) }
+      @adopted = adopted_links(snapshot_rows)
+      fin_ids = snapshot_rows.filter_map { |row| FINEventId.parse(row['url']) || @adopted[row]&.fin_event_id }
       orphans = @db_index.orphans(fin_ids)
       @unlinked_dates = self.class.link_candidates(orphans).filter_map { |cal| self.class.calendar_date(cal) }
       board_rows = snapshot_rows.map { |row| build_row(row) }
+      off_board = off_board_sources(fin_ids)
 
       Result.new(
-        season: @season, rows: board_rows, orphans:,
-        unmatched_sources: @disk_index.unmatched, snapshot_checked_at: @snapshot_checked_at,
-        warnings: warnings_for(snapshot_rows, board_rows, fin_ids), active_activities: @activity_log.active,
-        pending_board_sql_paths: @disk_index.board_sql_paths, unmatched_pipeline:
+        season: @season, rows: board_rows, orphans:, unmatched_sources: @disk_index.unmatched, snapshot_checked_at: @snapshot_checked_at,
+        warnings: warnings_for(snapshot_rows, board_rows, fin_ids, off_board), active_activities: @activity_log.active,
+        pending_board_sql_paths: @disk_index.board_sql_paths, unmatched_pipeline:, off_board_sources: off_board
       )
     end
 
     private
+
+    # Disk entries with something pending whose FIN id is on no board row (0.10.102), in FIN id order.
+    def off_board_sources(fin_ids)
+      ids = fin_ids.to_set
+      @disk_index.entries.values.select { |entry| ids.exclude?(entry.fin_event_id) && entry.pending? }.sort_by(&:fin_event_id)
+    end
+
+    def off_board_warnings(entries)
+      return [] if entries.empty?
+
+      [I18n.t('season_board.calendar_links.off_board', count: entries.size, ids: entries.map(&:fin_event_id).join(', '))]
+    end
 
     # Pipeline facts of the unmatched sources (base => Facts; only the ones with an ops row).
     def unmatched_pipeline
@@ -133,7 +157,20 @@ module SeasonBoard
       Array(state['rows'])
     end
 
-    def build_row(row)
+    # Snapshot row (identity) => CalendarIndex::Link, for the rows adopting a link of the 'Eventi' calendar.
+    # (the default index is built here: it is as of the last watcher check, known once the snapshot is read)
+    def adopted_links(snapshot_rows)
+      @calendar_index ||= CalendarIndex.new(season: @season, data_dir: @disk_index.data_dir, as_of: @snapshot_checked_at || @today)
+      snapshot_rows.each_with_object({}.compare_by_identity) do |row, memo|
+        link = @calendar_index.link_for(row, snapshot_rows)
+        memo[row] = link if link
+      end
+    end
+
+    # (an adopted link is resolved as the row's own URL: same state rules, disk, DB & activity matching)
+    def build_row(snapshot_row)
+      link = @adopted[snapshot_row]
+      row = link ? snapshot_row.merge('url' => link.url) : snapshot_row
       fin_id = FINEventId.parse(row['url'])
       calendar = fin_id && @db_index.calendar_for(fin_id)
       disk = fin_id && @disk_index.for(fin_id)
@@ -142,16 +179,17 @@ module SeasonBoard
         calendar:, meeting: calendar&.meeting, disk:, pipeline: disk && @pipeline_index.for_entry(disk)
       )
       activity = fin_id ? @activity_log.for(fin_id) : ActivityLog::KINDS.index_with(nil)
-      assemble_row(facts, @resolver.call(facts), activity)
+      assemble_row(facts, @resolver.call(facts), activity, link)
     end
 
-    def assemble_row(facts, outcome, activity)
+    def assemble_row(facts, outcome, activity, link)
       busy = activity.values.compact.any?(&:busy?) || facts.pipeline&.preparing? || facts.pipeline&.prepare_queued? || false
+      flags = @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates, link_adopted: link.present?)
       Row.new(
         **snapshot_attributes(facts), **meeting_attributes(facts.calendar, facts.meeting),
         state: outcome.state, state_detail: outcome.detail, next_action: outcome.next_action,
-        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk,
-        pipeline: facts.pipeline, locked: locked?(facts, activity)
+        activity:, busy:, flags:, disk_entry: facts.disk,
+        pipeline: facts.pipeline, locked: locked?(facts, activity), adopted_link: link
       )
     end
 
@@ -179,7 +217,7 @@ module SeasonBoard
 
     # == Warnings
 
-    def warnings_for(snapshot_rows, board_rows, fin_ids)
+    def warnings_for(snapshot_rows, board_rows, fin_ids, off_board)
       warnings = []
       warnings << 'The FIN calendar snapshot is empty: has the watcher run yet?' if snapshot_rows.empty?
       warnings.concat(date_warnings(board_rows))
@@ -187,7 +225,7 @@ module SeasonBoard
         warnings << "FIN event id #{fin_id} appears on more than one snapshot row"
       end
       @row_flags.duplicate_fin_event_ids.each { |fin_id| warnings << "FIN event id #{fin_id} is used by more than one calendar row" }
-      warnings
+      warnings.concat(@calendar_index.warnings(snapshot_rows), off_board_warnings(off_board))
     end
 
     def date_warnings(board_rows)

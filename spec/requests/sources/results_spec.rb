@@ -31,6 +31,23 @@ RSpec.describe 'Sources results' do
       expect(html.at_css('#sources-tabs .nav-link.active')['id']).to eq('sources-tab-results')
     end
 
+    # 0.10.102
+    it 'labels a FIN source whose FIN id is on no row of the stored board summary' do
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150999' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      get(sources_results_path(season_id: season.id))
+      badge = row_for(fin_source.basename.to_s).css('.badge').find { |node| node.text.include?('150091') }
+      expect(badge.text.strip).to eq(I18n.t('sources.results.badges.off_board', fin_event_id: '150091'))
+      expect(badge['title']).to eq(I18n.t('sources.results.badges.off_board_tooltip'))
+
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150091' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      get(sources_results_path(season_id: season.id))
+      badge = row_for(fin_source.basename.to_s).css('.badge').find { |node| node.text.include?('150091') }
+      expect(badge).to have_attributes(text: 'FIN 150091')
+      expect(badge['title']).to eq(I18n.t('sources.results.badges.board_row'))
+    end
+
     it 'shows the Sources item active in the sidebar and Import > Sources > Results as breadcrumbs' do
       get(sources_results_path(season_id: season.id))
       expect(html.css('.app-sidebar a.nav-link.active').pluck('href')).to eq(['/sources/results'])

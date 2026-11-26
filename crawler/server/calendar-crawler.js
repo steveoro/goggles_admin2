@@ -10,6 +10,18 @@ const puppeteer = require('puppeteer')
 
 // Local modules & constants:
 const CrawlUtil = require('./utility') // Crawler utility functions
+
+/**
+ * True when a calendar row title marks the meeting as cancelled ("annullato", "annullata", ...).
+ * A fresh, non-global regexp at each call: a shared /g regexp keeps its lastIndex between calls, so the
+ * row after a cancelled one could be reported as not cancelled.
+ * Also injected into the calendar page (see processCalendarLayout2), so it must stay self-contained.
+ * @param {String} name - the calendar row title
+ * @returns {Boolean} true for a cancelled meeting
+ */
+function isCancelledTitle(name) {
+  return /annull/i.test(String(name === undefined || name === null ? '' : name))
+}
 //-----------------------------------------------------------------------------
 
 /**
@@ -304,10 +316,11 @@ class CalendarCrawler {
     const totRowCount = await page.$$eval('.nat_eve_list[data-id="lista"] > .nat_eve_container', (calCells) => { return calCells.length })
                                   .catch((err) => { console.log(err.toString()) })
     CrawlUtil.updateStatus(`Found ${totRowCount} calendar rows`)
+    // (defines isCancelledTitle in the page: the same function the mocha specs check)
+    await page.addScriptTag({ content: isCancelledTitle.toString() })
 
     return await page.evaluate((baseURL) => {
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-      const regEx = /annull/gi
       var resultRows = []
 
       // Loop on all the event containers and add a row to the resulting calendar:
@@ -347,7 +360,7 @@ class CalendarCrawler {
                          (the actual payload for the POST must be composed as ResultsCrawler does for each meeting page)
                 */
                 const anchorURL = node.querySelector('.nat_eve_results .results').dataset['alias']
-                const isCancelled = regEx.test(name) // Usually the "cancelled" flag is added to the title itself, either in front or at the end
+                const isCancelled = isCancelledTitle(name) // Usually the "cancelled" flag is added to the title itself, either in front or at the end
 
                 // Add the extracted calendar row to the list:
                 resultRows.push({
@@ -498,5 +511,7 @@ class CalendarCrawler {
   //---------------------------------------------------------------------------
 }
 //-----------------------------------------------------------------------------
+
+CalendarCrawler.isCancelledTitle = isCancelledTitle
 
 module.exports = CalendarCrawler

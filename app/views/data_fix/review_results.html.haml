@@ -68,11 +68,13 @@
           = t('data_import.data_fix.individual_result_overwrite_help')
         - if @overwrite_existing_results && @overwrite_candidates.present?
           %span.badge.text-bg-danger.mt-1= t('data_fix.wizard.results.deletion_candidates', count: @overwrite_candidates.size)
-      = form_with url: toggle_individual_result_overwrite_path, method: :post, local: true, class: 'mb-0' do |form|
-        = form.hidden_field :file_path, value: @file_path
-        = form.hidden_field :enabled, value: (@overwrite_existing_results ? '0' : '1')
-        = form.submit(@overwrite_existing_results ? t('data_import.data_fix.disable_individual_result_overwrite') : t('data_import.data_fix.enable_individual_result_overwrite'),
-                      class: @overwrite_existing_results ? 'btn btn-outline-danger' : 'btn btn-warning')
+      -# (a switch posting enabled=1|0; answered with a redirect: the whole page depends on the flag)
+      = render(Switch::ToggleFormComponent.new(url: toggle_individual_result_overwrite_path, name: 'enabled',
+                                               checked: @overwrite_existing_results == true,
+                                               label: t('data_import.data_fix.individual_result_overwrite_switch'),
+                                               id: 'data-fix-overwrite-switch', params: { file_path: @file_path },
+                                               help: t('data_import.data_fix.individual_result_overwrite_help'),
+                                               label_class: (@overwrite_existing_results ? 'text-danger-emphasis fw-semibold' : nil)))
 
   - if @overwrite_existing_results && @overwrite_candidates.present?
     .alert.alert-danger

@@ -21,6 +21,8 @@ module SeasonBoard
     # - the pipeline facts of the season (phase 10): max updated_at of its Ops::PipelineSource rows (stage, lease,
     #   hold), the last prepare run id / finish time and the number of pending ones, the data_fix.db_generation.
     #   (Throttled progress writes are left out on purpose: a running prepare does not rebuild the board every second.)
+    # - the original FIN 'Eventi' calendar CSVs of the season in calendar.new / calendar.done (folder, name & mtime of
+    #   each, SeasonBoard::CalendarIndex.candidate_paths: the adopted links come from the newest one; 0.10.102).
     #
     class Fingerprint
       # Ops::Event kinds that change the board (as written by the 01 instrumentation).
@@ -56,11 +58,18 @@ module SeasonBoard
           'files' => { 'watch' => mtime(@watch_path), 'activity' => mtime(@activity_path) },
           'folders' => DiskIndex::SEASON_FOLDERS.index_with { |folder| mtime(@data_dir.join(folder, @season_id.to_s)) },
           'calendars' => db_facts(GogglesDb::Calendar), 'meetings' => db_facts(GogglesDb::Meeting),
-          'last_event_id' => last_event_id, 'pipeline' => pipeline_facts
+          'last_event_id' => last_event_id, 'pipeline' => pipeline_facts, 'eventi_calendars' => eventi_calendars
         }
       end
 
       private
+
+      # [["<folder>/<name>", mtime], ...] of the original 'Eventi' calendar CSVs of the season (stat calls only).
+      def eventi_calendars
+        CalendarIndex.candidate_paths(@season_id, data_dir: @data_dir).map do |path|
+          ["#{path.dirname.dirname.basename}/#{path.basename}", mtime(path)]
+        end
+      end
 
       # "<seconds>.<nanoseconds>" of the path mtime, or nil when missing.
       def mtime(path)

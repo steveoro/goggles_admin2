@@ -79,6 +79,11 @@ en:
         review_source: "Source without FIN id: %{name}"
         manifest: "Manifest without FIN id: %{name}"
       detail: "Not on the FIN calendar of the Season board"
+      off_board_titles:
+        resume_review: "In review, FIN %{fin_event_id} not on the board: %{name}"
+        review_source: "Source of FIN %{fin_event_id}, not on the board: %{name}"
+        manifest: "Manifest of FIN %{fin_event_id}, not on the board: %{name}"
+      off_board_detail: "FIN %{fin_event_id} is on no Season board row (no \"Riepilogo Eventi\" row, or its \"Eventi\" link is no longer taken)"
       actions:
         review: "Open in Data-Fix"
         manifests: "Open the Manifests tab"

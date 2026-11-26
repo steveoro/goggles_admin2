@@ -11,8 +11,10 @@ module SeasonBoard
     #
     Summary = Data.define(
       :season_id, :rows, :state_counts, :unlinked_count, :done_count, :unmatched_sources, :board_sql_paths,
-      :warnings, :snapshot_checked_at, :built_at, :taken_at, :fingerprint, :stored, :payload
+      :warnings, :snapshot_checked_at, :built_at, :taken_at, :fingerprint, :stored, :payload, :off_board_sources
     ) do
+      def initialize(off_board_sources: [], **) = super
+
       # Builds the Summary from a payload Hash (String keys, see Snapshot::Payload).
       # - stored: true when the payload is the one stored in the ops DB;
       # - taken_at: time the payload was stored (or built, when not stored).
@@ -21,6 +23,7 @@ module SeasonBoard
           season_id: payload['season_id'], rows: Array(payload['rows']).map { |row| Row.from_payload(row) },
           **counts_from(payload),
           unmatched_sources: Array(payload['unmatched_sources']).map { |hash| UnmatchedSource.from_payload(hash) },
+          off_board_sources: Array(payload['off_board_sources']).map { |hash| UnmatchedSource.from_payload(hash) },
           board_sql_paths: Array(payload['board_sql_paths']), warnings: Array(payload['warnings']),
           snapshot_checked_at: parse_time(payload['snapshot_checked_at']), built_at: parse_time(payload['built_at']),
           taken_at:, fingerprint: payload['fingerprint'], stored:, payload:

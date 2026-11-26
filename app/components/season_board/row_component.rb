@@ -16,7 +16,8 @@ module SeasonBoard
   # The action targets come from SeasonBoard::ActionPaths (shared with the pages summarising the board).
   #
   # Phase 10: a row with a Data-Fix source also offers "Prepare" (a DataFixPrepareJob, phases 1-5 only) and the
-  # automation hold toggle (SECONDARY_PREPARE_STATES / #hold_toggle?); "Commit" only opens the commit summary.
+  # "Auto-prepare" switch (the row hold, on = not held: Switch::ToggleFormComponent; SECONDARY_PREPARE_STATES /
+  # #hold_toggle?); "Commit" only opens the commit summary.
   #
   class RowComponent < ViewComponent::Base
     # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):

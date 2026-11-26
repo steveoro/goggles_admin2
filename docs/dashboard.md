@@ -12,6 +12,8 @@ The landing page (`/`, `DashboardController`). It never calls the API: every rem
 | Data health | `dashboard/health` | `Health::DashboardCardComponent`: open errors / warnings of the board season and of the closed seasons (`Ops::HealthFinding`), queued runs, last sweep |
 | Activity | `dashboard/activity` | the last 20 `Ops::Event` rows; `/activity` lists them all |
 
+The System status zone also holds the switches: the three automation kill switches (`automation/_switches`, `AutomationController#switch`) and the **Operations** switch (`operations/_switch`, `OperationsController#switch`, ops setting `operations.enabled`). They are `Switch::ToggleFormComponent`s (a Bootstrap `.form-switch` in a POST form; `toggle_submit_controller.js` submits on change, disables the switch while the request runs and puts it back when it fails); the answer is a turbo stream replacing the switch panels and the toasts, so the zone is not reloaded.
+
 Each zone is a Turbo frame loaded on its own. `live_frames_controller.js` reloads them on any `AppNotificationsChannel` broadcast, or every 20 s while one of them carries `data-live-busy="true"` (something queued or running).
 
 A counter that was never fetched is never shown as 0: it says "unreachable", "sign in to refresh", "unavailable" or "no data yet". Switching the API URL in Settings shows "no data yet for <url>" until the counters of that server are fetched.

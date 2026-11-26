@@ -16,10 +16,13 @@ module SeasonBoard
     # - paths: every pending file (absolute path Strings);
     # - pipeline_state (phase 15): :preparing, :prepare_queued (0.10.99), :prepare_failed, :needs_review or
     #   :ready_to_commit for a source prepared from the Sources page (nil otherwise), with its pipeline_detail Hash
-    #   (Symbol keys, see SeasonBoard::StateText).
+    #   (Symbol keys, see SeasonBoard::StateText);
+    # - fin_event_id: the FIN id of an off-board source (Summary#off_board_sources, 0.10.102: a FIN id on no board
+    #   row), nil for the sources without FIN id.
     #
-    UnmatchedSource = Data.define(:base, :bases, :pending, :review_path, :phase, :paths, :pipeline_state, :pipeline_detail) do
-      def initialize(pipeline_state: nil, pipeline_detail: {}, **) = super
+    UnmatchedSource = Data.define(:base, :bases, :pending, :review_path, :phase, :paths, :pipeline_state, :pipeline_detail,
+                                  :fin_event_id) do
+      def initialize(pipeline_state: nil, pipeline_detail: {}, fin_event_id: nil, **) = super
 
       # Builds the UnmatchedSource from its stored Hash (String keys).
       def self.from_payload(hash)
@@ -27,7 +30,8 @@ module SeasonBoard
         new(
           base: hash['base'], bases: Array(hash['bases']), pending: hash['pending'].presence&.to_sym,
           review_path: hash['review_path'], phase: hash['phase'], paths: Array(hash['paths']),
-          pipeline_state: pipeline['state'].presence&.to_sym, pipeline_detail: pipeline['detail'].to_h.symbolize_keys
+          pipeline_state: pipeline['state'].presence&.to_sym, pipeline_detail: pipeline['detail'].to_h.symbolize_keys,
+          fin_event_id: hash['fin_event_id'].presence
         )
       end
 

@@ -61,9 +61,9 @@ RSpec.describe SeasonBoard::ActionPaths do
 
     it 'sends :link to the board row (the calendar is chosen there)' do
       expect(described_class.target_for(action(:link, bases: ['b'])))
-        .to have_attributes(http_method: :get, path: season_board_path(anchor: 'season-board-row-150091'))
+        .to have_attributes(http_method: :get, path: season_board_path(row: '150091', anchor: 'season-board-row-150091'))
       expect(described_class.board_row_path('150091', state: :archived_unlinked))
-        .to eq(season_board_path(state: 'archived_unlinked', anchor: 'season-board-row-150091'))
+        .to eq(season_board_path(state: 'archived_unlinked', row: '150091', anchor: 'season-board-row-150091'))
     end
 
     it 'is nil without an action or for an unknown kind' do

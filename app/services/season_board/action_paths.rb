@@ -91,9 +91,10 @@ module SeasonBoard
 
     # Season board path scrolled to the row of the FIN event id (e.g. for the :link action, whose
     # calendar choice is made on the row). Optional +state+ filter (shows the row even when hidden
-    # by default).
+    # by default; an explicit filter, stored as the board's chip). The +row+ param (no filter) makes the
+    # board show everything, for that request only, when the remembered chip would hide the row.
     def board_row_path(fin_event_id, state: nil)
-      url_helpers.season_board_path({ state: state.presence&.to_s, anchor: row_dom_id(fin_event_id) }.compact)
+      url_helpers.season_board_path({ state: state.presence&.to_s, row: fin_event_id.to_s.presence, anchor: row_dom_id(fin_event_id) }.compact)
     end
 
     # DOM id of the board row (see SeasonBoard::RowComponent).

@@ -71,6 +71,16 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
     expect(badge['title']).to be_present
   end
 
+  # 0.10.102
+  it "names the date of the FIN 'Eventi' calendar in the :link_adopted tooltip" do
+    link = SeasonBoard::CalendarIndex::Link.new(url: 'https://www.federnuoto.it/#/risultati/150091:x', fin_event_id: '150091', name: 'X',
+                                                calendar_date: Date.new(2026, 11, 25), file_name: '20261125-262-2-FIN-calendar.csv')
+    page = render_row(build_row(next_action: action(:crawl), flags: [:link_adopted], adopted_link: link))
+    badge = page.css('[data-flag="link_adopted"]').first
+    expect(badge.text.strip).to eq('link from the Eventi calendar')
+    expect(badge['title']).to include('"Eventi" calendar of 25/11/2026')
+  end
+
   describe 'actions' do
     it 'posts the FIN id only, with the token, for :crawl' do
       page = render_row(build_row(next_action: action(:crawl, url: 'https://x')))

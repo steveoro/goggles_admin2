@@ -36,8 +36,6 @@ en:
       title: 'Automation'
       env_off: '%{key}=0 is set: every automation switch is forced off (unset it and restart the server to resume).'
       ops_unavailable: 'The switches need the local ops DB (run bin/rails ops:prepare).'
-      turn_on: 'Turn on'
-      turn_off: 'Turn off'
       states:
         'on': 'On'
         paused: 'Paused'
@@ -63,10 +61,9 @@ en:
     row:
       prepare: 'Prepare'
       prepare_tooltip: 'Build the missing and stale Data-Fix steps in the background (an edited step is never rebuilt; nothing is committed)'
-      hold: 'Hold automation'
-      hold_tooltip: 'Never prepare this meeting automatically (the buttons keep working)'
-      release: 'Release hold'
-      release_tooltip: 'Let the automation prepare this meeting again'
+      auto_prepare: 'Auto-prepare'
+      hold_tooltip: 'On: the automation may prepare this meeting. Turn it off to never prepare it automatically (the buttons keep working)'
+      release_tooltip: 'Off: the automation never prepares this meeting (held). Turn it on to let the automation prepare it again'
     review:
       being_prepared: 'Being prepared in the background: the verdicts refresh when the job ends. Edits are refused meanwhile.'
       edit_refused: 'This source is being prepared in the background: retry in a moment.'
@@ -84,6 +81,7 @@ en:
       ops_unavailable: 'The automation switches need the local ops DB (run bin/rails ops:prepare).'
       switch_on: '%{switch}: on.'
       switch_off: '%{switch}: off.'
+      store_failed: '%{switch}: the switch could not be saved (local ops DB).'
       env_override: 'ADMIN2_AUTOMATION=0 is set: the automation stays off until it is unset (and the server restarted).'
   season_board:
     states:

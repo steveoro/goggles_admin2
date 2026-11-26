@@ -197,6 +197,26 @@ RSpec.describe SeasonBoard::Snapshot do
       end
     end
 
+    # 0.10.102
+    it 'carries the adopted links and the pending sources whose FIN id is on no row (format 5)' do
+      link = SeasonBoard::CalendarIndex::Link.new(url: results_url('150300'), fin_event_id: '150300', name: 'Pisa meeting',
+                                                  calendar_date: Date.new(2026, 11, 10), file_name: '20261110-262-2-FIN-calendar.csv')
+      calendar_index = instance_double(SeasonBoard::CalendarIndex, warnings: [])
+      allow(calendar_index).to receive(:link_for) { |row, _rows| row['key'] == 'k3' ? link : nil }
+      write_json('results.new', 'lignano.json', lt2_hash(fin_id: '150244'))
+      builder = SeasonBoard::Builder.new(
+        season:, rows: fin_rows, disk_index: SeasonBoard::DiskIndex.new(season_id: 262, data_dir:), db_index:,
+        activity_log: SeasonBoard::ActivityLog.new(path: File.join(data_dir, 'season-board.json')), today:, calendar_index:
+      )
+      stored = travel_to(Time.zone.local(2026, 11, 12, 10, 0)) { described_class.fetch(season, builder:) }
+      expect(stored).to be_stored
+      row = stored.row_for('150300')
+      expect(row).to have_attributes(url: results_url('150300'), flags: [:link_adopted], adopted_link: link, state: :link_not_crawled)
+      expect(SeasonBoard::RowFlags.tooltip(:link_adopted, row)).to include('10/11/2026')
+      expect(stored.off_board_sources.map { |source| [source.fin_event_id, source.base, source.pending] }).to eq([%w[150244 lignano] + [:source]])
+      expect(stored.unmatched_sources.map(&:fin_event_id)).to eq([nil])
+    end
+
     it 'stores only plain JSON values' do
       expect(plain?(summary.payload)).to be true
       expect(plain?(Ops::Snapshot.read('season_board:262').payload)).to be true
@@ -270,6 +290,26 @@ RSpec.describe SeasonBoard::Snapshot do
     it 'covers the five season folders scanned by the DiskIndex' do
       components = described_class.new(season_id: 262, data_dir:).components
       expect(components['folders'].keys).to eq(%w[results.new results.done results.sent manifests manifests.done])
+    end
+
+    # 0.10.102: the adopted links come from the newest one (SeasonBoard::CalendarIndex)
+    it "changes with the original FIN 'Eventi' calendar CSVs of calendar.new / calendar.done only" do
+      digest = -> { described_class.digest(262, data_dir:) }
+      first = digest.call
+      write_file('calendar.new', '20261125-262-3-FIN-current-meetings.csv', 'x')
+      write_file('calendar.new', '20261125-262-2-FIN-calendar-sel-20261125-110734-892.csv', 'x')
+      expect(digest.call).to eq(first)
+
+      csv = write_file('calendar.new', '20261125-262-2-FIN-calendar.csv', 'x')
+      added = digest.call
+      expect(added).not_to eq(first)
+      File.utime(1.hour.ago.to_time, 1.hour.ago.to_time, csv)
+      expect(digest.call).not_to eq(added)
+
+      FileUtils.mkdir_p(File.dirname(path_for('calendar.done', 'x')))
+      FileUtils.mv(csv, path_for('calendar.done', '20261125-262-2-FIN-calendar.csv'))
+      expect(described_class.new(season_id: 262, data_dir:).components['eventi_calendars'].map(&:first))
+        .to eq(['calendar.done/20261125-262-2-FIN-calendar.csv'])
     end
   end
 end

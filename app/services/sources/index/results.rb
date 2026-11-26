@@ -71,12 +71,22 @@ module Sources
       end
 
       def fin_badge(entry)
-        if entry.fin_event_id
+        if entry.fin_event_id && off_board?(entry.fin_event_id)
+          Badge.new(label: I18n.t('sources.results.badges.off_board', fin_event_id: entry.fin_event_id), tone: 'warning',
+                    title: I18n.t('sources.results.badges.off_board_tooltip'))
+        elsif entry.fin_event_id
           Badge.new(label: "FIN #{entry.fin_event_id}", tone: 'primary', title: I18n.t('sources.results.badges.board_row'),
                     path: SeasonBoard::ActionPaths.board_row_path(entry.fin_event_id))
         else
           Badge.new(label: I18n.t('sources.results.badges.non_fin'), tone: 'warning', title: I18n.t('sources.results.badges.non_fin_tooltip'))
         end
+      end
+
+      # True when the stored board summary of the season has no row with the FIN id (0.10.102: a meeting only on the
+      # 'Eventi' calendar, or an adopted link no longer taken). Unknown (no stored summary, e.g. another season): false.
+      def off_board?(fin_event_id)
+        @board_ids = SeasonBoard::Snapshot.board_fin_event_ids(@index.season_id) unless defined?(@board_ids)
+        @board_ids ? @board_ids.exclude?(fin_event_id) : false
       end
 
       def phase_badge(source)

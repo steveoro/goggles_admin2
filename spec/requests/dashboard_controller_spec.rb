@@ -186,7 +186,11 @@ RSpec.describe DashboardController do
       expect(switches.to_h { |row| [row['data-automation-switch'], row['data-automation-state']] })
         .to eq('enabled' => 'on', 'auto_extract' => 'off', 'auto_prepare' => 'on')
       toggle = html.at_css("#dashboard-automation [data-automation-switch='auto_extract'] form[action='#{automation_switch_path}']")
-      expect(toggle.at_css('input[name=value]')['value']).to eq('1')
+      switch = toggle.at_css('input[type=checkbox][role=switch][name=value]')
+      expect(switch['value']).to eq('1')
+      expect(switch['checked']).to be_nil
+      expect(toggle.at_css('input[type=hidden][name=value]')['value']).to eq('0')
+      expect(html.at_css('#dashboard-automation #operations-switch-dashboard input[role=switch][checked]')).to be_present
       expect(html.at_css('#dashboard-worker-mode')).to be_present
     end
 

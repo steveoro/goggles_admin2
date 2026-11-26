@@ -36,6 +36,13 @@ RSpec.describe SeasonBoard::RowFlags do
     expect(row_flags.call(facts(date: '??'), :not_linked, no_activity, false)).to eq([:unparsable_date])
   end
 
+  it 'flags a link adopted from the FIN Eventi calendar (:link_adopted, last in FLAGS order)' do
+    expect(row_flags.call(facts, :link_not_crawled, no_activity, false, link_adopted: true)).to eq([:link_adopted])
+    expect(row_flags.call(facts, :link_not_crawled, { crawl: entry(:failed), extract: nil }, true, link_adopted: true))
+      .to eq(%i[busy crawl_failed link_adopted])
+    expect(described_class::FLAGS.last).to eq(:link_adopted)
+  end
+
   it 'flags duplicated calendars & calendars pointing to a missing meeting' do
     calendar = instance_double(SeasonBoard::DbIndex::CalendarInfo, meeting_id: 42)
     expect(row_flags.call(facts(fin_event_id: '150091', calendar:), :link_not_crawled, no_activity, false))

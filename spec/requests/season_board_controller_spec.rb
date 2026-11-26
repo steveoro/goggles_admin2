@@ -177,6 +177,132 @@ RSpec.describe SeasonBoardController do
       end
     end
 
+    describe 'filter persistence (cookie season_board_filters, SeasonBoard::Filters)' do
+      def stored_filters
+        raw = cookies[SeasonBoard::Filters.cookie_name]
+        raw.present? ? JSON.parse(CGI.unescape(raw)) : nil
+      end
+
+      def visible_names = response.parsed_body.css('#season-board-table tbody tr[id^="season-board-row-"]').map { |tr| tr.at_css('td:nth-child(2)').text.strip }
+
+      it 'marks every chip and toggle link as an explicit choice (filters=1)' do
+        get(season_board_path(locale: 'en'))
+        links = response.parsed_body.css('#season-board-filters a')
+        expect(links).not_to be_empty
+        expect(links.pluck('href')).to all(include('filters=1'))
+        expect(response.parsed_body.at_css('#season-board-chip-all')['data-chip-selected']).to eq('true')
+      end
+
+      it 'stores an explicit chip and restores it on a request without filter params (the sidebar link)' do
+        get(season_board_path(state: 'manifest_pending', filters: 1, locale: 'en'))
+        expect(stored_filters).to eq('state' => 'manifest_pending')
+
+        get(season_board_path(locale: 'en'))
+        expect(visible_names).to eq(['To extract'])
+        chip = response.parsed_body.at_css('[data-state-chip="manifest_pending"]')
+        expect(chip['data-chip-selected']).to eq('true')
+        expect(chip['class']).to include('text-bg-primary')
+        expect(response.parsed_body.at_css('#season-board-chip-all')['data-chip-selected']).to eq('false')
+      end
+
+      it 'stores the toggles too, and the "All" chip clears the state chip (the cookie goes when nothing is left)' do
+        get(season_board_path(state: 'results_ready', show_done: 1, filters: 1))
+        expect(stored_filters).to eq('state' => 'results_ready', 'show_done' => true)
+
+        get(season_board_path(show_done: 1, filters: 1))
+        expect(stored_filters).to eq('show_done' => true)
+        get(season_board_path)
+        expect(visible_names).to include('Old and done', 'To crawl')
+
+        get(season_board_path(filters: 1))
+        expect(stored_filters).to be_nil
+        get(season_board_path)
+        expect(visible_names).to include('To crawl', 'To extract')
+        expect(visible_names).not_to include('Old and done', 'Unlinked row')
+      end
+
+      it 'lets a deep link with filter params (no marker) win, and stores it' do
+        get(season_board_path(state: 'manifest_pending', filters: 1))
+        get(season_board_path(state: 'sql_pending'))
+        expect(visible_names).to eq(['To push'])
+        expect(stored_filters).to eq('state' => 'sql_pending')
+      end
+
+      it 'never stores from the live refresh (frame=1), which uses its params or the cookie' do
+        get(season_board_path(state: 'manifest_pending', filters: 1))
+        get(season_board_path(frame: 1, state: 'sql_pending', filters: 1))
+        expect(visible_names).to eq(['To push'])
+        expect(stored_filters).to eq('state' => 'manifest_pending')
+        get(season_board_path(frame: 1))
+        expect(visible_names).to eq(['To extract'])
+      end
+
+      it 'lands on the stored chip after a POST redirect (e.g. a crawl)' do
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        get(season_board_path(state: 'manifest_pending', filters: 1))
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(response).to redirect_to(season_board_path)
+        follow_redirect!
+        expect(visible_names).to eq(['To extract'])
+      end
+
+      it 'ignores a garbage cookie: bad JSON, unknown keys and states, non-boolean toggles, an oversized value' do
+        [
+          'not json at all', '[1,2,3]', '"just a string"', '%FF', '%7B%22state%22%3A%22%FF%22%7D',
+          { 'state' => 'bogus', 'show_done' => 'yes', 'evil' => '<script>' }.to_json,
+          { 'state' => 'manifest_pending', 'pad' => 'x' * 400 }.to_json
+        ].each do |raw|
+          cookies[SeasonBoard::Filters.cookie_name] = raw
+          get(season_board_path)
+          expect(response).to have_http_status(:success)
+          expect(visible_names).to include('To crawl', 'To extract')
+          expect(visible_names).not_to include('Old and done', 'Unlinked row')
+        end
+      end
+
+      it 'reads only the known keys of a valid cookie' do
+        cookies[SeasonBoard::Filters.cookie_name] = { 'state' => 'manifest_pending', 'show_done' => true, 'other' => 1 }.to_json
+        get(season_board_path)
+        expect(visible_names).to eq(['To extract'])
+      end
+
+      it 'keeps showing the remembered chip when no row is left in its state (count 0), so that it can be cleared' do
+        get(season_board_path(state: 'prepare_failed', filters: 1))
+        get(season_board_path(locale: 'en'))
+        chip = response.parsed_body.at_css('[data-state-chip="prepare_failed"]')
+        expect(chip.text).to include('(0)')
+        expect(chip['data-chip-selected']).to eq('true')
+        expect(response.body).to include(I18n.t('season_board.filters.none_visible'))
+      end
+
+      describe 'row links (row=<fin_event_id>, SeasonBoard::ActionPaths.board_row_path)' do
+        before(:each) { get(season_board_path(state: 'manifest_pending', filters: 1)) }
+
+        it 'shows the whole board for that request when the remembered chip would hide the row, storing nothing' do
+          get(SeasonBoard::ActionPaths.board_row_path('1'))
+          expect(visible_names).to include('To crawl', 'To extract', 'Unlinked row', 'Old and done')
+          expect(response.parsed_body.at_css('#season-board-chip-all')['data-chip-selected']).to eq('true')
+          expect(stored_filters).to eq('state' => 'manifest_pending')
+          get(season_board_path)
+          expect(visible_names).to eq(['To extract'])
+        end
+
+        it 'keeps the remembered chip when it shows the row' do
+          get(SeasonBoard::ActionPaths.board_row_path('2'))
+          expect(visible_names).to eq(['To extract'])
+          expect(response.parsed_body.at_css('[data-state-chip="manifest_pending"]')['data-chip-selected']).to eq('true')
+        end
+
+        it 'keeps the remembered chip for an unknown row, and lets a row link with a state stay explicit (stored)' do
+          get(SeasonBoard::ActionPaths.board_row_path('999'))
+          expect(visible_names).to eq(['To extract'])
+          get(SeasonBoard::ActionPaths.board_row_path('8', state: :committed_with_results))
+          expect(visible_names).to eq(['Old and done'])
+          expect(stored_filters).to eq('state' => 'committed_with_results')
+        end
+      end
+    end
+
     describe 'GET /season_board with the unlinked-only or empty snapshot' do
       let(:rows) { [] }
 
@@ -460,8 +586,11 @@ RSpec.describe SeasonBoardController do
           expect(page.at_css('#season-board-row-12 [data-pipeline-action="prepare"]')).to be_present
           expect(page.at_css('#season-board-row-13 [data-pipeline-action="prepare"]')).to be_nil
           expect(page.at_css('#season-board-row-13 [data-pipeline-action="hold"]')).to be_present
+          # ("Auto-prepare" switch: on = not held; flipping it posts hold=1 when on, hold=0 when off)
+          expect(page.at_css('#season-board-row-13 form[action="/season_board/hold"] input[role=switch]')['checked']).to be_present
           held = page.at_css('#season-board-row-14 form[action="/season_board/hold"]')
-          expect(held.at_css('input[name=hold]')['value']).to eq('0')
+          expect(held.at_css('input[role=switch][name=hold]').to_h.slice('value', 'checked')).to eq('value' => '0')
+          expect(held.at_css('input[type=hidden][name=hold]')['value']).to eq('1')
           expect(page.at_css('#season-board-row-14 [data-flag="prepare_held"]')).to be_present
           expect(page.at_css('#season-board-row-15 .season-board-pipeline-actions')).to be_nil
         end
@@ -499,6 +628,86 @@ RSpec.describe SeasonBoardController do
           expect(Ops::Event.order(:id).last).to have_attributes(kind: 'automation.row_held', subject_key: '13')
           post(season_board_hold_path, params: { fin_event_id: '13', hold: '0' })
           expect(source.reload.auto_prepare).to be true
+        end
+
+        it 'redirects a plain request to the row, the stored filters restored by the board' do
+          get(season_board_path(state: 'ready_to_commit', filters: 1))
+          post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' })
+          expect(response).to redirect_to(season_board_path(anchor: 'season-board-row-13'))
+          follow_redirect!
+          expect(page.css('#season-board-table tbody tr[id^="season-board-row-"]').pluck('id')).to eq(['season-board-row-13'])
+        end
+
+        describe 'a Turbo request (the row "Auto-prepare" switch)' do
+          let(:turbo_headers) { { 'Accept' => 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml' } }
+
+          def streams = Nokogiri::HTML5.fragment(response.body).css('turbo-stream')
+
+          def stream(target) = streams.find { |node| node['target'] == target }
+
+          def template(target) = Nokogiri::HTML5.fragment(stream(target).at_css('template').inner_html)
+
+          before(:each) do
+            # (a live build: the hold shows on the row once stored)
+            allow(SeasonBoard::Builder).to receive(:new) do
+              held = Ops::PipelineSource.find_by(season_id: 262, base: 'r')&.auto_prepare == false
+              built_rows = rows.map { |row| row.fin_event_id == '13' && held ? row.with(flags: [:prepare_held]) : row }
+              instance_double(SeasonBoard::Builder, call: result.with(rows: built_rows))
+            end
+          end
+
+          it 'answers with the content of the rows frame (stored filters kept) and the toasts' do # rubocop:disable RSpec/MultipleExpectations
+            get(season_board_path(state: 'ready_to_commit', filters: 1))
+            post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' }, headers: turbo_headers)
+            expect(response).to have_http_status(:ok)
+            expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+            expect(streams.to_h { |node| [node['target'], node['action']] })
+              .to eq('season-board-rows' => 'update', 'flash-messages-container' => 'update')
+            content = template('season-board-rows')
+            expect(content.css('tr[id^="season-board-row-"]').pluck('id')).to eq(['season-board-row-13'])
+            expect(content.at_css('[data-state-chip="ready_to_commit"]')['data-chip-selected']).to eq('true')
+            switch = content.at_css('#season-board-hold-13')
+            expect(switch['checked']).to be_nil
+            expect(content.at_css('#season-board-row-13 [data-flag="prepare_held"]')).to be_present
+            expect(stream('flash-messages-container').text).to include(I18n.t('pipeline_automation.flash.held', fin_event_id: '13'))
+            expect(Ops::PipelineSource.find_by(season_id: 262, base: 'r').auto_prepare).to be false
+
+            post(season_board_hold_path, params: { fin_event_id: '13', hold: '0' }, headers: turbo_headers)
+            expect(template('season-board-rows').at_css('#season-board-hold-13')['checked']).to be_present
+            expect(stream('flash-messages-container').text).to include(I18n.t('pipeline_automation.flash.released', fin_event_id: '13'))
+          end
+
+          it 'keeps the stored board filter (the stream shows it, the cookie is unchanged)' do
+            get(season_board_path(state: 'ready_to_commit', filters: 1))
+            cookie = cookies[SeasonBoard::Filters.cookie_name]
+            post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' }, headers: turbo_headers)
+            expect(cookies[SeasonBoard::Filters.cookie_name]).to eq(cookie)
+            expect(template('season-board-rows').at_css('[data-state-chip="ready_to_commit"]')['data-chip-selected']).to eq('true')
+          end
+
+          it 'redirects without a season (nothing stored: the switch must not keep an unstored position)' do
+            allow(SeasonBoard::Builder).to receive(:latest_season).and_return(nil)
+            post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' }, headers: turbo_headers)
+            expect(response).to redirect_to(season_board_path)
+            expect(flash[:warning]).to eq(I18n.t('season_board.flash.no_season'))
+            expect(Ops::PipelineSource.count).to eq(0)
+          end
+
+          it 'answers an unknown row or a row without a source with the toast (and the rows as they are)' do
+            post(season_board_hold_path, params: { fin_event_id: '999', hold: '1' }, headers: turbo_headers)
+            expect(stream('flash-messages-container').text).to include(I18n.t('season_board.flash.unknown_row', fin_event_id: '999'))
+            expect(stream('season-board-rows')).to be_present
+
+            post(season_board_hold_path, params: { fin_event_id: '15', hold: '1' }, headers: turbo_headers)
+            expect(stream('flash-messages-container').text).to include(I18n.t('pipeline_automation.flash.no_source', fin_event_id: '15'))
+          end
+
+          it 'shows a failed write as an error toast, the switch keeping its state' do
+            allow(Ops::PipelineSource).to receive(:for_path!).and_raise(ActiveRecord::StatementInvalid, 'locked')
+            post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' }, headers: turbo_headers)
+            expect(stream('flash-messages-container').text).to include(I18n.t('pipeline_automation.flash.hold_failed', fin_event_id: '13'))
+            expect(template('season-board-rows').at_css('#season-board-hold-13')['checked']).to be_present
+          end
         end
       end
 

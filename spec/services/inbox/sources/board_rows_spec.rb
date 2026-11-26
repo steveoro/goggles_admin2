@@ -35,7 +35,7 @@ RSpec.describe Inbox::Sources::BoardRows do
     expect(by_kind[:crawl].action).to have_attributes(http_method: :post, path: '/season_board/crawl', params: { fin_event_id: '1' })
     expect(by_kind[:extract_manifest].action).to have_attributes(http_method: :post, path: '/season_board/extract')
     expect(by_kind[:resume_review].action.path).to start_with('/data_fix/review_swimmers?')
-    expect(by_kind[:link].action.path).to eq('/season_board#season-board-row-5')
+    expect(by_kind[:link].action.path).to eq('/season_board?row=5#season-board-row-5')
     expect(by_kind[:review_results].subject).to eq(fin_event_id: '2', file_path: '/d/262/r.json', season_id: 262)
   end
 

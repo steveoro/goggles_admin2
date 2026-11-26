@@ -1,0 +1,10 @@
+= form_with(**form_options) do
+  = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token.present?
+  - params.each do |key, value|
+    = hidden_field_tag(key, value, id: nil)
+  = hidden_field_tag(name, unchecked_value, id: nil)
+  .form-check.form-switch.mb-0{ title: tooltip, data: { switch_disabled: (disabled? ? 'true' : nil) } }
+    = check_box_tag(name, checked_value, checked?, **checkbox_options)
+    = label_tag(id, label, class: label_css)
+  - if description_id
+    %span{ id: description_id, class: description_css }= tooltip

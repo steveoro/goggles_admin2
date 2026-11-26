@@ -280,6 +280,8 @@ Rails.application.routes.draw do
   # Maintenance operations (phase 11): list + history, prefilled form, dry run / apply runs (ops DB; Maintenance::*):
   scope format: false do
     get 'operations', to: 'operations#index', as: 'operations'
+    # (the 'operations.enabled' switch: dashboard system column and /operations header)
+    post 'operations/switch', to: 'operations#switch', as: 'operations_switch'
     get 'operations/runs/:id', to: 'maintenance/runs#show', as: 'maintenance_run', constraints: { id: /\d+/ }
     get 'operations/runs/:id/status', to: 'maintenance/runs#status', as: 'maintenance_run_status', constraints: { id: /\d+/ }
     post 'operations/runs/:id/apply', to: 'maintenance/runs#apply', as: 'apply_maintenance_run', constraints: { id: /\d+/ }

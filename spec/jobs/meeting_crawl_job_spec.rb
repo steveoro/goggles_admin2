@@ -318,6 +318,50 @@ RSpec.describe MeetingCrawlJob do
       expect(crawler.pulls).to eq([{ season_id: 262, url: }])
     end
 
+    # 0.10.102: a link-less snapshot row adopting the link of the FIN 'Eventi' calendar (SeasonBoard::CalendarIndex)
+    context "with a link adopted from the FIN 'Eventi' calendar" do
+      let(:adopted_url) { results_url(fin_id).sub('some-meeting', 'sardinia-in-water') }
+      let(:linked_rows) do
+        (1..3).map { |day| { 'key' => "k#{day}", 'url' => results_url("15000#{day}"), 'date' => "0#{day}/10", 'year' => '2026', 'place' => "City#{day}" } }
+      end
+
+      let(:eventi) { SeasonBoard::CalendarIndex::EVENTI_START_URL }
+
+      def cagliari_row(url: '') = { 'key' => 'k', 'url' => url, 'date' => '22/11', 'year' => '2026', 'place' => 'Cagliari' }
+
+      def write_snapshot(rows, last_checked: '2026-11-25T10:30:00+01:00')
+        FedernuotoWatch::StateStore.new.update { |state| state.merge('rows' => rows, 'last_checked' => last_checked) }
+      end
+
+      before(:each) do
+        allow(GogglesDb::Season).to receive(:find_by).with(id: 262)
+                                                     .and_return(FactoryBot.build_stubbed(:season, id: 262, begin_date: Date.new(2026, 10, 1),
+                                                                                                   end_date: Date.new(2027, 9, 30)))
+        rows = (1..3).map { |day| "#{eventi},2026-10-0#{day},false,M#{day},City#{day} (XX),#{results_url("15000#{day}")},2026\n" }
+        write_file('calendar.new', '20261125-262-2-FIN-calendar.csv',
+                   "startURL,date,isCancelled,name,place,meetingUrl,year\n#{rows.join}#{eventi},2026-11-22,false,Sardinia,Cagliari (CA),#{adopted_url},2026\n")
+      end
+
+      it 'crawls the adopted URL re-derived from the calendar file, not the given one' do
+        write_snapshot(linked_rows + [cagliari_row])
+        crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true)) }
+        perform('https://evil.example.com/risultati/150091:x.html')
+        expect(crawler.pulls).to eq([{ season_id: 262, url: adopted_url }])
+        expect(crawl_entry.status).to eq(:done)
+      end
+
+      it 'still refuses a FIN id adopted by no snapshot row' do
+        write_snapshot(linked_rows + [cagliari_row(url: results_url('150120'))])
+        perform
+        write_snapshot(linked_rows)
+        perform
+        write_snapshot(linked_rows + [cagliari_row], last_checked: '2026-12-20T10:30:00+01:00') # (the calendar is too old)
+        perform
+        expect(crawler.pulls).to be_empty
+        expect(crawl_entry).to have_attributes(status: :failed, message: 'FIN id no longer on the watcher snapshot')
+      end
+    end
+
     it 'fails for an unknown season' do
       allow(GogglesDb::Season).to receive(:find_by).with(id: 262).and_return(nil)
       perform

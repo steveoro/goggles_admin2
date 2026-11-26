@@ -18,6 +18,7 @@ it:
       check_now: 'Controlla ora'
     filters:
       all: 'Tutti (%{count})'
+      all_tooltip: 'Tutti gli stati (la board ricorda il filtro scelto: questo lo azzera)'
       show_unlinked: 'Mostra le righe senza link (%{count})'
       hide_unlinked: 'Nascondi le righe senza link'
       show_done: 'Mostra i meeting passati con risultati (%{count})'
@@ -76,6 +77,7 @@ it:
       unparsable_date: 'data errata'
       possible_unlinked_meeting: 'un meeting locale in questa data non è ancora collegato'
       newer_crawl: 'crawl più recente su disco'
+      link_adopted: 'link dal calendario Eventi'
     flag_tooltips:
       busy: 'Un crawl o un''estrazione è in coda o in corso'
       crawl_failed: "L'ultimo tentativo di crawl è fallito"
@@ -90,6 +92,7 @@ it:
       unparsable_date: 'La data della riga non è stata interpretata'
       possible_unlinked_meeting: 'Una riga del calendario della stagione senza ID FIN cade in queste date: il meeting potrebbe già esistere (es. importato da FICR/Microplus). Collegalo invece di scaricarlo; i crawl automatici saltano questa riga.'
       newer_crawl: 'Il file del crawl (LT2) è più recente della copia di lavoro LT4 letta dai passi Data-Fix, che quindi (con i loro controlli) lo ignorano. Per usare il crawl più recente, elimina la copia di lavoro -lt4.json (Sorgenti › File) e riapri o prepara di nuovo il meeting: la copia di lavoro viene ricreata dal crawl. Da solo non cambia nulla.'
+      link_adopted: 'La pagina FIN "Riepilogo Eventi" non ha ancora un link per questo meeting: questo viene dal calendario FIN "Eventi" del %{date} (stesse date e stesso luogo, una sola corrispondenza). Il link del "Riepilogo Eventi" lo sostituisce appena la FIN lo pubblica. Per aggiornarlo, scarica di nuovo il calendario "Eventi" (Sorgenti › Crawler › Calendario FIN).'
     counts:
       mir: 'MIR'
       mrr: 'MRR'
@@ -136,6 +139,19 @@ it:
     unmatched:
       text: '%{count} file sorgente in attesa senza ID FIN.'
       link: 'Apri la pagina dei file dei risultati'
+    link_adopted_confirm:
+      title: 'Conferma il collegamento del calendario'
+      text: 'Il link di questa riga viene dal file del calendario FIN "Eventi" %{file} del %{date}, non dalla pagina "Riepilogo Eventi". Il collegamento scrive l''ID FIN %{fin_event_id} e quel link nella riga del calendario locale, e uno script SQL per il DB di produzione (Outbox). Prima verifica sul sito FIN che sia lo stesso meeting.'
+      ack: 'È lo stesso meeting: collegalo con l''ID FIN del calendario "Eventi"'
+    calendar_links:
+      unreadable: 'Il calendario FIN "Eventi" più recente, %{file}, non è leggibile (%{error}): nessun link viene preso dai file dei calendari. Scarica di nuovo il calendario "Eventi" (Sorgenti › Crawler › Calendario FIN, voce "Eventi").'
+      not_eventi: 'Il file di calendario più recente, %{file}, non è il calendario FIN "Eventi" (riga %{row}: %{url}), ad es. un crawl di "Archivio": nessun link viene preso dai file dei calendari. Scarica di nuovo il calendario "Eventi" (Sorgenti › Crawler › Calendario FIN, voce "Eventi").'
+      outside_season: 'Il file di calendario più recente, %{file}, elenca meeting fuori dalla stagione %{season} (riga %{row}: %{date}): è stato scaricato per un''altra stagione, quindi nessun link viene preso dai file dei calendari. Scarica il calendario "Eventi" della stagione %{season} (Sorgenti › Crawler › Calendario FIN, voce "Eventi").'
+      too_old: 'Il calendario FIN "Eventi" più recente, %{file} (%{date}), è più vecchio di oltre %{days} giorni rispetto all''ultimo controllo della pagina "Riepilogo Eventi": nessun link viene preso da lì. Scarica di nuovo il calendario "Eventi" (Sorgenti › Crawler › Calendario FIN, voce "Eventi").'
+      off_board: '%{count} sorgenti in attesa hanno un ID FIN che non è su nessuna riga della plancia (FIN %{ids}): aprile da Sorgenti › Risultati.'
+      suspended: 'Il calendario FIN "Eventi" %{file} indica un ID FIN diverso dalla pagina "Riepilogo Eventi" per %{count} dei %{total} meeting presenti in entrambi: nessun link viene preso da lì. Scarica di nuovo il calendario "Eventi" (Sorgenti › Crawler › Calendario FIN).'
+      too_few: 'Solo %{total} meeting del calendario FIN "Eventi" %{file} si possono confrontare con la pagina "Riepilogo Eventi" (ne servono almeno %{min}): %{count} link non ancora presi da lì.'
+      mismatch: 'ID FIN %{watcher_id} sulla pagina "Riepilogo Eventi", %{calendar_id} sul calendario "Eventi" %{file} (%{date}, %{place}): si usa il link del "Riepilogo Eventi".'
     strip:
       title: 'Attività in background'
       running: 'In corso'
