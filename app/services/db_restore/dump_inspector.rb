@@ -9,6 +9,9 @@ module DbRestore
   #
   # Read-only inspection of a bzipped production dump (wizard step 3, DbRestore::InspectJob): `bzip2 -t` integrity,
   # then one streaming pass over `bzip2 -dc` (no uncompressed file on disk) reading:
+  # (the INSERT statements may hold all their rows on one line, as the classic extended insert, or put
+  # 'INSERT INTO `t` VALUES' alone on its line and one row per line, as mariadb-dump 11.8 does: every line of a
+  # statement is read until the one ending with ';')
   # - the header line written by goggles_db's db:dump ('-- /app/db/dump/production.sql': must name a production
   #   dump) and the client's '-- Host: ...  Database: ...' line;
   # - the table list (CREATE TABLE), which must include DbRestore::CORE_TABLES;
@@ -26,8 +29,9 @@ module DbRestore
     CREATE_TABLE = /\ACREATE TABLE `([^`]+)`/
     AUTO_INCREMENT = /AUTO_INCREMENT=(\d+)/
     DUMP_COMPLETED = /\A--\s+Dump completed on\s+(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})/
-    SCHEMA_INSERT = 'INSERT INTO `schema_migrations` VALUES'
-    SETTINGS_INSERT = 'INSERT INTO `settings` VALUES'
+    # Start of an INSERT statement (optional column list), capturing the table name.
+    INSERT_INTO = /\AINSERT INTO `([^`]+)`(?:\s*\([^)]*\))?\s+VALUES/
+    SCHEMA_VERSION = /'(\d{14})'/
     FRAMEWORK_URLS = /'framework_urls','((?:[^'\\]|\\.)*)'/
     API_ENTRY = /^\s*:?api:\s*['"]?([^\s'"]+)/
     # States of the Outbox scripts that reached the server.
@@ -100,10 +104,15 @@ module DbRestore
       @tables = []
       @versions = []
       current_table = nil
+      insert_table = nil # table of the INSERT statement being read (its rows may span several lines)
       IO.popen(['bzip2', '-dc', path], 'rb', err: File::NULL) do |io|
         io.each_line.with_index do |line, index|
           if index.zero?
             @header_line = text(line).strip.truncate(200)
+          elsif insert_table || (match = INSERT_INTO.match(line))
+            insert_table ||= text(match[1])
+            read_insert_rows(insert_table, line)
+            insert_table = nil if line.rstrip.end_with?(';')
           elsif line.start_with?('-- ')
             read_comment(line)
           elsif (match = CREATE_TABLE.match(line))
@@ -111,16 +120,20 @@ module DbRestore
             @tables << current_table
           elsif line.start_with?(') ENGINE') && current_table == 'import_queues' && (match = AUTO_INCREMENT.match(line))
             @iq_next_id = match[1].to_i
-          elsif line.start_with?(SCHEMA_INSERT)
-            @versions.concat(line.scan(/'(\d{14})'/).flatten.map { |version| text(version) })
-          elsif line.start_with?(SETTINGS_INSERT) && @api_url.nil?
-            @api_url = dump_api_url(line)
           end
         end
       end
       @errors << error(:unreadable) unless $CHILD_STATUS&.success?
     rescue SystemCallError, IOError => e
       @errors << error(:unreadable, detail: "#{e.class}: #{e.message}")
+    end
+
+    # Reads the rows on +line+ of an INSERT into +table+: the schema versions and the API URL of the settings.
+    def read_insert_rows(table, line)
+      case table
+      when 'schema_migrations' then @versions.concat(line.scan(SCHEMA_VERSION).flatten.map { |version| text(version) })
+      when 'settings' then @api_url ||= dump_api_url(line)
+      end
     end
 
     def read_comment(line)

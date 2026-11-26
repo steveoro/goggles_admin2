@@ -3,8 +3,7 @@
 
 %section.my-2#select-team
   = form_with(url: all_time_best_results_path, method: :get, local: true,
-              data: { controller: 'form-utils', action: 'submit->form-utils#disableSubmit',
-                      turbo: false }) do |f|
+              data: { turbo: false }) do |f|
     .row.g-2.align-items-end.my-3
       .col-md-5.col-lg-4
         = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))

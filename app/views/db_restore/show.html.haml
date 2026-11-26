@@ -5,7 +5,7 @@
 :ruby
   needs_operator = @run.needs_operator?
   percent = @run.progress_percent || 0
-  poll_data = { controller: 'db_restore', 'db-restore-url-value': db_restore_status_path(@run, format: :json),
+  poll_data = { controller: 'db-restore', 'db-restore-url-value': db_restore_status_path(@run, format: :json),
                 'db-restore-status-value': @run.status, 'db-restore-step-value': @run.step.to_s,
                 'db-restore-needs-operator-value': needs_operator.to_s, 'db-restore-percent-value': percent }
   abandonable = @run.confirmed? || needs_operator || @run.awaiting_terminal?

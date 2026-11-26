@@ -40,6 +40,36 @@ RSpec.describe DbRestore::DumpInspector do
     expect(result.details).to include('table_count' => result.tables.size, 'errors' => [])
   end
 
+  # mariadb-dump 11.8 (the production container) writes 'INSERT INTO `t` VALUES' alone on its line, then one row per
+  # line ('(...),' ... '(...);'): the schema versions and the settings row are on the lines after the INSERT line.
+  def one_row_per_line(sql)
+    sql.gsub(/^(INSERT INTO `\w+` VALUES) \(/) { "#{Regexp.last_match(1)}\n(" }.gsub('),(', "),\n(")
+  end
+
+  it 'reads a dump written one row per line (mariadb-dump 11.8): schema version, API URL and the rest' do
+    path = variant('production-0004-multiline.sql.bz2') { |sql| one_row_per_line(sql) }
+    expect(IO.popen(['bzip2', '-dc', path], 'rb', &:read)).to include("INSERT INTO `schema_migrations` VALUES\n('20201231000000'),\n")
+    result = inspect_dump(path)
+    expect(result).to be_ok
+    expect(result.schema_version).to eq('20261027120100')
+    expect(result.api_url).to eq('https://api.example.test')
+    expect(result.iq_next_id).to eq(9124)
+    expect(result.taken_at).to eq(Time.zone.parse('2026-11-22 21:30:01'))
+  end
+
+  it 'reads the versions of every schema_migrations INSERT (also with a column list), never the rows of other tables' do
+    path = variant('production-0005-chunks.sql.bz2') do |sql|
+      one_row_per_line(sql)
+        .sub("INSERT INTO `schema_migrations` VALUES\n('20201231000000'),\n('20261004130000'),\n('20261027120100');",
+             "INSERT INTO `schema_migrations` VALUES ('20201231000000'),('20261004130000');\n" \
+             "INSERT INTO `schema_migrations` (`version`) VALUES\n('20261027120100');")
+        .sub("INSERT INTO `users` VALUES\n(1),\n(2);", "INSERT INTO `users` VALUES\n(1,'20991231235959'),\n(2,'20991231235959');")
+    end
+    result = inspect_dump(path)
+    expect(result).to be_ok
+    expect(result.schema_version).to eq('20261027120100')
+  end
+
   it 'refuses a dump whose header does not name a production dump' do
     path = variant('production-0002-dev.sql.bz2') { |sql| sql.sub('-- /app/db/dump/production.sql', '-- /home/x/db/dump/development.sql') }
     result = inspect_dump(path)
