@@ -18,6 +18,10 @@ module LocalDb
   #
   # Never raises for a failed run and never calls +exit+: it returns a Result.
   #
+  # The script is piped as raw bytes (binary pipes): Rails sets Encoding.default_internal to UTF-8, and a text-mode
+  # pipe would try to transcode the binary-read file and raise on the first non-ASCII byte. The client output comes
+  # back as UTF-8 (invalid bytes replaced), since its error text is stored and shown.
+  #
   # == Usage
   #   result = LocalDb::SqlRunner.call(path: '/path/to/0490-x.sql')
   #   result.success?   # => true / false
@@ -42,8 +46,8 @@ module LocalDb
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       return failure("File not found: #{@path}", started) unless File.file?(@path)
 
-      stdout, stderr, status = Open3.capture3(@cli.env, *@cli.argv, stdin_data: wrapped_sql)
-      Result.new(success: status.success?, stdout: stdout.to_s, stderr: stderr.to_s,
+      stdout, stderr, status = Open3.capture3(@cli.env, *@cli.argv, stdin_data: wrapped_sql, binmode: true)
+      Result.new(success: status.success?, stdout: utf8(stdout), stderr: utf8(stderr),
                  duration: elapsed(started), exit_code: status.exitstatus)
     rescue SystemCallError, IOError => e
       failure("#{e.class}: #{e.message}", started)
@@ -52,7 +56,11 @@ module LocalDb
     private
 
     def wrapped_sql
-      "START TRANSACTION;\n#{File.binread(@path)}\nCOMMIT;\n"
+      "START TRANSACTION;\n#{File.binread(@path)}\nCOMMIT;\n".b
+    end
+
+    def utf8(text)
+      text.to_s.dup.force_encoding(Encoding::UTF_8).scrub
     end
 
     def failure(message, started)
