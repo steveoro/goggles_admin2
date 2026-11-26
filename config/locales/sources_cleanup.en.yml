@@ -1,0 +1,141 @@
+en:
+  sources:
+    manifests:
+      badges:
+        linked: "meeting linked"
+        linked_tooltip: "The meeting is already linked locally: no extraction needed (left out of \"Extract next\"; the clean-up page archives it)"
+    cleanup:
+      nav: "Clean up redundant files"
+      title: "Clean up redundant files"
+      subtitle: "Season %{season}: what a calendar crawl left behind that nothing needs any more"
+      back: "Back to Sources"
+      link:
+        one: "Clean up redundant files (1)"
+        other: "Clean up redundant files (%{count})"
+      link_none: "Clean up redundant files"
+      link_tooltip: "Shows the list first: nothing moves until you confirm"
+      board:
+        rows:
+          one: "1 row with redundant files"
+          other: "%{count} rows with redundant files"
+        link: "Clean up (list first)"
+        tooltip: "Rows flagged \"redundant file\" or \"PDF pending\": the Sources clean-up page lists what would move, nothing moves before you confirm"
+      intro:
+        nothing_deleted: "Nothing is deleted: every file is moved, and you can move it back."
+        results: "Result files that are no longer needed go to %{folder} (one new folder per clean-up)."
+        manifests: "Manifest PDFs of meetings already linked go to %{folder}, as after an extraction."
+        calendars: "Old calendar files go to %{folder}."
+        duplicates: "A file already present at its destination with the same content goes to %{folder} instead; with a different content it stays where it is."
+        undo_title: "To undo:"
+        undo: "move the files back: from results.backup/%{season}/cleanup-<time>/ to results.new/%{season}/, from manifests.done/%{season}/ to manifests/%{season}/, from calendar.done/%{season}/ to calendar.new/%{season}/. The %{file} file in the clean-up folder lists every move."
+        automatic: "After every crawl the same rule runs by itself on the files that crawl just wrote (a result-free crawl of a meeting already linked); the calendar folder is tidied after each calendar crawl. This page handles what is already on disk."
+      no_ops: "The ops DB is not available: the clean-up cannot check what is in use, so it is off."
+      blocked: "The clean-up is paused: %{reason}. Reload this page when it is over."
+      moves:
+        title:
+          one: "Will move (1 file)"
+          other: "Will move (%{count} files)"
+        empty: "Nothing to clean up for season %{season}."
+      apply:
+        button:
+          one: "Move 1 file"
+          other: "Move %{count} files"
+        confirm:
+          one: "Move 1 file as listed? Nothing is deleted."
+          other: "Move %{count} files as listed? Nothing is deleted."
+      table:
+        file: "File"
+        rule: "Why"
+        age: "Age"
+        destination: "Goes to"
+        companion: "with %{file}"
+        duplicate: "(the same file is already there)"
+      actions:
+        move: "move"
+        archive: "archive"
+        list_only: "listed only"
+      rules:
+        result_free_source: "result-free crawl of a meeting already linked (no working copy, no steps)"
+        pending_manifest: "manifest PDF of a meeting already linked"
+        calendar_superseded: "older calendar file (a newer one of the same kind exists)"
+        calendar_selection: "meeting selection whose crawl is over"
+        calendar_leftover: "rows skipped by a calendar crawl"
+        duplicate_bases: "several crawls for the same meeting"
+        result_pdf: "result PDF"
+      listed:
+        title:
+          one: "Listed only (1)"
+          other: "Listed only (%{count})"
+        why: "These files are never moved by the clean-up: only you can tell which crawl of a meeting to keep, or whether a result PDF is still needed. Use the Files tab if you want to move them."
+        duplicate_bases:
+          one: "Several crawls for one meeting (1 file)"
+          other: "Several crawls for one meeting (%{count} files)"
+        result_pdf:
+          one: "Result PDFs (1)"
+          other: "Result PDFs (%{count})"
+      kept:
+        title:
+          one: "Kept (1)"
+          other: "Kept (%{count})"
+        why: "A rule would pick these files, but they stay where they are for the reason shown."
+        show:
+          one: "Show the file kept"
+          other: "Show the %{count} files kept"
+      reasons:
+        ops_unavailable: "the ops DB is not available"
+        activity_unreadable: "the background activity log cannot be read"
+        crawler_busy: "the crawler is running a crawl"
+        crawl_busy: "a crawl is queued or running"
+        outside: "outside crawler/data"
+        missing: "file not found"
+        blank: "no file"
+        not_a_file: "not a file"
+        sql_file: "SQL script (the Outbox follows it)"
+        archive_folder: "archive or backup folder"
+        not_cleanable: "not in a folder the clean-up works on"
+        file_policy: "read-only for the file manager"
+        symlink: "symbolic link"
+        phase_file: "Data-Fix step file"
+        lt4_working_copy: "the meeting has an LT4 working copy"
+        backup_copy: "backup copy of a source"
+        commit_log: "commit log"
+        phase_files: "the meeting has Data-Fix step files"
+        in_review: "the source is being reviewed"
+        edited: "the source holds your edits"
+        leased: "a preparation holds the source"
+        prepare_busy: "a preparation, extraction or commit is queued or running"
+        busy_activity: "a crawl, extraction or preparation of it is queued or running"
+        unlinked_meeting: "the meeting is not linked yet: the PDF is still needed for the extraction"
+        too_recent: "changed less than 10 minutes ago"
+        name_collision: "a different file with the same name is already at the destination"
+        unreadable_json: "unreadable JSON (truncated or half written: it may hold results)"
+        pdf_derived: "written by the PDF scan"
+        modified_after_crawl: "modified after the crawl (an edit?)"
+        cleanup_running: "a clean-up of this season is being applied"
+        apply_running: "another clean-up of this season is running: try again when it ends"
+        exists: "a file with that name appeared at the destination"
+        digest_mismatch: "the files changed since the list was shown: check the new list"
+        nothing_to_move: "there is nothing to move"
+      flash:
+        done: "Clean-up done: %{moved} files moved, %{skipped} kept. Folder: %{folder}"
+        failed: "Clean-up stopped at an error (%{error}): %{moved} files moved before it, %{skipped} kept. Folder: %{folder}"
+        refused: "Clean-up not applied: %{reason}."
+      crawl_summary:
+        prefix: "Clean-up: %{parts}."
+        moved:
+          one: "1 redundant result file moved to %{folder}"
+          other: "%{count} redundant result files moved to %{folder}"
+        archived:
+          one: "1 manifest file archived"
+          other: "%{count} manifest files archived"
+        calendar:
+          one: "1 calendar file moved to calendar.done"
+          other: "%{count} calendar files moved to calendar.done"
+        skipped:
+          one: "1 kept"
+          other: "%{count} kept"
+        refused: "Clean-up skipped: %{reason}."
+  ops:
+    events:
+      sources:
+        cleanup_applied: "Redundant files cleaned up"

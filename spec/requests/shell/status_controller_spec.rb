@@ -28,15 +28,31 @@ RSpec.describe Shell::StatusController do
       allow(APIProxy).to receive(:call)
     end
 
-    it 'renders only the status frame with one pill per probe, without any API or crawler call' do
+    it 'renders only the status frame with one pill per probe needing attention, without any API or crawler call' do
       get(shell_status_path)
       expect(response).to have_http_status(:success)
       expect(response.parsed_body.at('html body .app-shell')).to be_nil
-      expect(frame.css('.app-status-pill').pluck('id')).to eq(%w[status-pill-api status-pill-crawler status-pill-queue status-pill-cable
-                                                                 status-pill-fin_watch status-pill-ops_db status-pill-db_sync])
+      # No snapshot yet: the snapshot probes are unknown (one pill each), the others fold into the "N OK" pill.
+      singles = frame.css('.app-status-pill:not(#status-pill-all)')
+      ok_count = frame.at_css('#status-pill-all')&.[]('data-ok-count').to_i
+      expect(singles.pluck('id')).to include('status-pill-api', 'status-pill-db_sync')
+      expect(singles.pluck('data-status-level')).to all(satisfy { |level| level != 'ok' })
+      expect(singles.size + ok_count).to eq(SystemStatus::Registry::PROBES.size)
       expect(APIProxy).not_to have_received(:call)
       expect(APIProxy).not_to have_received(:ping)
       expect(CrawlerClient).not_to have_received(:new)
+    end
+
+    it 'renders a single "All OK" pill, listing every probe, when they are all OK' do
+      results = SystemStatus::Registry::PROBES.map do |name|
+        key = name.demodulize.delete_suffix('Probe').underscore.to_sym
+        SystemStatus::Result.new(key:, label: name.demodulize, level: :ok, detail: 'fine')
+      end
+      allow(SystemStatus::Registry).to receive(:results).and_return(results)
+      get(shell_status_path)
+      expect(frame.css('.app-status-pill').pluck('id')).to eq(['status-pill-all'])
+      expect(frame.at_css('a#status-pill-all')['href']).to eq(root_path(anchor: 'dashboard-system'))
+      expect(frame.at_css('#status-pill-all')['data-bs-title'].split("\n").size).to eq(results.size + 1)
     end
 
     it 'enqueues a refresh when a snapshot is missing or stale' do
@@ -49,7 +65,9 @@ RSpec.describe Shell::StatusController do
       Ops::Snapshot.write!('system_status.crawler', { 'reachable' => false })
       FactoryBot.create(:ops_db_fingerprint, api_base_url: url)
       expect { get(shell_status_path) }.not_to have_enqueued_job(SystemStatus::RefreshJob)
-      expect(frame.at_css('#status-pill-api')['data-status-level']).to eq('ok')
+      # The API is OK: no pill of its own, it is listed in the summary pill.
+      expect(frame.at_css('#status-pill-api')).to be_nil
+      expect(frame.at_css('#status-pill-all')['data-bs-title']).to match(/^API: .+\(v\. 7\.2\)$/)
     end
 
     it 'does not enqueue a refresh with the ops DB missing, and still renders' do

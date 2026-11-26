@@ -21,7 +21,7 @@ RSpec.describe SeasonBoard::SourceProbe do
   describe '#call (small files, full parse)' do
     it 'reads the FIN id from the results URL, else from the manifest URL' do
       path = write_json('results.new', 'a.json', lt2_hash(fin_id: 150_091))
-      expect(probe.call(path, full: true)).to eq(fin_event_id: '150091', meeting_only: false, has_results: false)
+      expect(probe.call(path, full: true)).to eq(fin_event_id: '150091', meeting_only: false, has_results: false, unparsable: false, pdf_derived: false)
       path = write_json('results.new', 'b.json', lt2_hash(fin_id: 150_092, manifest_only_url: true))
       expect(probe.call(path, full: true)[:fin_event_id]).to eq('150092')
     end
@@ -40,8 +40,16 @@ RSpec.describe SeasonBoard::SourceProbe do
 
     it 'falls back to bounded reads on invalid JSON & never raises' do
       path = write_file('results.new', 'broken.json', %({"meetingURL":"#{results_url(150_093)}", "sections": [ ...))
-      expect(probe.call(path, full: true)).to include(fin_event_id: '150093')
-      expect(probe.call(File.join(data_dir, 'missing.json'), full: true)).to eq(fin_event_id: nil, meeting_only: false, has_results: false)
+      # (0.10.104: flagged unparsable, so that no clean-up ever takes it for a result-free crawl)
+      expect(probe.call(path, full: true)).to include(fin_event_id: '150093', has_results: false, unparsable: true)
+      expect(probe.call(File.join(data_dir, 'missing.json'), full: true)).to eq(fin_event_id: nil, meeting_only: false, has_results: false,
+                                                                                unparsable: false, pdf_derived: false)
+    end
+
+    it 'flags an LT2 written by the PDF scan (a ranking or stats section)' do
+      ranking = lt2_hash(fin_id: 150_097).merge('sections' => [{ 'title' => 'Classifica', 'ranking' => true, 'rows' => [{ 'team' => 'x' }] }])
+      expect(probe.call(write_json('results.new', 'r.json', ranking), full: true)).to include(pdf_derived: true, has_results: false)
+      expect(probe.call(write_json('results.new', 'c.json', lt2_hash(fin_id: 150_097)), full: true)).to include(pdf_derived: false)
     end
   end
 
@@ -50,12 +58,12 @@ RSpec.describe SeasonBoard::SourceProbe do
       path = write_json('results.new', 'big.json', big_lt2(150_094))
       expect(File.size(path)).to be > described_class::CHUNK_BYTES * 2
       stub_const("#{described_class}::FULL_PARSE_MAX_BYTES", 1024)
-      expect(probe.call(path, full: true)).to eq(fin_event_id: '150094', meeting_only: false, has_results: true)
+      expect(probe.call(path, full: true)).to eq(fin_event_id: '150094', meeting_only: false, has_results: true, unparsable: false, pdf_derived: false)
     end
 
     it 'never reports results with full: false' do
       path = write_json('results.done', 'a.json', lt2_hash(fin_id: 150_095, results: true))
-      expect(probe.call(path, full: false)).to eq(fin_event_id: '150095', meeting_only: false, has_results: false)
+      expect(probe.call(path, full: false)).to eq(fin_event_id: '150095', meeting_only: false, has_results: false, unparsable: false, pdf_derived: false)
     end
 
     it 'unescapes JSON-escaped URLs' do

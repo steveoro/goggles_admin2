@@ -94,6 +94,50 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
   end
 
+  describe 'new or changed meetings only (0.10.103)' do
+    let(:adopted) { board_row(fin_event_id: '7', state: :link_not_crawled, action: :crawl, flags: [:link_adopted]) }
+
+    it 'crawls a changed row without a link whose board row adopts one from the Eventi calendar (matched by key)' do
+      rows << adopted
+      expect(plan('added' => [{ 'key' => 'k-7', 'url' => '' }])).to eq(%w[7])
+      expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(season_id: 262, fin_event_id: '7', url: adopted.url, origin: :auto)
+    end
+
+    it 'never crawls an adopted row that is not in the change' do
+      rows << adopted
+      expect(plan(change_for('1'))).to eq(%w[1])
+      expect(SeasonBoard::Scheduler).not_to have_received(:crawl!).with(hash_including(fin_event_id: '7'))
+    end
+
+    it 'skips an adopted row whose unattended crawls gave up (3 failures in a row)' do
+      rows << adopted
+      3.times { Ops.record_event!(kind: 'board.crawl_failed', actor: 'job', subject_type: 'fin_event', subject_key: '7', data: { 'message' => 'x' }) }
+      expect(plan('added' => [{ 'key' => 'k-7', 'url' => '' }])).to eq([])
+    end
+
+    it 'never crawls a row FIN removed from the page' do
+      rows << board_row(fin_event_id: '8', state: :link_not_crawled, action: :crawl, flags: [:removed_from_fin])
+      expect(plan('updated' => [{ 'key' => 'k-8', 'url' => rows.last.url }])).to eq([])
+      expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    end
+
+    it 'queues at most MAX_CRAWLS_PER_PASS crawls per pass, logging the ones left for the next pass' do
+      many = (10..30).map { |id| board_row(fin_event_id: id.to_s, state: :link_not_crawled, action: :crawl) }
+      rows.replace(many)
+      allow(Rails.logger).to receive(:info)
+      queued = plan('added' => many.map { |row| { 'key' => row.key, 'url' => row.url } })
+      expect(queued).to eq((10..24).map(&:to_s))
+      expect(Rails.logger).to have_received(:info).with(/left for a next pass: 25, 26, 27, 28, 29, 30/)
+    end
+
+    it 'does not count a refused (busy) row against the cap' do
+      many = (10..26).map { |id| board_row(fin_event_id: id.to_s, state: :link_not_crawled, action: :crawl) }
+      rows.replace(many)
+      allow(SeasonBoard::Scheduler).to receive(:crawl!).with(hash_including(fin_event_id: '10')).and_return(false)
+      expect(plan('added' => many.map { |row| { 'key' => row.key, 'url' => row.url } }).size).to eq(15)
+    end
+  end
+
   describe '#plan_recrawl (FIN now lists a structure-committed meeting with results)' do
     def recrawl(change)
       described_class.new(season:, activity_log:, builder:).plan_recrawl(change)
@@ -125,6 +169,69 @@ RSpec.describe SeasonBoard::CrawlPlanner do
       allow(DataFix::Automation).to receive(:env_off?).and_return(true)
       expect(recrawl(with_results)).to eq([])
       expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    end
+
+    describe "each row's own detection time (0.10.103)" do
+      let(:detected) { 2.hours.ago }
+
+      def with_results_for(*board_rows_of)
+        { 'with_results' => board_rows_of.map { |row| { 'key' => row.key, 'url' => row.url } },
+          'row_detected_at' => { 'with_results' => board_rows_of.to_h { |row| [row.key, detected.iso8601] } } }
+      end
+
+      it 're-crawls the rows whose source is not in review, whatever their state, never the ones in review' do
+        rows.replace([board_row(fin_event_id: '5', state: :results_ready), board_row(fin_event_id: '6', state: :manifest_pending),
+                      board_row(fin_event_id: '7', state: :needs_review), board_row(fin_event_id: '8', state: :ready_to_commit),
+                      board_row(fin_event_id: '9', state: :committed_with_results)])
+        expect(recrawl(with_results_for(*rows))).to eq(%w[5 6])
+      end
+
+      it 're-crawls a row crawled shortly BEFORE its results were published, not one crawled since' do
+        travel_to(detected - 1.hour) do
+          activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+          activity_log.finish!('3', kind: :crawl, status: :done)
+        end
+        expect(recrawl(with_results_for(rows[2]))).to eq(%w[3])
+        activity_log.reload!.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+        activity_log.finish!('3', kind: :crawl, status: :done)
+        expect(described_class.new(season:, activity_log: activity_log.reload!, builder:).plan_recrawl(with_results_for(rows[2]))).to eq([])
+      end
+
+      it 'retries a failed attempt since the detection only after 20 hours' do
+        activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+        activity_log.finish!('3', kind: :crawl, status: :failed)
+        expect(recrawl(with_results_for(rows[2]))).to eq([])
+        travel(21.hours) { expect(recrawl(with_results_for(rows[2]))).to eq(%w[3]) }
+      end
+    end
+  end
+
+  describe 'the ceiling on outstanding automatic crawls (0.10.103: SeasonBoard::CrawlBudget)' do
+    let(:many) { (10..30).map { |id| board_row(fin_event_id: id.to_s, state: :link_not_crawled, action: :crawl) } }
+    let(:change) { { 'added' => many.map { |row| { 'key' => row.key, 'url' => row.url } } } }
+
+    before(:each) { rows.replace(many) }
+
+    it 'queues only what is left of the 15 automatic crawls queued or running (operator and Sources crawls not counted)' do
+      %w[901 902 903 904 905 906 907 908 909 910].each { |id| activity_log.queue!(id, kind: :crawl, origin: :auto) }
+      activity_log.queue!('911', kind: :crawl, origin: :manual)
+      activity_log.queue!(SeasonBoard::ActivityLog.source_key('crawl:calendar', 'x'), kind: :crawl, origin: :auto)
+      expect(SeasonBoard::CrawlBudget.outstanding(activity_log.reload!)).to eq(10)
+      expect(plan(change).size).to eq(5)
+    end
+
+    it 'queues nothing while 15 are outstanding, and shares the budget with the re-crawls of the pass' do
+      (1..15).each { |id| activity_log.queue!("90#{id}", kind: :crawl, origin: :auto) }
+      expect(plan(change)).to eq([])
+      activity_log.reload!.all_entries.first(3).each { |entry| activity_log.finish!(entry.fin_event_id, kind: :crawl, status: :done) }
+      planner = described_class.new(season:, activity_log: activity_log.reload!, builder:)
+      expect(planner.call(change).size).to eq(3)
+      expect(planner.plan_recrawl({ 'with_results' => [{ 'key' => rows[0].key, 'url' => rows[0].url }] })).to eq([])
+    end
+
+    it 'counts a stale entry as no longer outstanding' do
+      travel_to(13.hours.ago) { (1..15).each { |id| activity_log.queue!("90#{id}", kind: :crawl, origin: :auto) } }
+      expect(SeasonBoard::CrawlBudget.remaining(activity_log.reload!)).to eq(15)
     end
   end
 end

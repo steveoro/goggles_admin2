@@ -12,6 +12,7 @@ Rails.application.config.to_prepare do
     Inbox::Sources::UnmatchedSources,
     Inbox::Sources::DataFixSessions,
     Inbox::Sources::FINChange,
+    Inbox::Sources::FINNotice, # (0.10.103: the FIN changes acknowledged with nothing to crawl, until dismissed)
     Drift::InboxSource, # (key :drift; 08: the DB fingerprint verdict took the slot of the 05 drift v0 source)
     Health::InboxSource, # (key :health: data health errors per season & group, failed runs, overdue sweep)
     # 10: the pipeline automation (board rows in its states, the given-up extractions, the paused switches)

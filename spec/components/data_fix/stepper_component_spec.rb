@@ -63,6 +63,8 @@ RSpec.describe DataFix::StepperComponent, type: :component do
     end
     item = page.find('.nav-link.active .dropdown-menu a#data-fix-step-rescan', visible: :all)
     expect(item[:href]).to include('rescan=1')
+    # (Turbo 8 asks the confirmation only for a link it turns into a form: a plain GET link would rebuild at once)
+    expect(item['data-turbo-method']).to eq('get')
     expect(item['data-turbo-confirm']).to include("#{I18n.t('data_fix.stepper.edit_actions.update_phase2_team')} ×2")
     expect(item['data-turbo-confirm']).to include(I18n.t('data_fix.stepper.edit_actions.delete_team'))
     expect(page).to have_css('.nav-link.active button.dropdown-toggle[data-bs-toggle="dropdown"]')

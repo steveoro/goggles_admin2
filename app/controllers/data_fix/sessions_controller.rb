@@ -112,9 +112,9 @@ module DataFix
     end
 
     # POST data_fix/rebuild_phase?file_path=&phase=N[&force=1] ("Rebuild" of the stale banner, phase 12): rebuilds
-    # one phase from the source and its upstream phases (DataFix::Pipeline#build_phase!, progress modal through
-    # the Cable sink), then reopens its review page. An edited phase is refused unless +force+ (the banner asks for
-    # a confirmation naming the edits first).
+    # one phase from the source and its upstream phases (DataFix::Pipeline#build_phase!, progress strip through the
+    # request's Cable sink), then reopens its review page. An edited phase is refused unless +force+ (the banner asks
+    # for a confirmation naming the edits first).
     def rebuild_phase
       phase = params[:phase].to_i
       unless DataFix::Pipeline::PHASES.include?(phase)

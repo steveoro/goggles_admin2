@@ -6,7 +6,8 @@ module Inbox
     # = Inbox::Sources::BoardRows
     #
     # One item per Season board row with a next action (from the stored board summary, SeasonBoard::Snapshot),
-    # skipping the busy rows (a crawl/extraction/prepare queued or running), the :push actions (PendingSql groups them)
+    # skipping the rows whose action waits for a job (SeasonBoard::ActionPaths.blocked?: a POST action while busy, any
+    # action while locked), the :push actions (PendingSql groups them)
     # and the rows in the pipeline states (:prepare_failed, :needs_review, :ready_to_commit: phase 10, owned by the
     # PrepareFailed, NeedsReview and ReadyToCommit sources).
     # The action target comes from SeasonBoard::ActionPaths: the review steps are links, crawl / check results /
@@ -42,7 +43,7 @@ module Inbox
 
       def item_for(row, summary, context)
         kind = row.next_action&.kind
-        return if kind.nil? || SKIPPED_KINDS.include?(kind) || !BANDS.key?(kind) || row.busy? || SKIPPED_STATES.include?(row.state)
+        return if kind.nil? || SKIPPED_KINDS.include?(kind) || !BANDS.key?(kind) || SeasonBoard::ActionPaths.blocked?(row) || SKIPPED_STATES.include?(row.state)
 
         target = SeasonBoard::ActionPaths.target_for(row.next_action)
         return unless target

@@ -4,7 +4,7 @@ module DbRestore
   #
   # = DbRestore::Lock
   #
-  # The guided-restore lock (phase 14; interface in docs/plans/contracts.md): held from the typed confirmation until
+  # The guided-restore lock (phase 14; interface in docs/plans/done/00-ops-console-masterplan-contracts.md): held from the typed confirmation until
   # the post-steps finish (or an explicit Abandon), also through an interrupted load. Stored only in the ops DB
   # (Ops::Setting 'db_restore.lock' => { 'run_id', 'since' }), which a restore never touches: without the ops DB
   # there is no lock (and the wizard refuses to start).

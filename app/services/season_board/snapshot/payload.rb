@@ -25,8 +25,15 @@ module SeasonBoard
           'rows' => result.rows.map { |row| row_payload(row) },
           'unmatched_sources' => Array(result.unmatched_sources).map { |entry| unmatched_payload(entry, pipeline_for(result, entry)) },
           'board_sql_paths' => Array(result.pending_board_sql_paths).map(&:to_s),
-          'warnings' => Array(result.warnings).map(&:to_s)
+          'warnings' => Array(result.warnings).map(&:to_s), 'off_board_sources' => off_board_payload(result)
         }
+      end
+
+      # Pending disk entries whose FIN id is on no board row (Builder::Result#off_board_sources, 0.10.102), as the
+      # unmatched ones plus their 'fin_event_id' (and, since 6, their pipeline state).
+      def off_board_payload(result)
+        entries = result.respond_to?(:off_board_sources) ? Array(result.off_board_sources) : []
+        entries.map { |entry| unmatched_payload(entry, pipeline_for(result, entry)).merge('fin_event_id' => entry.fin_event_id) }
       end
 
       # Row members copied as plain values (see Snapshot::Row).
@@ -36,8 +43,15 @@ module SeasonBoard
       def row_payload(row)
         ROW_ATTRIBUTES.to_h { |attr| [attr.to_s, plain(row.public_send(attr))] }.merge(
           'state' => row.state.to_s, 'state_detail' => plain(row.state_detail || {}),
-          'next_action' => action_payload(row.next_action), 'busy' => row.busy? || false, 'flags' => Array(row.flags).map(&:to_s)
+          'next_action' => action_payload(row.next_action), 'busy' => row.busy? || false, 'flags' => Array(row.flags).map(&:to_s),
+          'locked' => (row.respond_to?(:locked?) && row.locked?) || false,
+          'adopted_link' => adopted_link_payload(row.respond_to?(:adopted_link) ? row.adopted_link : nil)
         )
+      end
+
+      # Plain Hash of the CalendarIndex::Link lent by the 'Eventi' calendar (0.10.102), or nil.
+      def adopted_link_payload(link)
+        link && plain(link.to_h)
       end
 
       # Plain Hash for a NextAction (or nil).

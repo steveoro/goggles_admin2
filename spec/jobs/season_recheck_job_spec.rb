@@ -16,7 +16,7 @@ RSpec.describe SeasonRecheckJob do
   before(:each) do
     FileUtils.rm_f(SeasonBoard::ActivityLog.default_path)
     allow(SeasonBoard::Builder).to receive_messages(latest_season: season, new: builder)
-    allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+    allow(SeasonBoard::Scheduler).to receive_messages(crawl!: true, calendar_crawl!: true)
   end
 
   after(:each) { FileUtils.rm_f(SeasonBoard::ActivityLog.default_path) }
@@ -129,6 +129,54 @@ RSpec.describe SeasonRecheckJob do
     end
   end
 
+  # 0.10.102: a link adopted from the FIN 'Eventi' calendar
+  context 'with adopted rows whose crawls keep failing' do
+    let(:rows) do
+      [
+        board_row(fin_event_id: '150112', state: :link_not_crawled, action: :crawl, last_date: Date.current - 1, flags: [:link_adopted]),
+        board_row(fin_event_id: '150115', state: :link_not_crawled, action: :crawl, last_date: Date.current + 9, flags: [:link_adopted]),
+        board_row(fin_event_id: '150002', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      ]
+    end
+
+    def crawl_event!(fin_event_id, failed:, message: 'crawler error')
+      Ops.record_event!(kind: failed ? 'board.crawl_failed' : 'board.crawl_finished', subject_type: 'fin_event', subject_key: fin_event_id,
+                        data: { 'status' => failed ? 'failed' : 'done', 'message' => message })
+    end
+
+    before(:each) do
+      Ops::Event.where(subject_type: 'fin_event').delete_all
+      travel_to(21.hours.ago) do
+        %w[150112 150115 150002].each do |id|
+          activity_log.queue!(id, kind: :crawl, origin: :auto, url: rows.first.url)
+          activity_log.finish!(id, kind: :crawl, status: :failed)
+        end
+      end
+    end
+
+    it "stops the unattended crawls after #{SeasonBoard::CrawlFailures::MAX_ADOPTED_FAILURES} consecutive failures (linked rows unaffected)" do
+      2.times { crawl_event!('150112', failed: true) }
+      3.times { crawl_event!('150115', failed: true) }
+      3.times { crawl_event!('150002', failed: true) }
+      expect(described_class.perform_now).to eq(%w[150112 150002])
+      crawl_event!('150112', failed: true)
+      expect(described_class.perform_now).to eq(%w[150002])
+    end
+
+    it 'counts only the failures since the last successful crawl, and never a refusal with the automation paused' do
+      3.times { crawl_event!('150112', failed: true) }
+      crawl_event!('150112', failed: false)
+      2.times { crawl_event!('150112', failed: true) }
+      3.times { crawl_event!('150115', failed: true, message: I18n.t('pipeline_automation.reasons.automation_paused', locale: :it)) }
+      expect(described_class.perform_now).to eq(%w[150112 150002 150115])
+    end
+
+    it 'skips the adopted rows when the failures cannot be read (fail closed)' do
+      allow(Ops).to receive(:available?).and_return(false)
+      expect(described_class.perform_now).to eq(%w[150002])
+    end
+  end
+
   context 'when an enqueue fails' do
     let(:rows) do
       [
@@ -154,6 +202,11 @@ RSpec.describe SeasonRecheckJob do
       expect(described_class.perform_now.size).to eq(described_class::MAX_CRAWLS_PER_RUN)
       expect(SeasonBoard::Scheduler).to have_received(:crawl!).exactly(described_class::MAX_CRAWLS_PER_RUN).times
     end
+
+    it 'queues only what the ceiling of 15 outstanding automatic crawls leaves (0.10.103)' do
+      (1..12).each { |id| activity_log.queue!("90#{id}", kind: :crawl, origin: :auto) }
+      expect(described_class.perform_now.size).to eq(3)
+    end
   end
 
   it 'does nothing without a season' do
@@ -166,5 +219,34 @@ RSpec.describe SeasonRecheckJob do
     expect(described_class.perform_now).to eq([])
     expect(builder).not_to have_received(:call)
     expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+    expect(SeasonBoard::Scheduler).not_to have_received(:calendar_crawl!)
+  end
+
+  describe "the daily FIN 'Eventi' calendar crawl (0.10.103)" do
+    it 'asks for one crawl a day, automatic' do
+      described_class.perform_now
+      described_class.perform_now
+      expect(SeasonBoard::Scheduler).to have_received(:calendar_crawl!).with(season:, origin: :auto).once
+      travel(21.hours) { described_class.perform_now }
+      expect(SeasonBoard::Scheduler).to have_received(:calendar_crawl!).twice
+    end
+
+    it "obeys the 'auto_calendar' switch, the meeting crawls going on" do
+      rows << board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      DataFix::Automation.store!(:auto_calendar, false)
+      expect(described_class.perform_now).to eq(%w[3])
+      expect(SeasonBoard::Scheduler).not_to have_received(:calendar_crawl!)
+    end
+
+    it 'goes on with the meeting crawls when the calendar crawl cannot be queued' do
+      rows << board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      allow(SeasonBoard::CalendarPlanner).to receive(:new).and_raise(RuntimeError, 'boom')
+      expect(described_class.perform_now).to eq(%w[3])
+    end
+  end
+
+  it 'never crawls a row FIN removed from the page (0.10.103)' do
+    rows << board_row(fin_event_id: '9', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2, flags: [:removed_from_fin])
+    expect(described_class.perform_now).to eq([])
   end
 end

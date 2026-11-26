@@ -35,8 +35,18 @@ RSpec.describe Inbox::Sources::BoardRows do
     expect(by_kind[:crawl].action).to have_attributes(http_method: :post, path: '/season_board/crawl', params: { fin_event_id: '1' })
     expect(by_kind[:extract_manifest].action).to have_attributes(http_method: :post, path: '/season_board/extract')
     expect(by_kind[:resume_review].action.path).to start_with('/data_fix/review_swimmers?')
-    expect(by_kind[:link].action.path).to eq('/season_board#season-board-row-5')
+    expect(by_kind[:link].action.path).to eq('/season_board?row=5#season-board-row-5')
     expect(by_kind[:review_results].subject).to eq(fin_event_id: '2', file_path: '/d/262/r.json', season_id: 262)
+  end
+
+  it 'keeps a review link of a busy row that is not locked (a job merely queued), never one of a locked row' do
+    busy_rows = [
+      board_row_payload('11', :in_review, :resume_review, file_path: '/d/262/q.json', phase: 2, busy: true),
+      board_row_payload('12', :results_ready, :review_results, file_path: '/d/262/l.json', busy: true, locked: true),
+      board_row_payload('13', :manifest_pending, :extract_manifest, pdf_path: '/m2.pdf', busy: true)
+    ]
+    keys = described_class.new.items(inbox_context(board_snapshot: board_summary(rows: busy_rows))).map(&:key)
+    expect(keys).to eq(['board:11:resume_review'])
   end
 
   it 'waits since the meeting date (older meetings first)' do

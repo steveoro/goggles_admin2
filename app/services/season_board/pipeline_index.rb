@@ -18,9 +18,17 @@ module SeasonBoard
   #
   # == Facts (see Facts below)
   # - stage / review_phase / review_count / new_teams / new_swimmers: the stored Ops::PipelineSource summary;
-  # - verdicts?: verdict rows exist; fresh?: all five verdicts were computed after the newest file of the source and
-  #   under the current data_fix.db_generation (or no new entity depends on it);
-  # - preparing?: a prepare job holds the lease, or a prepare run is queued/running (not stale);
+  # - verdicts?: verdict rows exist; fresh?: each of the five verdicts was computed after the newest of the files its
+  #   cache fingerprint covers (DataFix::Pipeline#fingerprint: the working copy and the phase files 1..N, never the LT2
+  #   once an LT4 working copy exists), and under the current data_fix.db_generation (or no new entity depends on it);
+  # - newest_file_at: the newest mtime among the working copy and all the phase files (the planner compares it with the
+  #   end of the last prepare run);
+  # - preparing?: a prepare job holds the lease, or a prepare run is running (not stale); a run merely queued is not
+  #   "preparing" (0.10.99: the row keeps its state and its review link until the job starts);
+  # - prepare_queued?: a prepare run is queued (not stale) and not running yet: state_and_detail answers
+  #   [:prepare_queued, {}] unless a review state (needs review, ready to commit) still holds, and the board row counts
+  #   as busy (no second prepare, no Retry);
+  # - leased?: a prepare job holds the source lease (the Data-Fix pages refuse edits: the board locks the review links);
   # - held?: the operator held the row (pipeline_sources.auto_prepare false);
   # - edited_recorded?: a verdict row records operator edits / an adopted file (the planner re-checks the files);
   # - stale_phases: phases whose stored verdict is 'stale'; db_behind?: new entities and a newer db generation;
@@ -36,10 +44,14 @@ module SeasonBoard
     Facts = Data.define(
       :source_id, :base, :source_path, :stage, :stage_reason, :review_phase, :review_count, :new_teams, :new_swimmers, :held,
       :preparing, :verdict_count, :fresh, :edited_recorded, :stale_phases, :db_behind, :collision_bases, :last_run,
-      :failed, :source_changed, :failed_phase, :failed_message, :highest_phase
+      :failed, :source_changed, :failed_phase, :failed_message, :highest_phase, :leased, :newest_file_at, :prepare_queued
     ) do
+      def initialize(leased: false, newest_file_at: nil, prepare_queued: false, **) = super
+
       def held? = held
       def preparing? = preparing
+      def prepare_queued? = prepare_queued
+      def leased? = leased
       def verdicts? = verdict_count.positive?
       def fresh? = fresh
       def edited_recorded? = edited_recorded
@@ -58,22 +70,37 @@ module SeasonBoard
       def needs_review?
         return false if preparing || !verdicts?
 
-        STAGES_IN_REVIEW.include?(stage) || (stage == 'ready_to_commit' && !fresh)
+        STAGES_IN_REVIEW.include?(stage) || outdated?
       end
+
+      # A stored "ready to commit" whose checks are no longer current (a file changed since, or the db generation moved).
+      def outdated? = stage == 'ready_to_commit' && !fresh
 
       def blocked? = stage == 'blocked'
 
       # Step to resume at for :needs_review.
       def review_step = review_phase || highest_phase || 1
 
-      # [state, detail] of the facts, with the board rules (StateResolver) plus :preparing; nil without a pipeline
-      # state. (Phase 15: the Sources Results tab and the non-FIN sources of the board summary.)
+      # [state, detail] of the facts, with the board rules (StateResolver) plus :preparing and :prepare_queued (a queued
+      # prepare wins over a failure, whose Retry it is, and over no state at all; never over a review state, whose link
+      # stays usable meanwhile); nil without a pipeline state. (Phase 15: the Sources Results tab and the non-FIN
+      # sources of the board summary, which have no activity log entry.)
       def state_and_detail
         return [:preparing, {}] if preparing?
+        return [:prepare_queued, {}] if prepare_queued? && !reviewable?
         return [:prepare_failed, { phase: failed_phase, message: failed_message }] if prepare_failed?
-        return [:needs_review, { step: review_step, count: review_count, blocked: blocked? }] if needs_review?
+        return [:needs_review, review_detail] if needs_review?
 
         [:ready_to_commit, { new_teams:, new_swimmers: }] if ready_to_commit?
+      end
+
+      # A review state holds (needs review, ready to commit) and no failure comes first.
+      def reviewable? = !prepare_failed? && (needs_review? || ready_to_commit?)
+
+      # Detail of the :needs_review state (+outdated: true+ for a "ready to commit" whose checks are outdated).
+      def review_detail
+        detail = { step: review_step, count: review_count, blocked: blocked? }
+        outdated? ? detail.merge(outdated: true) : detail
       end
     end
 
@@ -101,6 +128,16 @@ module SeasonBoard
       return nil unless entry
 
       entry.review_source || entry.results_source || entry.structure_source || entry.result_free_source
+    end
+
+    # The file the Data-Fix pipeline of +source+ (a DiskIndex::Source) reads: +stored_path+ (Ops::PipelineSource#
+    # source_path, i.e. DataFix::Pipeline#source_path), else the LT4, else the LT2. Never the LT2 when an LT4 working copy
+    # exists: the stored path stays on the LT2 when a prepare scheduled from it never started, and a CSV crawl may
+    # rewrite a same-named LT2 without changing the working copy. (Also SeasonBoard::PipelinePlanner, RowFlags.)
+    def self.working_copy(stored_path, source)
+      path = stored_path.presence
+      path = nil if path && source.lt4_path && path.to_s == source.lt2_path.to_s
+      path || source.lt4_path || source.lt2_path
     end
 
     delegate :active_source, to: :class
@@ -135,7 +172,8 @@ module SeasonBoard
         stale_phases: verdicts.select { |verdict| verdict.status == 'stale' }.map(&:phase).sort,
         db_behind: db_behind?(row), collision_bases: collision_bases(verdicts), last_run: run,
         failed:, source_changed: failed && source_changed?(row, run, source), failed_phase: failed_phase(run, verdicts),
-        failed_message: failed_message(run, verdicts), highest_phase: source.phase
+        failed_message: failed_message(run, verdicts), highest_phase: source.phase, leased: row.leased_by_job?,
+        newest_file_at: covered_mtime(row, source, source.phase_paths.keys.max), prepare_queued: prepare_queued?(row, run)
       )
     end
 
@@ -169,18 +207,38 @@ module SeasonBoard
 
     # == Facts helpers
 
+    # A job holds the lease, or the prepare run is running (a queued run is not preparing yet).
     def preparing?(row, run)
-      row.leased_by_job? || (run.present? && run.pending? && !run.stale?)
+      row.leased_by_job? || (run.present? && run.status == 'running' && !run.stale?)
     end
 
-    # Five verdicts computed after the newest file of the source, under the current generation (when it matters).
+    # The latest prepare run is queued (not stale), and no job is preparing the source yet.
+    def prepare_queued?(row, run)
+      run.present? && run.status == 'queued' && !run.stale? && !preparing?(row, run)
+    end
+
+    # Five verdicts, each computed after the newest of the files its fingerprint covers, under the current generation
+    # (when it matters). (Each verdict is cached and reused while its own files are unchanged: verdict 1 is older than the
+    # phase 5 file of a source prepared in one go, and still current.)
     def fresh?(row, verdicts, source)
       return false if verdicts.size < DataFix::Pipeline::PHASES.size
-
-      checked_at = verdicts.filter_map(&:checked_at).min
-      return false if checked_at.nil? || (source.mtime && checked_at < source.mtime - FRESH_TOLERANCE)
+      return false unless verdicts.all? { |verdict| verdict_current?(verdict, row, source) }
 
       !db_behind?(row)
+    end
+
+    def verdict_current?(verdict, row, source)
+      return false if verdict.checked_at.nil?
+
+      newest = covered_mtime(row, source, verdict.phase)
+      newest.nil? || verdict.checked_at >= newest - FRESH_TOLERANCE
+    end
+
+    # Newest mtime among the working copy and the phase files 1..+phase+ of the source (what the cache fingerprint of
+    # the verdict of +phase+ reads), or nil.
+    def covered_mtime(row, source, phase)
+      paths = [self.class.working_copy(row.source_path, source), *source.phase_paths.select { |number, _path| phase && number <= phase }.values]
+      paths.compact.filter_map { |path| mtime(path) }.max
     end
 
     def db_behind?(row)

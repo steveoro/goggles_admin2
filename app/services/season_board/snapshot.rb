@@ -33,14 +33,16 @@ module SeasonBoard
   # - rows: Array of Snapshot::Row, in FIN calendar order: fin_event_id, key, name, date_text, year,
   #   first_date, last_date (Date), place, url, info, state (Symbol), state_detail (Hash, Symbol keys),
   #   next_action (SeasonBoard::NextAction: kind Symbol + params Hash, see StateResolver; nil when none),
-  #   busy (Boolean, a crawl/extraction/prepare queued or running), flags (Array of Symbols, RowFlags::FLAGS),
+  #   busy (Boolean, a crawl/extraction/prepare queued or running), locked (Boolean, since 4: a job working on the row's
+  #   files right now: the review links are disabled), flags (Array of Symbols, RowFlags::FLAGS),
   #   meeting_id, calendar_id; plus #busy?, #flag?(flag), #action?(kind), #linked?.
   #   SeasonBoard::ActionPaths.target_for(row.next_action) gives the action path & HTTP method;
   # - state_counts: Hash of state Symbol => row count (row order); unlinked_count: rows without FIN link;
   #   done_count: past rows committed with results (both hidden by default on the board);
   # - unmatched_sources: Array of Snapshot::UnmatchedSource (pending files without FIN id: base, bases,
   #   pending kind :in_review/:source/:sql/:manifest, review_path, phase, paths; since 3 the pipeline state of the
-  #   source prepared from the Sources page: :preparing/:prepare_failed/:needs_review/:ready_to_commit + detail);
+  #   source prepared from the Sources page: :preparing/:prepare_queued/:prepare_failed/:needs_review/:ready_to_commit + detail);
+  # - off_board_sources (since 5): the same, for the pending files whose FIN id is on no board row (#fin_event_id set);
   # - board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (absolute path Strings);
   # - warnings: Array of Strings;
   # - snapshot_checked_at: Time of the last FIN calendar check by the watcher (nil when never);
@@ -54,7 +56,12 @@ module SeasonBoard
     # Bump when the payload layout changes (part of the fingerprint: older payloads are never served).
     # 2: phase 10 pipeline states (:prepare_failed, :needs_review, :ready_to_commit) and actions (:prepare, :commit).
     # 3: phase 15 pipeline state of the unmatched (non-FIN) sources.
-    FORMAT_VERSION = 3
+    # 4: 0.10.99 row 'locked' (a job working on the row's files right now) and the :needs_review detail 'outdated'.
+    # 5: 0.10.102 links adopted from the FIN 'Eventi' calendar (row 'url' & 'fin_event_id' of a row without its own link,
+    #    flag 'link_adopted', row 'adopted_link'), and the 'off_board_sources' (pending files whose FIN id is on no row).
+    # 6: 0.10.103 rows removed from the FIN page (flag 'removed_from_fin', appended after the snapshot rows) and the
+    #    pipeline state of the off-board sources.
+    FORMAT_VERSION = 6
 
     KEY_PREFIX = 'season_board:'
 
@@ -108,6 +115,12 @@ module SeasonBoard
 
         record = Ops.safely { Ops::Snapshot.read(key_for(season)) if Ops.available? }
         summary_from(record)
+      end
+
+      # Set of the FIN ids of the rows of the stored Summary of the season (whatever its age), or nil without one.
+      def board_fin_event_ids(season)
+        summary = read(season)
+        summary && summary.rows.filter_map(&:fin_event_id).to_set
       end
 
       # Deletes the stored Summary of the season. Never raises; true when a row was deleted.

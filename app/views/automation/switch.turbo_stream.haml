@@ -1,0 +1,12 @@
+-#
+  AutomationController#switch (Turbo request): both switch panels (a missing target is skipped by Turbo), the board's
+  automation badge and "Prepare all" button, and the toasts.
+- AutomationController::RETURN_PATHS.each do |panel|
+  = turbo_stream.replace("automation-switches-#{panel}") do
+    = render('automation/switches', return_to: panel)
+= turbo_stream.replace('season-board-automation-badge') do
+  = render('season_board/automation_badge')
+= turbo_stream.replace('season-board-prepare-all') do
+  = render('season_board/prepare_all_button')
+= turbo_stream.update('flash-messages-container') do
+  = render(partial: 'goggles/flash_messages')

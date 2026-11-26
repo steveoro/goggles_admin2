@@ -4,8 +4,22 @@ en:
     title: "Operations"
     subtitle: "Fixes for the data health findings: dry run, apply locally, Outbox, health re-run."
     ops_unavailable: "The ops DB is not available: run bin/rails ops:prepare, then restart."
-    disabled: "Operations are disabled (ops setting operations.enabled): the Fix buttons are hidden and nothing can be applied."
+    disabled: "Operations are off (ops setting operations.enabled): the Fix buttons are hidden and nothing can be applied. Turn the Operations switch on to use them again."
     local_mirror: "Local DB"
+    switch:
+      label: "Operations (Fix buttons)"
+      help: "Rollback switch of the maintenance operations. Off: the Fix buttons are hidden and the applies are refused (the scripts already in the Outbox stay there)."
+      ops_unavailable: "The switch needs the local ops DB (run bin/rails ops:prepare)."
+      unreadable: "The stored value cannot be read right now (local ops DB busy?): reload the page in a moment."
+      states:
+        "on": "On"
+        "off": "Off"
+        unknown: "Unknown"
+      flash:
+        "on": "Operations on: the Fix buttons are back."
+        "off": "Operations off: the Fix buttons are hidden and the applies are refused."
+        ops_unavailable: "The Operations switch needs the local ops DB (run bin/rails ops:prepare)."
+        store_failed: "The Operations switch could not be saved (local ops DB)."
     index:
       inspectors: "Read-only checks"
       inspectors_hint: "The reports of the check:* rake tasks: a dry run only, nothing is ever applied."
@@ -543,6 +557,8 @@ en:
           runs: "Backfill applied for the season."
   ops:
     events:
+      operations:
+        switched: "Operations switch changed"
       maintenance:
         applied: "Operation applied locally"
         apply_failed: "Operation apply failed"

@@ -4,8 +4,22 @@ it:
     title: "Operazioni"
     subtitle: "Correzioni per le segnalazioni di salute dati: prova a vuoto, applicazione locale, Outbox, nuovo controllo."
     ops_unavailable: "Il DB ops non è disponibile: esegui bin/rails ops:prepare, poi riavvia."
-    disabled: "Le operazioni sono disattivate (impostazione ops operations.enabled): i pulsanti Correggi sono nascosti e non si può applicare nulla."
+    disabled: "Le operazioni sono spente (impostazione ops operations.enabled): i pulsanti Correggi sono nascosti e non si può applicare nulla. Accendi l'interruttore Operazioni per usarle di nuovo."
     local_mirror: "DB locale"
+    switch:
+      label: "Operazioni (pulsanti Correggi)"
+      help: "Interruttore di emergenza delle operazioni di manutenzione. Spento: i pulsanti Correggi sono nascosti e le applicazioni rifiutate (gli script già nella Outbox restano lì)."
+      ops_unavailable: "L'interruttore richiede il DB locale ops (esegui bin/rails ops:prepare)."
+      unreadable: "Il valore salvato non si può leggere ora (DB locale ops occupato?): ricarica la pagina tra un momento."
+      states:
+        "on": "Acceso"
+        "off": "Spento"
+        unknown: "Sconosciuto"
+      flash:
+        "on": "Operazioni accese: i pulsanti Correggi sono tornati."
+        "off": "Operazioni spente: i pulsanti Correggi sono nascosti e le applicazioni rifiutate."
+        ops_unavailable: "L'interruttore Operazioni richiede il DB locale ops (esegui bin/rails ops:prepare)."
+        store_failed: "Impossibile salvare l'interruttore Operazioni (DB locale ops)."
     index:
       inspectors: "Controlli in sola lettura"
       inspectors_hint: "I resoconti dei task rake check:*: solo una prova a vuoto, non si applica mai nulla."
@@ -543,6 +557,8 @@ it:
           runs: "Backfill applicato per la stagione."
   ops:
     events:
+      operations:
+        switched: "Interruttore delle operazioni cambiato"
       maintenance:
         applied: "Operazione applicata in locale"
         apply_failed: "Applicazione dell'operazione fallita"

@@ -1,0 +1,62 @@
+// == Progress strip (Shell::ProgressStripComponent + progress_strip_controller.js) ==
+//
+// An overlay anchored under the sticky header (`.app-topbar`, positioned): showing or hiding it never changes the
+// header height, so the page never moves under a click. It lets every click through to what it covers
+// (pointer-events: none), except on its close button. The panel is hidden with the `hidden` attribute (Bootstrap's
+// reboot: display none). Colours: Bootstrap variables only, so both themes work.
+:root {
+  --ga-progress-strip-height: 2.25rem;
+}
+
+.app-progress-strip {
+  position: absolute;
+  top: calc(100% + var(--bs-border-width)); // (below the header's bottom border)
+  right: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.app-progress-strip-panel {
+  background-color: var(--bs-tertiary-bg);
+  border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+  box-shadow: var(--bs-box-shadow-sm);
+  font-size: 0.875rem;
+}
+
+.app-progress-strip-body {
+  min-height: calc(var(--ga-progress-strip-height) - 0.25rem);
+}
+
+.app-progress-strip-scope {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 18rem;
+  font-weight: 500;
+}
+
+.app-progress-strip-message {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.app-progress-strip-count {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+}
+
+.app-progress-strip-close {
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  pointer-events: auto;
+}
+
+.app-progress-strip-bar {
+  --bs-progress-height: 0.25rem;
+  --bs-progress-border-radius: 0;
+  --bs-progress-bg: var(--bs-secondary-bg);
+}
+
+// Toasts (fixed under the top bar) move below the strip while it is shown, so they never hide its close button:
+body:has(.app-progress-strip-panel:not([hidden])) #flash-messages-container {
+  margin-top: calc(var(--ga-topbar-height) + var(--ga-progress-strip-height));
+}

@@ -90,6 +90,8 @@ RSpec.describe MeetingCrawlJob do
     allow(SeasonBoard::DbIndex).to receive(:new).and_return(db_index)
     allow(SeasonBoard::Notifier).to receive(:ping)
     allow(SeasonBoard::Snapshot).to receive(:invalidate!)
+    # (0.10.104: the tidy-up reads the crawler status file; none here = idle)
+    allow(SystemStatus::CrawlerProbe).to receive(:status_path).and_return(Pathname.new(data_dir).join('no-crawler-status.json'))
     state = clock_state
     described_class.clock = clock
     described_class.sleeper = lambda { |seconds|
@@ -196,7 +198,8 @@ RSpec.describe MeetingCrawlJob do
   context 'when the crawl is result-free for a linked meeting' do
     let(:calendar) { linked_calendar }
 
-    it 'deletes only the fresh redundant LT2 & manifest PDF' do
+    # (0.10.104: moved, never deleted: the LT2 to the run backup folder, the PDF to manifests.done)
+    it 'moves away only the fresh redundant LT2 & manifest PDF' do
       old_lt2 = age!(write_json('results.new', 'old.json', lt2_hash(fin_id:)))
       old_pdf = age!(write_file('manifests', 'manifest-old.pdf', '%PDF'))
       other = write_json('results.new', 'other.json', lt2_hash(fin_id: '150092'))
@@ -209,7 +212,30 @@ RSpec.describe MeetingCrawlJob do
       expect(crawl_entry.message).to start_with('no results yet')
       expect(File).not_to exist(path_for('results.new', 'm.json'))
       expect(File).not_to exist(path_for('manifests', 'manifest-m.pdf'))
+      expect(Dir.glob(File.join(data_dir, 'results.backup', '262', 'cleanup-*', 'm.json')).size).to eq(1)
       expect([old_lt2, old_pdf, other]).to all(satisfy { |path| File.exist?(path) })
+      journal = Dir.glob(File.join(data_dir, 'results.backup', '262', 'cleanup-*', 'MOVES.txt')).first
+      expect(File.readlines(journal).map { |line| line.chomp.split("\t").last }).to contain_exactly(
+        start_with('results.new/262/m.json -> results.backup/262/cleanup-'), 'manifests/262/manifest-m.pdf -> manifests.done/262/manifest-m.pdf'
+      )
+      expect(Ops::Event.where(kind: 'board.crawl_finished').last.data['cleanup']).to include('moves' => 2, 'backup_dir' => start_with('results.backup/262/'))
+    end
+
+    it 'survives a failing tidy-up: the crawl still ends done, the error is reported' do
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:)) }
+      allow_any_instance_of(Sources::Cleanup::Mover).to receive(:to_backup).and_raise(Errno::EIO, 'disk trouble') # rubocop:disable RSpec/AnyInstance
+      perform
+      expect(crawl_entry).to have_attributes(status: :done, message: 'no results yet (clean-up stopped by an error)')
+      expect(File).to exist(path_for('results.new', 'm.json'))
+      expect(Ops::Event.where(kind: 'board.crawl_finished').last.data.dig('cleanup', 'skipped').join).to include('disk trouble')
+    end
+
+    it 'tidies nothing while a preparation of the same FIN id is queued (Sources::Cleanup::Safety)' do
+      crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:)) }
+      activity_log.queue!(fin_id, kind: :prepare, origin: :manual)
+      perform
+      expect(crawl_entry).to have_attributes(status: :done, message: 'no results yet (clean-up skipped: busy_activity)')
+      expect(File).to exist(path_for('results.new', 'm.json'))
     end
 
     it 'keeps a fresh LT2 having an LT4 working copy or phase files' do
@@ -316,6 +342,50 @@ RSpec.describe MeetingCrawlJob do
       crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true)) }
       perform("https://evil.example.com/risultati/#{fin_id}:x.html")
       expect(crawler.pulls).to eq([{ season_id: 262, url: }])
+    end
+
+    # 0.10.102: a link-less snapshot row adopting the link of the FIN 'Eventi' calendar (SeasonBoard::CalendarIndex)
+    context "with a link adopted from the FIN 'Eventi' calendar" do
+      let(:adopted_url) { results_url(fin_id).sub('some-meeting', 'sardinia-in-water') }
+      let(:linked_rows) do
+        (1..3).map { |day| { 'key' => "k#{day}", 'url' => results_url("15000#{day}"), 'date' => "0#{day}/10", 'year' => '2026', 'place' => "City#{day}" } }
+      end
+
+      let(:eventi) { SeasonBoard::CalendarIndex::EVENTI_START_URL }
+
+      def cagliari_row(url: '') = { 'key' => 'k', 'url' => url, 'date' => '22/11', 'year' => '2026', 'place' => 'Cagliari' }
+
+      def write_snapshot(rows, last_checked: '2026-11-25T10:30:00+01:00')
+        FedernuotoWatch::StateStore.new.update { |state| state.merge('rows' => rows, 'last_checked' => last_checked) }
+      end
+
+      before(:each) do
+        allow(GogglesDb::Season).to receive(:find_by).with(id: 262)
+                                                     .and_return(FactoryBot.build_stubbed(:season, id: 262, begin_date: Date.new(2026, 10, 1),
+                                                                                                   end_date: Date.new(2027, 9, 30)))
+        rows = (1..3).map { |day| "#{eventi},2026-10-0#{day},false,M#{day},City#{day} (XX),#{results_url("15000#{day}")},2026\n" }
+        write_file('calendar.new', '20261125-262-2-FIN-calendar.csv',
+                   "startURL,date,isCancelled,name,place,meetingUrl,year\n#{rows.join}#{eventi},2026-11-22,false,Sardinia,Cagliari (CA),#{adopted_url},2026\n")
+      end
+
+      it 'crawls the adopted URL re-derived from the calendar file, not the given one' do
+        write_snapshot(linked_rows + [cagliari_row])
+        crawler.on_pull = -> { write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true)) }
+        perform('https://evil.example.com/risultati/150091:x.html')
+        expect(crawler.pulls).to eq([{ season_id: 262, url: adopted_url }])
+        expect(crawl_entry.status).to eq(:done)
+      end
+
+      it 'still refuses a FIN id adopted by no snapshot row' do
+        write_snapshot(linked_rows + [cagliari_row(url: results_url('150120'))])
+        perform
+        write_snapshot(linked_rows)
+        perform
+        write_snapshot(linked_rows + [cagliari_row], last_checked: '2026-12-20T10:30:00+01:00') # (the calendar is too old)
+        perform
+        expect(crawler.pulls).to be_empty
+        expect(crawl_entry).to have_attributes(status: :failed, message: 'FIN id no longer on the watcher snapshot')
+      end
     end
 
     it 'fails for an unknown season' do

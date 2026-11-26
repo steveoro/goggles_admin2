@@ -11,7 +11,7 @@ module SeasonBoard
   #  3. :prepare_failed         the last Data-Fix prepare failed and the source did not change since
   #                             (detail: { phase:, message: })                          => :prepare ("Retry")
   #  4. :needs_review           stored stage needs_review / blocked (or a "ready" that is no longer current)
-  #                             (detail: { step:, count:, blocked: })                   => :resume_review (review filter)
+  #                             (detail: { step:, count:, blocked: [, outdated: true] }) => :resume_review (review filter)
   #  5. :ready_to_commit        every phase verdict clean and fresh (detail: { new_teams:, new_swimmers: }) => :commit
   #  6. :in_review              phase files in results.new without usable verdicts (detail: { phase: N }) => :resume_review
   #  7. :results_ready          source with results in results.new, no phase files      => :review_results
@@ -114,9 +114,7 @@ module SeasonBoard
       pipeline = pipeline_with_source(facts)
       return unless pipeline&.needs_review?
 
-      step = pipeline.review_step
-      [{ step:, count: pipeline.review_count, blocked: pipeline.blocked? }, :resume_review,
-       { file_path: active_path(facts), phase: step, filter_state: 'review' }]
+      [pipeline.review_detail, :resume_review, { file_path: active_path(facts), phase: pipeline.review_step, filter_state: 'review' }]
     end
 
     def rule_ready_to_commit(facts)

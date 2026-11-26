@@ -12,6 +12,8 @@ The landing page (`/`, `DashboardController`). It never calls the API: every rem
 | Data health | `dashboard/health` | `Health::DashboardCardComponent`: open errors / warnings of the board season and of the closed seasons (`Ops::HealthFinding`), queued runs, last sweep |
 | Activity | `dashboard/activity` | the last 20 `Ops::Event` rows; `/activity` lists them all |
 
+The System status zone also holds the switches: the three automation kill switches (`automation/_switches`, `AutomationController#switch`) and the **Operations** switch (`operations/_switch`, `OperationsController#switch`, ops setting `operations.enabled`). They are `Switch::ToggleFormComponent`s (a Bootstrap `.form-switch` in a POST form; `toggle_submit_controller.js` submits on change, disables the switch while the request runs and puts it back when it fails); the answer is a turbo stream replacing the switch panels and the toasts, so the zone is not reloaded.
+
 Each zone is a Turbo frame loaded on its own. `live_frames_controller.js` reloads them on any `AppNotificationsChannel` broadcast, or every 20 s while one of them carries `data-live-busy="true"` (something queued or running).
 
 A counter that was never fetched is never shown as 0: it says "unreachable", "sign in to refresh", "unavailable" or "no data yet". Switching the API URL in Settings shows "no data yet for <url>" until the counters of that server are fetched.
@@ -25,7 +27,7 @@ Each source turns local facts into `Inbox::Item`s; `Inbox::Builder` merges them:
 - 25 items shown, the rest counted per source ("N more", linking to the source's `more_path`);
 - a source that raises becomes one `failed`-band item ("Inbox source X failed: ..."), never an error page.
 
-v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift` (since 08 `Drift::InboxSource`: the last DB sync verdict, red = blocked band, amber = notice; see `docs/db_sync.md`); phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
+v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change` (0.10.103: only while the FIN alert is shown), `fin_notice` (0.10.103: one notice per FIN change acknowledged with nothing to crawl, with **Dismiss**: ops setting `fin_watch.notice_dismissed_ids`), `drift` (since 08 `Drift::InboxSource`: the last DB sync verdict, red = blocked band, amber = notice; see `docs/db_sync.md`); phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
 
 ### Adding a source (phases 06, 10)
 
@@ -83,6 +85,7 @@ end
 ```
 
 - A result has `label`, `level` (`:ok`, `:warn`, `:error`, `:unknown`), `detail`, `checked_at` ("as of") and an optional `action` (`{ label:, path:, http_method: }`). A `:post` action is a button in the System zone; the top bar pill never runs it and links to the dashboard System zone instead.
+- The top bar compacts the results (`Shell::StatusPillsComponent`): all `:ok` → a single "All OK" pill (`#status-pill-all`, tooltip listing each probe and its detail, link to `/#dashboard-system`); otherwise one `Shell::StatusPillComponent` per probe not `:ok` (`#status-pill-<key>`, `:unknown` included, registry order) followed by an "N OK" pill (same id) for the others.
 - `mode`: `:inline` (cheap local reads, the default) or `:snapshot` (anything needing the network: implement `#refresh!`, run only by `SystemStatus::RefreshJob`, and read only `#snapshot` in `#evaluate`).
 - Texts: `shell.status.<key>.*` in `config/locales/shell.{en,it}.yml`. Keep the labels short: the top bar shows them only from 1600 px.
 

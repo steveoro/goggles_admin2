@@ -31,6 +31,23 @@ RSpec.describe 'Sources results' do
       expect(html.at_css('#sources-tabs .nav-link.active')['id']).to eq('sources-tab-results')
     end
 
+    # 0.10.102
+    it 'labels a FIN source whose FIN id is on no row of the stored board summary' do
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150999' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      get(sources_results_path(season_id: season.id))
+      badge = row_for(fin_source.basename.to_s).css('.badge').find { |node| node.text.include?('150091') }
+      expect(badge.text.strip).to eq(I18n.t('sources.results.badges.off_board', fin_event_id: '150091'))
+      expect(badge['title']).to eq(I18n.t('sources.results.badges.off_board_tooltip'))
+
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150091' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      get(sources_results_path(season_id: season.id))
+      badge = row_for(fin_source.basename.to_s).css('.badge').find { |node| node.text.include?('150091') }
+      expect(badge).to have_attributes(text: 'FIN 150091')
+      expect(badge['title']).to eq(I18n.t('sources.results.badges.board_row'))
+    end
+
     it 'shows the Sources item active in the sidebar and Import > Sources > Results as breadcrumbs' do
       get(sources_results_path(season_id: season.id))
       expect(html.css('.app-sidebar a.nav-link.active').pluck('href')).to eq(['/sources/results'])
@@ -69,6 +86,17 @@ RSpec.describe 'Sources results' do
       expect(flash[:warning]).to eq(I18n.t('sources.results.prepare.fin_source'))
     end
 
+    it 'queues the prepare of a FIN source whose FIN id is on no board row (the board off-board list, 0.10.103)' do
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150999' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      post(sources_prepare_path, params: { path: 'results.new/242/2025-11-08-Trofeo.json', season_id: 242 })
+      expect(SeasonBoard::Scheduler).to have_received(:prepare!)
+      Ops::Snapshot.write!(SeasonBoard::Snapshot.key_for(242), { 'season_id' => 242, 'rows' => [{ 'fin_event_id' => '150091' }] },
+                           source: SeasonBoard::Snapshot::SOURCE)
+      post(sources_prepare_path, params: { path: 'results.new/242/2025-11-08-Trofeo.json', season_id: 242 })
+      expect(SeasonBoard::Scheduler).to have_received(:prepare!).once
+    end
+
     it 'refuses a path outside the season results folder or the data root' do
       other = write_data('calendar.new/242/x.json', '{}')
       post(sources_prepare_path, params: { path: other.to_s, season_id: 242 })
@@ -87,6 +115,22 @@ RSpec.describe 'Sources results' do
       post(sources_prepare_path, params: { path: 'results.new/242/2025-06-24-Riccione-lt4.json', season_id: 242 })
       expect(flash[:warning]).to eq(I18n.t('sources.results.prepare.refused', name: microplus.basename))
     end
+  end
+
+  # 0.10.99: a non-FIN source has no board activity entry: its queued run is what says "queued".
+  it 'shows a disabled "Preparation queued" instead of Prepare / Retry while the prepare of a non-FIN source is queued' do
+    source = FactoryBot.create(:ops_pipeline_source, season_id: 242, base: '2025-06-24-Riccione', source_path: microplus.to_s)
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', origin: 'operator', status: 'queued', subject_key: source.base)
+    get(sources_results_path(season_id: 242))
+    row = row_for(microplus.basename.to_s)
+    expect(row.at_css("form[action='#{sources_prepare_path}']")).to be_nil
+    expect(row.at_css('td:last-child span.disabled[aria-disabled="true"]').text).to include(I18n.t('season_board.activity.prepare_queued'))
+
+    source.update!(stage: 'failed')
+    get(sources_results_path(season_id: 242))
+    row = row_for(microplus.basename.to_s)
+    expect(row.at_css("form[action='#{sources_prepare_path}']")).to be_nil
+    expect(row.text).to include(I18n.t('season_board.activity.prepare_queued'))
   end
 
   it 'shows the pipeline state of a prepared non-FIN source with its next step' do

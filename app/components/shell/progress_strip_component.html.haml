@@ -1,0 +1,11 @@
+%div{ root_attributes }
+  %span{ status_attributes }
+  %div{ panel_attributes }
+    .app-progress-strip-body.d-flex.align-items-center.gap-2.px-2.px-lg-3
+      %i.fa-solid.fa-circle-notch.fa-spin.text-primary.flex-shrink-0{ 'aria-hidden' => 'true' }
+      %span.app-progress-strip-scope.badge.text-bg-secondary.text-truncate{ hidden: true, 'aria-hidden' => 'true', data: { progress_strip_target: 'scope' } }
+      %span.app-progress-strip-message.text-truncate{ 'aria-hidden' => 'true', data: { progress_strip_target: 'message' } }= t('shell.progress_strip.working')
+      %span.app-progress-strip-count.font-monospace.text-body-secondary.text-nowrap{ 'aria-hidden' => 'true', data: { progress_strip_target: 'count' } }
+      %button{ close_attributes }
+    %div{ bar_attributes }
+      .progress-bar{ style: 'width: 0%', data: { progress_strip_target: 'bar' } }

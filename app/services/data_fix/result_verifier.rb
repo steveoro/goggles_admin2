@@ -11,11 +11,15 @@ module DataFix
   #
   # - #verify_row(row): one row (the JSON endpoint GET data_fix/verify_result);
   # - #verify_all!: every unmatched staged row of the source (run after each Phase 5 populate and by the
-  #   POST "Verify all" endpoint). Idempotent: rows already bound to a result are skipped.
+  #   POST "Verify all" endpoint). Idempotent: rows already bound to a result are skipped. An optional progress sink
+  #   is ticked along the way (it can take a while on a large meeting: the progress strip stays alive).
   #
   class ResultVerifier
     AUTO_FIX_COLUMNS = %i[meeting_program_id swimmer_id team_id badge_id rank minutes seconds hundredths disqualified
                           standard_points meeting_points goggle_cup_points].freeze
+    # Rows checked between two progress ticks of #verify_all!, and its default message.
+    PROGRESS_EVERY = 25
+    PROGRESS_MESSAGE = 'Verifying the staged results'
 
     attr_reader :source_path, :season_id
 
@@ -26,12 +30,18 @@ module DataFix
     end
 
     # Returns { 'checked', 'verified', 'partial' => [import keys], 'merge_targets_skipped' }.
-    def verify_all!
+    # +progress+: an optional Import::Progress sink (or a callable(message, current, total)), ticked with +message+
+    # before the first row, every PROGRESS_EVERY rows and after the last one (never when there is nothing to verify).
+    def verify_all!(progress: nil, message: PROGRESS_MESSAGE)
       merge_keys = merge_target_import_keys
       outcome = { 'checked' => 0, 'verified' => 0, 'partial' => [], 'merge_targets_skipped' => 0 }
       scope = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path, meeting_individual_result_id: nil)
                                                           .where.not(meeting_program_id: nil).where.not(swimmer_id: nil)
-      scope.find_each do |row|
+      total = progress ? scope.count : 0
+      progress = nil if total.zero? # (nothing to verify: no tick)
+      progress&.call(message, 0, total)
+      scope.find_each.with_index(1) do |row, index|
+        progress.call(message, index, total) if progress && (index % PROGRESS_EVERY).zero?
         if merge_keys.include?(row.import_key)
           outcome['merge_targets_skipped'] += 1
           next
@@ -42,6 +52,7 @@ module DataFix
         outcome['verified'] += 1 if result[:auto_fixed]
         outcome['partial'] << row.import_key if !result[:auto_fixed] && Array(result[:partial_matches]).any?
       end
+      progress&.call(message, total, total)
       outcome['partial'] = outcome['partial'].first(200)
       outcome
     rescue StandardError => e

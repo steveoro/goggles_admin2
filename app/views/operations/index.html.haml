@@ -3,6 +3,8 @@
   history (OperationRunsGrid, ops DB). Every fix starts from its form: a dry run first, then the apply.
 = render(Shell::PageHeaderComponent.new(title: t('maintenance.title'), count: @assets&.total_count, subtitle: t('maintenance.subtitle'))) do |header|
   - header.with_actions do
+    -# (the 'operations.enabled' switch: always shown, so that the operations can be turned back on)
+    = render('operations/switch', return_to: 'operations')
     = link_to(season_start_index_path, class: 'btn btn-sm btn-outline-secondary', id: 'operations-season-start-link') do
       %i.fa-solid.fa-list-check{ 'aria-hidden' => 'true' }
       = t('maintenance.index.season_start')

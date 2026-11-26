@@ -10,10 +10,14 @@ module SeasonBoard
   #
   # The POST actions (crawl, extract, prepare, link) take only the FIN event ID: the URLs are looked up
   # server-side. They are disabled while the row is busy (a crawl/extraction/prepare is queued or running).
+  # The link actions (GET: review steps, commit summary, Outbox) stay enabled while the row is only busy (e.g. a
+  # prepare merely queued: the Data-Fix pages refuse edits only while a job holds the source lease) and are disabled
+  # while the row is locked (Row#locked?: a job works on its files right now), with a tooltip saying why.
   # The action targets come from SeasonBoard::ActionPaths (shared with the pages summarising the board).
   #
   # Phase 10: a row with a Data-Fix source also offers "Prepare" (a DataFixPrepareJob, phases 1-5 only) and the
-  # automation hold toggle (SECONDARY_PREPARE_STATES / #hold_toggle?); "Commit" only opens the commit summary.
+  # "Auto-prepare" switch (the row hold, on = not held: Switch::ToggleFormComponent; SECONDARY_PREPARE_STATES /
+  # #hold_toggle?); "Commit" only opens the commit summary.
   #
   class RowComponent < ViewComponent::Base
     # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):
@@ -29,7 +33,7 @@ module SeasonBoard
     }.freeze
 
     # Flags rendered as warning badges
-    WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
+    WARNING_FLAGS = %i[possible_unlinked_meeting removed_from_fin].freeze
 
     # States offering a secondary "Prepare" button (the primary action stays the review / commit link).
     SECONDARY_PREPARE_STATES = %i[needs_review in_review results_ready structure_ready crawled_no_manifest].freeze
@@ -104,6 +108,19 @@ module SeasonBoard
     def link_action?
       ActionPaths.link?(action_kind)
     end
+
+    # True when the primary action is rendered as a disabled button (ActionPaths.blocked?): a link action only while the
+    # row is locked, any other action while the row is busy.
+    def action_disabled?
+      action_kind.present? && ActionPaths.blocked?(row)
+    end
+
+    def disabled_tooltip
+      row.locked? ? t('season_board.actions.locked_tooltip') : t('season_board.actions.busy_tooltip')
+    end
+
+    # Tooltip of an enabled link action while the row is busy (a job merely queued), else nil.
+    def link_title = (t('season_board.actions.queued_link_tooltip') if row.busy?)
 
     # True when the POST action has no FIN URL to work with
     def missing_url?

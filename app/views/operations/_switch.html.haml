@@ -1,0 +1,24 @@
+-#
+  The 'operations.enabled' switch (rollback switch of the maintenance operations: off hides the Fix buttons and refuses
+  the applies). Switch::ToggleFormComponent, POST operations/switch, with its state badge (on / off / unknown).
+  Locals: return_to ('dashboard': answered with a turbo stream replacing this panel, by its id
+  'operations-switch-dashboard'; 'operations': answered with a redirect, the whole /operations page depends on the
+  setting). It shows the STORED value (Maintenance.stored_enabled): without the ops DB, or when the value cannot be
+  read, it is disabled with the reason shown (never an interactive guess). Always rendered, so that the operations can
+  be turned back on.
+:ruby
+  stored = Maintenance.stored_enabled
+  reason = t('maintenance.switch.unreadable') if stored.nil?
+  reason = t('maintenance.switch.ops_unavailable') unless Ops.available?
+  state = { true => 'on', false => 'off' }.fetch(stored, 'unknown')
+  state_css = { 'on' => 'text-bg-success', 'off' => 'text-bg-secondary', 'unknown' => 'text-bg-warning' }
+  dashboard = return_to == 'dashboard'
+.operations-switch.flex-wrap.align-items-center.gap-2{ id: "operations-switch-#{return_to}",
+                                                       class: dashboard ? 'd-flex' : 'd-inline-flex',
+                                                       data: { operations_enabled: state == 'unknown' ? 'unknown' : stored.to_s } }
+  = render(Switch::ToggleFormComponent.new(url: operations_switch_path, name: 'value', checked: stored == true,
+                                           label: t('maintenance.switch.label'), id: "operations-switch-input-#{return_to}",
+                                           params: { return_to: }, disabled: reason.present?, reason:, reason_visible: true,
+                                           help: t('maintenance.switch.help'),
+                                           form_class: ('flex-grow-1' if dashboard), label_class: ('small' if dashboard)))
+  %span.badge{ class: state_css[state], data: { operations_state: state } }= t("maintenance.switch.states.#{state}")

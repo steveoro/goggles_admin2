@@ -13,6 +13,9 @@ module Sources
     #   SeasonBoard::Scheduler.prepare!), then the step to review or the commit summary once prepared.
     #
     class Results
+      # Labels of the states waiting for a prepare job (no verdict-based state to show).
+      WAITING_LABELS = { preparing: 'pipeline_automation.stages.preparing', prepare_queued: 'season_board.activity.prepare_queued' }.freeze
+
       def initialize(index)
         @index = index
       end
@@ -68,12 +71,22 @@ module Sources
       end
 
       def fin_badge(entry)
-        if entry.fin_event_id
+        if entry.fin_event_id && off_board?(entry.fin_event_id)
+          Badge.new(label: I18n.t('sources.results.badges.off_board', fin_event_id: entry.fin_event_id), tone: 'warning',
+                    title: I18n.t('sources.results.badges.off_board_tooltip'))
+        elsif entry.fin_event_id
           Badge.new(label: "FIN #{entry.fin_event_id}", tone: 'primary', title: I18n.t('sources.results.badges.board_row'),
                     path: SeasonBoard::ActionPaths.board_row_path(entry.fin_event_id))
         else
           Badge.new(label: I18n.t('sources.results.badges.non_fin'), tone: 'warning', title: I18n.t('sources.results.badges.non_fin_tooltip'))
         end
+      end
+
+      # True when the stored board summary of the season has no row with the FIN id (0.10.102: a meeting only on the
+      # 'Eventi' calendar, or an adopted link no longer taken). Unknown (no stored summary, e.g. another season): false.
+      def off_board?(fin_event_id)
+        @board_ids = SeasonBoard::Snapshot.board_fin_event_ids(@index.season_id) unless defined?(@board_ids)
+        @board_ids ? @board_ids.exclude?(fin_event_id) : false
       end
 
       def phase_badge(source)
@@ -89,8 +102,8 @@ module Sources
         return unless state
 
         name, detail = state
-        tone = { preparing: 'info', prepare_failed: 'danger', needs_review: 'warning', ready_to_commit: 'success' }.fetch(name)
-        label = name == :preparing ? I18n.t('pipeline_automation.stages.preparing') : SeasonBoard::StateText.label(name, detail)
+        tone = { preparing: 'info', prepare_queued: 'info', prepare_failed: 'danger', needs_review: 'warning', ready_to_commit: 'success' }.fetch(name)
+        label = WAITING_LABELS.key?(name) ? I18n.t(WAITING_LABELS[name]) : SeasonBoard::StateText.label(name, detail)
         Badge.new(label: label.truncate(80), tone:, title: label)
       end
 
@@ -102,12 +115,19 @@ module Sources
 
       def primary_action(entry, source, path, state) # rubocop:disable Metrics/CyclomaticComplexity
         case state&.first
-        when :preparing then RowAction.new(label: I18n.t('pipeline_automation.stages.preparing'), path: nil, icon: 'fa-spinner', disabled: true)
+        when :preparing, :prepare_queued then waiting_action(state.first)
         when :ready_to_commit then commit_action(path)
         when :needs_review then review_action(path, state.last[:step])
         when :prepare_failed then entry.fin_event_id ? resume_or_open(source, path) : prepare_action(path, again: true)
         else entry.fin_event_id || source.in_review? ? resume_or_open(source, path) : prepare_action(path)
         end
+      end
+
+      # Disabled action of a source whose prepare is running (:preparing) or queued (:prepare_queued, 0.10.99: no second
+      # click on "Prepare" / "Retry" while the first one waits).
+      def waiting_action(name)
+        RowAction.new(label: I18n.t(WAITING_LABELS.fetch(name)), path: nil, icon: name == :preparing ? 'fa-spinner' : 'fa-hourglass-half',
+                      disabled: true)
       end
 
       def resume_or_open(source, path)

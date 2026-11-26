@@ -2,7 +2,14 @@
 
 .card#sources-results
   .card-body
-    %p.small.text-body-secondary= t('sources.results.intro')
+    .d-flex.flex-wrap.align-items-start.justify-content-between.gap-2
+      %p.small.text-body-secondary.mb-2= t('sources.results.intro')
+      -# (0.10.104: the clean-up page lists first, nothing moves before the operator's confirmation)
+      = link_to(sources_cleanup_path(season_id:),
+                id: 'btn-sources-cleanup', title: t('sources.cleanup.link_tooltip'),
+                class: "btn btn-sm #{@cleanup_count.to_i.positive? ? 'btn-outline-warning' : 'btn-outline-secondary'}") do
+        %i.fa-solid.fa-broom{ 'aria-hidden' => 'true' }
+        = @cleanup_count ? t('sources.cleanup.link', count: @cleanup_count) : t('sources.cleanup.link_none')
     = sources_file_table(rows: @rows, empty_text: t('sources.results.empty', season: season_id),
                          return_to: sources_results_path(season_id:), focus: params[:focus],
                          table_id: 'sources-results-table')

@@ -5,7 +5,7 @@
     = row.date_text
     %small.text-body-secondary= row.year
   %td
-    - if row.url.present?
+    - if FINEventId.fin_url?(row.url)
       = link_to(row.name, row.url, target: '_blank', rel: 'noopener')
     - else
       = row.name
@@ -29,7 +29,7 @@
   %td
     %span.badge{ class: state_css, title: state_tooltip }= state_label
     - shown_flags.each do |flag|
-      %span.badge{ class: flag_css(flag), title: t("season_board.flag_tooltips.#{flag}"), data: { flag: flag } }
+      %span.badge{ class: flag_css(flag), title: SeasonBoard::RowFlags.tooltip(flag, row), data: { flag: flag } }
         = t("season_board.flags.#{flag}")
   %td
     - activity_items.each do |item|
@@ -42,8 +42,9 @@
         - else
           %small{ class: item[:css], title: item[:tooltip] }= item[:text]
   %td.text-nowrap
-    - if row.busy? && action_kind
-      %button.btn.btn-sm.btn-outline-secondary{ type: 'button', disabled: true, title: t('season_board.actions.busy_tooltip') }
+    - if action_disabled?
+      %button.btn.btn-sm.btn-outline-secondary{ type: 'button', disabled: true, title: disabled_tooltip,
+                                                data: { row_lock: row.locked? ? 'locked' : 'busy' } }
         = action_kind == :link ? t('season_board.actions.link') : action_label
     - elsif action_kind && missing_url?
       %button.btn.btn-sm.btn-outline-secondary{ type: 'button', disabled: true, title: t('season_board.actions.no_url') }
@@ -55,7 +56,7 @@
         = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
         %button.btn.btn-sm.btn-primary{ type: 'submit' }= action_label
     - elsif link_action?
-      = link_to(action_label, link_action_path, class: 'btn btn-sm btn-primary', data: { turbo_frame: '_top' })
+      = link_to(action_label, link_action_path, class: 'btn btn-sm btn-primary', title: link_title, data: { turbo_frame: '_top' })
     - elsif action_kind == :link && orphans.empty?
       %small.text-body-secondary.season-board-no-link-candidates= t('season_board.actions.no_link_candidates')
     - elsif action_kind == :link
@@ -89,11 +90,11 @@
                                                       data: { pipeline_action: 'prepare' } }
               = t('pipeline_automation.row.prepare')
         - if hold_toggle?
-          = form_with(url: season_board_hold_path, method: :post, authenticity_token: false,
-                      class: 'd-inline', data: { turbo_frame: '_top' }) do
-            = hidden_field_tag(:fin_event_id, row.fin_event_id, id: nil)
-            = hidden_field_tag(:hold, held? ? 0 : 1, id: nil)
-            = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
-            %button.btn.btn-sm.btn-link.p-0{ type: 'submit', data: { pipeline_action: held? ? 'release' : 'hold' },
-                                             title: t(held? ? 'pipeline_automation.row.release_tooltip' : 'pipeline_automation.row.hold_tooltip') }
-              = t(held? ? 'pipeline_automation.row.release' : 'pipeline_automation.row.hold')
+          = render(Switch::ToggleFormComponent.new(url: season_board_hold_path, name: 'hold', checked: !held?,
+                                                   checked_value: '0', unchecked_value: '1',
+                                                   label: t('pipeline_automation.row.auto_prepare'),
+                                                   id: "season-board-hold-#{row.fin_event_id}",
+                                                   params: { fin_event_id: row.fin_event_id }, csrf_token:,
+                                                   help: t(held? ? 'pipeline_automation.row.release_tooltip' : 'pipeline_automation.row.hold_tooltip'),
+                                                   label_class: 'small text-nowrap',
+                                                   data: { pipeline_action: held? ? 'release' : 'hold' }))

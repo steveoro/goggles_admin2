@@ -8,10 +8,12 @@
 # Scheduled hourly as a Solid Queue recurring task (config/recurring.yml) and enqueued on demand
 # from the UI ("Check now", with manual: true).
 #
-# When the check detects a change, the changed rows not crawled yet are queued for an automatic
-# crawl (SeasonBoard::CrawlPlanner); the structure-committed rows FIN now lists with results are re-crawled
-# (CrawlPlanner#plan_recrawl, at most once per 20 h each), then a PipelinePlannerJob pass is enqueued (phase 10).
-# Nothing is queued while the automation master switch is off. Planning failures never fail the check.
+# When the check detects a change, it is followed up as by every PipelinePlannerJob pass (SeasonBoard::ChangeChain,
+# 0.10.103: the FIN 'Eventi' calendar crawl, the crawls of the new or changed meetings with a link, the re-crawl of the
+# structure-committed meetings FIN now lists with results), then a PipelinePlannerJob pass is enqueued (phase 10).
+# After every check that did not fail, the automatic dismissal of the alert is checked (FedernuotoWatch::ParityCheck:
+# with the master switch on and the parity reached; otherwise it refreshes the alert's progress lines). Nothing is
+# queued and nothing acknowledged while the automation master switch is off. Planning failures never fail the check.
 #
 class FedernuotoWatchJob < ApplicationJob
   queue_as :default
@@ -24,24 +26,28 @@ class FedernuotoWatchJob < ApplicationJob
   # Returns the Checker outcome.
   def perform(manual: false)
     outcome = FedernuotoWatch::Checker.call(manual:)
-    plan_crawls if outcome == :changed
+    season = (SeasonBoard::Builder.latest_season if outcome != :error)
+    follow_up_change(season) if outcome == :changed
+    check_parity(season) if outcome != :error
     outcome
   end
 
   private
 
-  def plan_crawls
-    change = FedernuotoWatch::StateStore.new.pending_change
-    return if change.blank?
-
-    planner = SeasonBoard::CrawlPlanner.new(season: SeasonBoard::Builder.latest_season)
-    fin_ids = planner.call(change)
-    Rails.logger.info("[FedernuotoWatchJob] automatic crawls queued: #{fin_ids.join(', ')}") if fin_ids.present?
-    recrawls = planner.plan_recrawl(change)
-    Rails.logger.info("[FedernuotoWatchJob] results published, re-crawls queued: #{recrawls.join(', ')}") if recrawls.present?
+  def follow_up_change(season)
+    outcome = SeasonBoard::ChangeChain.new(season:).call
+    Rails.logger.info("[FedernuotoWatchJob] calendar crawl: #{outcome.calendar}") if outcome.calendar == :queued
+    Rails.logger.info("[FedernuotoWatchJob] automatic crawls queued: #{outcome.crawls.join(', ')}") if outcome.crawls.present?
+    Rails.logger.info("[FedernuotoWatchJob] results published, re-crawls queued: #{outcome.recrawls.join(', ')}") if outcome.recrawls.present?
   rescue StandardError => e
     Rails.logger.error("[FedernuotoWatchJob] crawl planning failed: #{e.class}: #{e.message}")
   ensure
     PipelinePlannerJob.enqueue_after(self.class.name)
+  end
+
+  def check_parity(season)
+    FedernuotoWatch::ParityCheck.call(season:)
+  rescue StandardError => e
+    Rails.logger.error("[FedernuotoWatchJob] parity check failed: #{e.class}: #{e.message}")
   end
 end

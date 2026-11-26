@@ -1,0 +1,16 @@
+-#
+  The files the clean-up only lists, never moves (Plan#list_items: duplicate bases, result PDFs), grouped by rule.
+  Locals: items (Array of Sources::Cleanup::Plan::Item)
+.card.mb-3#sources-cleanup-listed
+  .card-header
+    %h2.h6.mb-0= t('sources.cleanup.listed.title', count: items.size)
+  .card-body
+    %p.small.text-body-secondary= t('sources.cleanup.listed.why')
+    - items.group_by(&:rule).each do |rule, rule_items|
+      %details.mb-2{ id: "sources-cleanup-listed-#{rule}", open: (true if rule == :duplicate_bases) }
+        %summary.small.fw-semibold= t("sources.cleanup.listed.#{rule}", count: rule_items.size)
+        %ul.small.mb-0.mt-1
+          - rule_items.each do |item|
+            %li.text-break{ data: { 'cleanup-file' => File.basename(item.path) } }
+              = item.relative
+              = link_to("FIN #{item.fin_event_id}", season_board_path(row: item.fin_event_id), class: 'small') if item.fin_event_id

@@ -6,7 +6,8 @@ module SeasonBoard
   #
   # Translated label of a board row state with its details (SeasonBoard::RowComponent, the inbox sources):
   # - :prepare_failed  => "Preparation failed at step 4: <message>"
-  # - :needs_review    => "Needs review at step 3 · 4 issues" ("Blocked at step 5 · 1 issue" when blocked)
+  # - :needs_review    => "Needs review at step 3 · 4 issues" ("Blocked at step 5 · 1 issue" when blocked, "Checks outdated"
+  #                       for a "ready to commit" whose checks are no longer current: detail outdated: true)
   # - :ready_to_commit => "Ready to commit · +2 teams, +37 swimmers"
   # - any other state  => its plain label (season_board.states.<state>, %{phase} for :in_review).
   # +detail+: the row's state_detail Hash (Symbol or String keys).
@@ -44,6 +45,8 @@ module SeasonBoard
     end
 
     def needs_review_label(detail)
+      return I18n.t('season_board.state_details.outdated') if detail[:outdated]
+
       key = detail[:blocked] ? 'blocked' : 'needs_review'
       step = I18n.t("season_board.state_details.#{key}", step: detail[:step] || 1)
       count = detail[:count].to_i

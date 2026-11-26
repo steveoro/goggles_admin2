@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe DataFix::Automation do
   it 'is on by default (no stored setting)' do
-    expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([true, true, true])
+    expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([true, true, true, true])
     expect(described_class).not_to be_paused
   end
 
@@ -20,7 +20,7 @@ RSpec.describe DataFix::Automation do
 
   it 'turns every sub-switch off with the master switch (their stored values kept)' do
     described_class.store!(:enabled, false)
-    expect(described_class.switches.map(&:state)).to eq(%w[off paused paused])
+    expect(described_class.switches.map(&:state)).to eq(%w[off paused paused paused])
     expect(described_class.stored(:auto_prepare)).to be true
   end
 
@@ -29,21 +29,30 @@ RSpec.describe DataFix::Automation do
       allow(ENV).to receive(:fetch).and_call_original
       allow(ENV).to receive(:fetch).with('ADMIN2_AUTOMATION', '').and_return(value)
       expect(described_class).to be_env_off
-      expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([false, false, false])
+      expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([false, false, false, false])
     end
   end
 
-  it 'keeps the master switch on but turns extraction and preparation off without the ops DB' do
+  it 'keeps the master switch on but turns extraction, preparation and the calendar crawl off without the ops DB' do
     allow(Ops).to receive(:available?).and_return(false)
     expect(described_class.enabled?).to be true
     expect(described_class.enabled?(:auto_extract)).to be false
     expect(described_class.enabled?(:auto_prepare)).to be false
+    expect(described_class.enabled?(:auto_calendar)).to be false
+  end
+
+  it 'has the auto_calendar switch (0.10.103), on by default, stored under automation.auto_calendar' do
+    expect(described_class::KEYS[:auto_calendar]).to eq('automation.auto_calendar')
+    expect(described_class.enabled?(:auto_calendar)).to be true
+    described_class.store!(:auto_calendar, false)
+    expect(described_class.enabled?(:auto_calendar)).to be false
+    expect(described_class.enabled?(:auto_prepare)).to be true
   end
 
   it 'fails closed: a switch that cannot be read (e.g. a locked ops DB) is off' do
     allow(Ops::Setting).to receive(:fetch).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
-    expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([false, false, false])
-    expect(described_class.switches.map(&:state)).to eq(%w[off off off])
+    expect(described_class::SWITCHES.map { |switch| described_class.enabled?(switch) }).to eq([false, false, false, false])
+    expect(described_class.switches.map(&:state)).to eq(%w[off off off off])
   end
 
   it 'refuses an unknown switch' do

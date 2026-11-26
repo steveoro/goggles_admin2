@@ -37,6 +37,62 @@ RSpec.describe PipelinePlannerJob do
     expect { described_class.perform_now }.not_to raise_error
   end
 
+  describe 'activity reconciliation (0.10.99)' do
+    let(:reconciler) { instance_double(SeasonBoard::ActivityReconciler, call: []) }
+
+    before(:each) { allow(SeasonBoard::ActivityReconciler).to receive(:new).and_return(reconciler) }
+
+    it 'reconciles the board activity first, also with the master switch off (it queues nothing)' do
+      DataFix::Automation.store!(:enabled, false)
+      described_class.perform_now
+      expect(reconciler).to have_received(:call)
+      expect(SeasonBoard::PipelinePlanner).not_to have_received(:new)
+    end
+
+    it 'runs the planner pass even when the reconciliation fails' do
+      allow(reconciler).to receive(:call).and_raise(RuntimeError, 'boom')
+      expect(described_class.perform_now).to eq(plan)
+    end
+  end
+
+  describe 'the FIN change chain (0.10.103)' do
+    let(:calls) { [] }
+    let(:reconciler) { instance_double(SeasonBoard::ActivityReconciler) }
+    let(:chain) { instance_double(SeasonBoard::ChangeChain) }
+
+    before(:each) do
+      allow(SeasonBoard::ActivityReconciler).to receive(:new).and_return(reconciler)
+      allow(reconciler).to receive(:call) { (calls << :reconcile) && [] }
+      allow(SeasonBoard::ChangeChain).to receive(:new).and_return(chain)
+      allow(chain).to receive(:call) { (calls << :change_chain) && SeasonBoard::ChangeChain::Outcome.skipped(:no_change) }
+      allow(planner).to receive(:call) { (calls << :pipeline_planner) && plan }
+      allow(FedernuotoWatch::ParityCheck).to receive(:call) do
+        calls << :parity_check
+        FedernuotoWatch::ParityCheck::Outcome.new(status: :none, parity: nil)
+      end
+    end
+
+    it 'runs reconcile -> change chain (calendar, crawls) -> pipeline planner -> auto-acknowledge check, in this order' do
+      expect(described_class.perform_now).to eq(plan)
+      expect(calls).to eq(%i[reconcile change_chain pipeline_planner parity_check])
+      expect(SeasonBoard::ChangeChain).to have_received(:new).with(season:)
+      expect(FedernuotoWatch::ParityCheck).to have_received(:call).with(season:)
+    end
+
+    it 'queues nothing and acknowledges nothing with the master switch off, but still reconciles' do
+      DataFix::Automation.store!(:enabled, false)
+      described_class.perform_now
+      expect(calls).to eq(%i[reconcile])
+    end
+
+    it 'still plans and checks the parity when the change chain fails' do
+      allow(chain).to receive(:call).and_raise(RuntimeError, 'boom')
+      expect(described_class.perform_now).to eq(SeasonBoard::PipelinePlanner::Plan.empty)
+      allow(chain).to receive(:call).and_return(SeasonBoard::ChangeChain::Outcome.new(calendar: :queued, crawls: ['1'], recrawls: []))
+      expect(described_class.perform_now).to eq(plan)
+    end
+  end
+
   describe '.enqueue_after' do
     it 'enqueues a pass after a job when the automation is on' do
       expect { expect(described_class.enqueue_after('MeetingCrawlJob')).to be true }

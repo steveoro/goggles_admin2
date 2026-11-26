@@ -1,0 +1,15 @@
+-#
+  The files a rule selects but a safety check keeps in place (Plan#refusals), with the reason.
+  Locals: refusals (Array of Sources::Cleanup::Plan::Refusal)
+.card.mb-3#sources-cleanup-kept
+  .card-header
+    %h2.h6.mb-0= t('sources.cleanup.kept.title', count: refusals.size)
+  .card-body
+    %p.small.text-body-secondary= t('sources.cleanup.kept.why')
+    %details#sources-cleanup-kept-list
+      %summary.small.fw-semibold= t('sources.cleanup.kept.show', count: refusals.size)
+      %ul.small.mb-0.mt-1
+        - refusals.each do |refusal|
+          %li.text-break{ data: { 'cleanup-file' => File.basename(refusal.path), 'cleanup-reason' => refusal.reason } }
+            = refusal.relative
+            %span.text-body-secondary — #{t("sources.cleanup.reasons.#{refusal.reason}")}

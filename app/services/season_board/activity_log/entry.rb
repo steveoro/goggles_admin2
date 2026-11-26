@@ -3,12 +3,17 @@
 module SeasonBoard
   class ActivityLog
     # Read-only view of a single log entry.
-    # (label and heartbeat_at are optional, phase 15: entries written before have neither.)
+    # (label and heartbeat_at are optional, phase 15: entries written before have neither; run_id, the Ops::PipelineRun
+    # of a prepare, and reason, e.g. LOST_REASON for an entry closed by SeasonBoard::ActivityReconciler, are optional
+    # since 0.10.99.)
     Entry = Data.define(:fin_event_id, :kind, :origin, :status, :queued_at, :started_at, :finished_at, :url, :message,
-                        :label, :heartbeat_at) do
-      def initialize(label: nil, heartbeat_at: nil, **) = super
+                        :label, :heartbeat_at, :run_id, :reason) do
+      def initialize(label: nil, heartbeat_at: nil, run_id: nil, reason: nil, **) = super
 
       STATUSES.each { |st| define_method(:"#{st}?") { status == st } }
+
+      # True for an entry closed as failed because its job was no longer in the queue (SeasonBoard::ActivityReconciler).
+      def lost? = failed? && reason == LOST_REASON
 
       # True for a queued/running entry that has exceeded its staleness threshold
       # (a running entry with a recent heartbeat never is).

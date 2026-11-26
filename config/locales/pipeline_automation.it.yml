@@ -36,8 +36,6 @@ it:
       title: 'Automazione'
       env_off: "%{key}=0 è impostato: ogni interruttore dell'automazione è forzato su spento (rimuovilo e riavvia il server per riprendere)."
       ops_unavailable: 'Gli interruttori richiedono il DB locale ops (esegui bin/rails ops:prepare).'
-      turn_on: 'Accendi'
-      turn_off: 'Spegni'
       states:
         'on': 'Acceso'
         paused: 'In pausa'
@@ -51,6 +49,9 @@ it:
       auto_prepare:
         label: 'Preparazione automatica (passi Data-Fix 1-5)'
         help: 'Preparazione Data-Fix non presidiata fino a "pronta per il commit" o "da rivedere". Non esegue mai commit né push.'
+      auto_calendar:
+        label: "Scarica da solo il calendario FIN 'Eventi'"
+        help: 'Scarica da solo il calendario FIN "Eventi" dopo una modifica FIN (al massimo una volta ogni 6 ore finché la modifica è in sospeso) e una volta al giorno, così i meeting senza link possono prenderlo da lì. Spento: lo fa solo il pulsante Scarica di Sorgenti › Crawler.'
     worker_mode:
       puma: 'I job girano dentro Puma (predefinito).'
       separate: 'I job girano in un processo bin/jobs separato (SOLID_QUEUE_IN_PUMA=false).'
@@ -63,10 +64,9 @@ it:
     row:
       prepare: 'Prepara'
       prepare_tooltip: 'Costruisce in background i passi Data-Fix mancanti e obsoleti (un passo modificato non viene mai ricostruito; nessun commit)'
-      hold: "Sospendi l'automazione"
-      hold_tooltip: 'Non preparare mai automaticamente questo meeting (i pulsanti continuano a funzionare)'
-      release: 'Rimuovi la sospensione'
-      release_tooltip: "Permetti di nuovo all'automazione di preparare questo meeting"
+      auto_prepare: 'Preparazione automatica'
+      hold_tooltip: "Acceso: l'automazione può preparare questo meeting. Spegnilo per non prepararlo mai automaticamente (i pulsanti continuano a funzionare)"
+      release_tooltip: "Spento: l'automazione non prepara mai questo meeting (sospeso). Accendilo per permettere di nuovo all'automazione di prepararlo"
     review:
       being_prepared: 'Preparazione in corso in background: i verdetti si aggiornano alla fine del job. Nel frattempo le modifiche sono rifiutate.'
       edit_refused: 'Questa sorgente è in preparazione in background: riprova tra un momento.'
@@ -84,6 +84,7 @@ it:
       ops_unavailable: "Gli interruttori dell'automazione richiedono il DB locale ops (esegui bin/rails ops:prepare)."
       switch_on: '%{switch}: acceso.'
       switch_off: '%{switch}: spento.'
+      store_failed: "%{switch}: impossibile salvare l'interruttore (DB locale ops)."
       env_override: "ADMIN2_AUTOMATION=0 è impostato: l'automazione resta spenta finché non viene rimosso (e il server riavviato)."
   season_board:
     states:
@@ -99,6 +100,7 @@ it:
       prepare_failed_no_phase: 'Preparazione fallita'
       needs_review: 'Da rivedere al passo %{step}'
       blocked: 'Bloccato al passo %{step}'
+      outdated: 'Controlli da aggiornare'
       issues:
         one: '1 problema'
         other: '%{count} problemi'
@@ -121,6 +123,7 @@ it:
       prepare_queued: 'Preparazione in coda'
       prepare_running: 'In preparazione dalle %{time}'
       prepare_stuck: 'La preparazione sembra bloccata dalle %{time}'
+      lost_message: 'perso: il job non è più in coda'
       kinds:
         prepare: 'preparazione'
     strip:

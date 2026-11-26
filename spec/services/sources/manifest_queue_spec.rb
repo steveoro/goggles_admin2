@@ -77,4 +77,20 @@ RSpec.describe Sources::ManifestQueue do
   ensure
     FileUtils.rm_rf(outside.dirname) if outside
   end
+
+  # 0.10.104: an extraction of the manifest of a meeting already linked would only spend an LLM run.
+  it 'leaves the PDFs of the meetings already linked locally out of the batch (the single-file Extract stays possible)' do
+    meeting = SeasonBoard::DbIndex::MeetingInfo.new(id: 19_000, description: 'M', code: 'm', header_date: nil, cancelled: false,
+                                                    results_acquired: false, manifest: true, mir_count: 0, mrr_count: 0)
+    calendar = SeasonBoard::DbIndex::CalendarInfo.new(id: 1700, fin_event_id: '150091', meeting_id: 19_000, meeting_code: 'm', meeting_name: 'M',
+                                                      meeting_place: 'X', scheduled_date: '8', year: '2026', month: 'Nov', cancelled: false,
+                                                      results_link: nil, meeting:)
+    db_index = instance_double(SeasonBoard::DbIndex)
+    allow(db_index).to receive(:calendar_for) { |fin_id| calendar if fin_id.to_s == '150091' }
+    allow(SeasonBoard::DbIndex).to receive(:new).and_return(db_index)
+    expect(queue.linked_meeting?(fin_pdf.to_s)).to be true
+    expect(queue.enqueue_next(20)).to eq(1)
+    expect(job_args).to eq([{ season_id: 242, pdf_path: other_pdf.to_s, engine: nil }])
+    expect(described_class.new(season_id: 242, data_root:).enqueue(fin_pdf.to_s)).to be true
+  end
 end

@@ -18,6 +18,7 @@ en:
       check_now: 'Check now'
     filters:
       all: 'All (%{count})'
+      all_tooltip: 'Every state (the board remembers the chip you choose: this one clears it)'
       show_unlinked: 'Show rows without a link (%{count})'
       hide_unlinked: 'Hide rows without a link'
       show_done: 'Show past meetings with results (%{count})'
@@ -75,6 +76,9 @@ en:
       outside_season: 'outside season'
       unparsable_date: 'bad date'
       possible_unlinked_meeting: 'a local meeting on this date is not linked yet'
+      newer_crawl: 'newer crawl on disk'
+      link_adopted: 'link from the Eventi calendar'
+      removed_from_fin: 'removed from FIN'
     flag_tooltips:
       busy: 'A crawl or an extraction is queued or running'
       crawl_failed: 'The latest crawl attempt failed'
@@ -88,6 +92,9 @@ en:
       outside_season: 'The row dates fall outside the season dates'
       unparsable_date: 'The row date could not be parsed'
       possible_unlinked_meeting: 'A season calendar row without FIN id falls on these dates: the meeting may already exist (e.g. imported from FICR/Microplus). Link it instead of crawling; automatic crawls skip this row.'
+      newer_crawl: 'The crawl file (LT2) is newer than the LT4 working copy the Data-Fix steps read, so the steps and their checks ignore it. To use the newer crawl, delete the -lt4.json working copy (Sources › Files) and open or prepare the meeting again: the working copy is rebuilt from the crawl. Nothing changes by itself.'
+      link_adopted: 'The FIN "Riepilogo Eventi" page has no link for this meeting yet: this one comes from the FIN "Eventi" calendar of %{date} (same dates and place, one match only). The "Riepilogo Eventi" link replaces it as soon as FIN publishes it. To refresh it, crawl the "Eventi" calendar again (Sources › Crawler › FIN calendar).'
+      removed_from_fin: 'FIN removed this meeting from the "Riepilogo Eventi" page (not a rename: no row with its FIN id, nor one with its dates and place, is left). It stays on the board while something local exists for it (a calendar row or files), and it is never crawled again: check on the FIN site whether it was cancelled or moved, then link, archive or clean up its files by hand.'
     counts:
       mir: 'MIR'
       mrr: 'MRR'
@@ -123,6 +130,8 @@ en:
       link_select_prompt: 'Select a calendar row...'
       no_link_candidates: 'no unlinked calendar to link to'
       busy_tooltip: 'A crawl, extraction or preparation is already queued or running for this meeting'
+      locked_tooltip: 'A job is working on the files of this meeting right now (crawl, extraction or preparation): the step opens again when it ends'
+      queued_link_tooltip: 'A job is queued for this meeting: you can review now, the step is refreshed when the job runs'
       no_url: 'No FIN link available'
     orphans:
       title: 'Calendar rows not on the FIN list (%{count})'
@@ -132,6 +141,31 @@ en:
     unmatched:
       text: '%{count} pending source file(s) have no FIN id.'
       link: 'Open the Results files page'
+    off_board:
+      title: 'Pending sources whose FIN id is on no board row (%{count})'
+      text: 'A meeting listed only on the FIN "Eventi" calendar, or whose adopted link went away: nothing prepares it by itself.'
+      open_sources: 'Open in Sources'
+      open_data_fix: 'Open in Data-Fix'
+      prepare: 'Prepare'
+      prepare_tooltip: 'Build the Data-Fix steps 1-5 of this source in the background (it stops at review; nothing is committed)'
+      prepare_confirm: 'Prepare this source in the background (Data-Fix steps 1-5, never a commit)?'
+      pending:
+        in_review: 'phase files (step %{phase})'
+        source: 'source to review'
+        sql: 'SQL to push'
+        manifest: 'manifest to extract'
+    link_adopted_confirm:
+      title: 'Confirm the calendar link'
+      text: 'The link of this row comes from the FIN "Eventi" calendar file %{file} of %{date}, not from the "Riepilogo Eventi" page. Linking writes FIN id %{fin_event_id} and that link into the local calendar row, and an SQL script for the production DB (Outbox). Check on the FIN site that it is the same meeting first.'
+      ack: 'It is the same meeting: link it with the FIN id of the "Eventi" calendar'
+    calendar_links:
+      unreadable: 'The newest FIN "Eventi" calendar %{file} could not be read (%{error}): no link is taken from any calendar file. Crawl the "Eventi" calendar again (Sources › Crawler › FIN calendar, menu "Eventi").'
+      not_eventi: 'The newest calendar file %{file} is not the FIN "Eventi" calendar (row %{row}: %{url}), e.g. an "Archivio" crawl: no link is taken from any calendar file. Crawl the "Eventi" calendar again (Sources › Crawler › FIN calendar, menu "Eventi").'
+      outside_season: 'The newest calendar file %{file} lists meetings outside season %{season} (row %{row}: %{date}): it was crawled for another season, so no link is taken from any calendar file. Crawl the "Eventi" calendar of season %{season} (Sources › Crawler › FIN calendar, menu "Eventi").'
+      too_old: 'The newest FIN "Eventi" calendar %{file} (%{date}) is more than %{days} days older than the last check of the "Riepilogo Eventi" page: no link is taken from it. Crawl the "Eventi" calendar again (Sources › Crawler › FIN calendar, menu "Eventi").'
+      suspended: 'The FIN "Eventi" calendar %{file} gives another FIN id than the "Riepilogo Eventi" page for %{count} of the %{total} meetings listed on both: no link is taken from it. Crawl the "Eventi" calendar again (Sources › Crawler › FIN calendar).'
+      too_few: 'Only %{total} meeting(s) of the FIN "Eventi" calendar %{file} can be checked against the "Riepilogo Eventi" page (at least %{min} needed): %{count} link(s) not taken from it yet.'
+      mismatch: 'FIN id %{watcher_id} on the "Riepilogo Eventi" page, %{calendar_id} on the "Eventi" calendar %{file} (%{date}, %{place}): the "Riepilogo Eventi" link is used.'
     strip:
       title: 'Background activity'
       running: 'Running now'

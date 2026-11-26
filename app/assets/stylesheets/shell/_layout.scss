@@ -104,6 +104,17 @@ a.app-status-pill:hover {
   }
 }
 
+// Summary pill ("All OK" / "N OK", Shell::StatusPillsComponent): always labelled (.app-status-summary-label),
+// its tooltip (appended to <body>) has one line per probe.
+.tooltip.app-status-tooltip {
+  --bs-tooltip-max-width: 24rem;
+}
+
+.app-status-tooltip .tooltip-inner {
+  white-space: pre-line;
+  text-align: start;
+}
+
 .app-user-name {
   max-width: 8rem;
 }

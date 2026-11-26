@@ -31,8 +31,10 @@ module SeasonBoard
   # Skipped always: busy rows (crawl/extraction/prepare queued or running), held rows (pipeline_sources.auto_prepare
   # false), a prepare run of the source finished less than REQUEUE_AFTER ago (REFUSED_REQUEUE_AFTER for a refused
   # one), and ANY source holding an edited phase (checked on the phase files themselves: the operator opts in with
-  # the row's "Prepare" button). At most MAX_PREPARES_PER_PASS prepares and MAX_EXTRACTIONS_PER_PASS extractions are
-  # queued per pass.
+  # the row's "Prepare" button). A plain rebuild_stale asked only by outdated verdicts (no stale phase) is skipped
+  # (:unchanged_since_run) when the last prepare run ended 'done' after the newest file of the source: such a prepare
+  # would build nothing, so it can never loop. At most MAX_PREPARES_PER_PASS prepares and MAX_EXTRACTIONS_PER_PASS
+  # extractions are queued per pass.
   #
   # Fail closed: a switch that cannot be read is off (DataFix::Automation); when the ops facts of the build could not
   # be read (PipelineIndex#read_error?) no prepare is queued in that pass; an unreadable attempt count gives up, an
@@ -114,6 +116,7 @@ module SeasonBoard
 
       request = request_for(row, pipeline)
       return nil unless request
+      return skip(row, :unchanged_since_run) if no_op_rebuild?(request, pipeline)
       return skip(row, :edited) if edited?(row, pipeline)
 
       request
@@ -171,6 +174,17 @@ module SeasonBoard
       nil
     end
 
+    # A plain rebuild_stale (all phases, no stale verdict: only outdated ones) of a source whose last prepare run ended
+    # 'done' after its newest file: nothing changed since that run, so the same prepare would build nothing again.
+    def no_op_rebuild?(request, pipeline)
+      return false unless request.mode == 'rebuild_stale' && request.phases.nil? && pipeline.stale_phases.empty?
+
+      run = pipeline.last_run
+      return false unless run&.status == 'done' && run.finished_at.present?
+
+      pipeline.newest_file_at.nil? || run.finished_at >= pipeline.newest_file_at
+    end
+
     # A prepare run of the source ended (or was queued) less than REQUEUE_AFTER ago (REFUSED_REQUEUE_AFTER when
     # refused): the next pass decides (no loop on the same source).
     def recently_run?(pipeline)
@@ -183,14 +197,16 @@ module SeasonBoard
     end
 
     # True when the phase files of the row's source hold operator edits (adopted pre-existing files included).
-    # Read from the files themselves (the ops mirror can lag); an unreadable source counts as edited.
+    # Read from the files themselves (the ops mirror can lag); an unreadable source counts as edited. The pipeline is
+    # built on the working copy (PipelineIndex.working_copy: never the LT2 stored by a prepare that never started, whose
+    # '<base>-phaseN.json' names would miss the '<base>-lt4-phaseN.json' files and read as edited).
     def edited?(row, pipeline)
       return true if pipeline&.edited_recorded?
 
       source = PipelineIndex.active_source(row.disk_entry)
       return false if source.nil? || source.phase_paths.blank?
 
-      files_edited?(source, pipeline&.source_path.presence || source.lt4_path || source.review_path)
+      files_edited?(source, PipelineIndex.working_copy(pipeline&.source_path, source) || source.review_path)
     rescue StandardError => e
       Rails.logger.warn("[SeasonBoard::PipelinePlanner] edit check failed for FIN #{row.fin_event_id}: #{e.class}: #{e.message}")
       true

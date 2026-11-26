@@ -9,6 +9,8 @@
     %title= page_title
     = csrf_meta_tags
     = csp_meta_tag
+    -# No Turbo hover prefetch: several GETs build phase files or write metadata (e.g. the Data-Fix review steps).
+    %meta{ name: 'turbo-prefetch', content: 'false' }/
     -#
       Vendored assets (vendor/assets/stylesheets), so the app works offline. Font Awesome must be
       linked, not @use'd into application.scss: Propshaft resolves its ../webfonts URLs.
@@ -35,6 +37,8 @@
             = render(Shell::TopBarComponent.new(api_target: shell_api_target, offline: api_offline_session?,
                                                 user: current_user)) do |bar|
               - bar.with_search { render(Shell::PaletteTriggerComponent.new) }
+            -# Live progress of the operator's own long requests (ImportStatusChannel), hidden until a message arrives:
+            = render(Shell::ProgressStripComponent.new)
           %section#notify
             #sticky-alerts
               -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):

@@ -33,34 +33,52 @@ RSpec.describe FedernuotoWatchController do
 
     describe 'POST /federnuoto_watch/acknowledge' do
       before(:each) do
-        store.update { { 'digest' => 'new', 'rows' => [], 'change' => { 'detected_at' => Time.current.iso8601 } } }
+        store.update { { 'digest' => 'new', 'rows' => [], 'change' => { 'detected_at' => Time.current.iso8601, 'added' => [{ 'key' => 'k' }] } } }
       end
 
-      it 'clears the pending change' do
-        post(federnuoto_watch_acknowledge_path)
+      it 'clears the pending change, removes the alert from every tab and logs the operator dismiss' do
+        expect { post(federnuoto_watch_acknowledge_path) }
+          .to have_broadcasted_to(AppNotificationsChannel::STREAM).with(dom_id: FedernuotoWatch::ALERT_DOM_ID, html: '')
         expect(response).to have_http_status(:no_content)
         expect(store.pending_change).to be_nil
         expect(store.read['ack_digest']).to eq('new')
+        event = Ops::Event.where(kind: 'fin.watch_acknowledged').last
+        expect(event).to have_attributes(actor: 'operator', subject_key: 'new')
+        expect(event.data).to include('actor' => 'operator', 'reason' => 'operator', 'added' => 1)
+        expect(Ops::Event.where(kind: 'fin.calendar_notice')).to be_empty
+      end
+
+      it 'acknowledges nothing when a newer snapshot landed since the alert was shown (its digest)' do
+        post(federnuoto_watch_acknowledge_path, params: { digest: 'older' })
+        expect(response).to have_http_status(:no_content)
+        expect(store.pending_change).to be_present
+        post(federnuoto_watch_acknowledge_path, params: { digest: 'new' })
+        expect(store.pending_change).to be_nil
       end
     end
 
-    describe 'POST /federnuoto_watch/pull_calendar' do
-      let(:launcher) { instance_double(CrawlerLauncher) }
-
-      before(:each) { allow(CrawlerLauncher).to receive(:new).and_return(launcher) }
-
-      it 'starts the crawler if needed and opens the Pull page with the sub-menu preset' do
-        allow(launcher).to receive(:ensure_running!).and_return(:started)
-        post(federnuoto_watch_pull_calendar_path)
-        expect(response).to redirect_to(sources_crawler_path(sub_menu_type: 'Riepilogo Eventi'))
-        expect(flash[:info]).to eq(I18n.t('federnuoto_watch.crawler.started'))
+    describe 'POST /federnuoto_watch/dismiss_notice (0.10.103)' do
+      let!(:notice) do
+        Ops.record_event!(kind: 'fin.calendar_notice', actor: 'job', subject_type: 'fin_watch', subject_key: 'd',
+                          data: { 'removed' => [{ 'name' => 'Gone meeting' }], 'without_link' => [], 'text_only' => false })
       end
 
-      it 'sets an error flash when the crawler cannot be started' do
-        allow(launcher).to receive(:ensure_running!).and_return(:failed)
-        post(federnuoto_watch_pull_calendar_path)
-        expect(flash[:error]).to be_present
+      it 'dismisses the notice (its inbox item goes) and redirects back' do
+        post(federnuoto_watch_dismiss_notice_path, params: { id: notice.id }, headers: { 'HTTP_REFERER' => root_url })
+        expect(response).to redirect_to(root_url)
+        expect(flash[:info]).to eq(I18n.t('federnuoto_watch.notice.dismissed'))
+        expect(Inbox::Sources::FINNotice.dismissed_ids).to include(notice.id)
       end
+
+      it 'refuses an unknown notice' do
+        post(federnuoto_watch_dismiss_notice_path, params: { id: notice.id + 100 })
+        expect(flash[:warning]).to eq(I18n.t('federnuoto_watch.notice.not_dismissed'))
+        expect(Inbox::Sources::FINNotice.dismissed_ids).to be_empty
+      end
+    end
+
+    it 'has no pull_calendar route any more (0.10.103: the calendar is crawled from Sources or by the automation)' do
+      expect(Rails.application.routes.url_helpers).not_to respond_to(:federnuoto_watch_pull_calendar_path)
     end
 
     describe 'layout rendering' do

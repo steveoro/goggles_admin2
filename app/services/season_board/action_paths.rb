@@ -53,6 +53,16 @@ module SeasonBoard
       LINK_ACTIONS.include?(kind&.to_sym)
     end
 
+    # True when the next action of the row (a Row or a Snapshot::Row) must wait for a job: the row is locked (a job
+    # works on its files right now), or busy (a crawl/extraction/prepare queued or running) and its action is not a link
+    # action. A review / commit link stays reachable while a job is merely queued: the Data-Fix pages refuse edits only
+    # while a job holds the source lease (0.10.99).
+    def blocked?(row)
+      return true if row.locked?
+
+      row.busy? && !link?(row.next_action&.kind)
+    end
+
     # POST path for a POST action (nil for any other action or a nil +next_action+).
     def post_path(next_action)
       helper = next_action && POST_ACTIONS[next_action.kind&.to_sym]
@@ -81,9 +91,10 @@ module SeasonBoard
 
     # Season board path scrolled to the row of the FIN event id (e.g. for the :link action, whose
     # calendar choice is made on the row). Optional +state+ filter (shows the row even when hidden
-    # by default).
+    # by default; an explicit filter, stored as the board's chip). The +row+ param (no filter) makes the
+    # board show everything, for that request only, when the remembered chip would hide the row.
     def board_row_path(fin_event_id, state: nil)
-      url_helpers.season_board_path({ state: state.presence&.to_s, anchor: row_dom_id(fin_event_id) }.compact)
+      url_helpers.season_board_path({ state: state.presence&.to_s, row: fin_event_id.to_s.presence, anchor: row_dom_id(fin_event_id) }.compact)
     end
 
     # DOM id of the board row (see SeasonBoard::RowComponent).

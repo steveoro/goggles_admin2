@@ -52,7 +52,8 @@ Rails.application.routes.draw do
   # FIN "Riepilogo Eventi" page watcher (see FedernuotoWatchJob):
   post 'federnuoto_watch/check', to: 'federnuoto_watch#check', as: 'federnuoto_watch_check'
   post 'federnuoto_watch/acknowledge', to: 'federnuoto_watch#acknowledge', as: 'federnuoto_watch_acknowledge'
-  post 'federnuoto_watch/pull_calendar', to: 'federnuoto_watch#pull_calendar', as: 'federnuoto_watch_pull_calendar'
+  # (0.10.103: dismisses one FIN calendar notice of the dashboard "Needs you" list, Inbox::Sources::FINNotice)
+  post 'federnuoto_watch/dismiss_notice', to: 'federnuoto_watch#dismiss_notice', as: 'federnuoto_watch_dismiss_notice'
 
   get 'season_board', to: 'season_board#index', as: 'season_board'
   post 'season_board/crawl', to: 'season_board#crawl', as: 'season_board_crawl'
@@ -87,6 +88,9 @@ Rails.application.routes.draw do
     patch 'files/rename', to: 'files#update_name', as: 'file_update_name'
     get 'files/edit', to: 'files#edit', as: 'file_edit'
     patch 'files/edit', to: 'files#update', as: 'file_update'
+    # (0.10.104: the clean-up of the redundant files, dry run then the operator's apply)
+    get 'cleanup', to: 'cleanups#show', as: 'cleanup'
+    post 'cleanup', to: 'cleanups#create'
   end
 
   # Phase 15: the Pull, PDF and file-list pages became the Sources area. Their GET URLs redirect for one release
@@ -280,6 +284,8 @@ Rails.application.routes.draw do
   # Maintenance operations (phase 11): list + history, prefilled form, dry run / apply runs (ops DB; Maintenance::*):
   scope format: false do
     get 'operations', to: 'operations#index', as: 'operations'
+    # (the 'operations.enabled' switch: dashboard system column and /operations header)
+    post 'operations/switch', to: 'operations#switch', as: 'operations_switch'
     get 'operations/runs/:id', to: 'maintenance/runs#show', as: 'maintenance_run', constraints: { id: /\d+/ }
     get 'operations/runs/:id/status', to: 'maintenance/runs#status', as: 'maintenance_run_status', constraints: { id: /\d+/ }
     post 'operations/runs/:id/apply', to: 'maintenance/runs#apply', as: 'apply_maintenance_run', constraints: { id: /\d+/ }

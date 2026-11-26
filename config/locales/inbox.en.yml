@@ -18,6 +18,7 @@ en:
       unmatched_sources: "files without a FIN id"
       data_fix_sessions: "Data-Fix sessions"
       fin_change: "FIN calendar"
+      fin_notice: "FIN calendar notices"
       drift: "DB sync"
     builder:
       source_failed: "Inbox source '%{source}' failed: %{error}"
@@ -45,6 +46,12 @@ en:
         crawl_stuck: "Crawl seems stuck: %{name}"
         extract_failed: "Manifest extraction failed: %{name}"
         extract_stuck: "Manifest extraction seems stuck: %{name}"
+        crawl_lost: "Crawl lost (no longer in the queue): %{name}"
+        extract_lost: "Manifest extraction lost (no longer in the queue): %{name}"
+        prepare_lost: "Preparation lost (no longer in the queue): %{name}"
+        prepare_stuck: "Preparation seems stuck: %{name}"
+      calendar:
+        failed: "Automatic crawl failed: %{label}"
       job_title: "Job failed: %{job}"
       retry: "Retry"
       discard: "Discard"
@@ -75,6 +82,11 @@ en:
         review_source: "Source without FIN id: %{name}"
         manifest: "Manifest without FIN id: %{name}"
       detail: "Not on the FIN calendar of the Season board"
+      off_board_titles:
+        resume_review: "In review, FIN %{fin_event_id} not on the board: %{name}"
+        review_source: "Source of FIN %{fin_event_id}, not on the board: %{name}"
+        manifest: "Manifest of FIN %{fin_event_id}, not on the board: %{name}"
+      off_board_detail: "FIN %{fin_event_id} is on no Season board row (no \"Riepilogo Eventi\" row, or its \"Eventi\" link is no longer taken)"
       actions:
         review: "Open in Data-Fix"
         manifests: "Open the Manifests tab"
@@ -91,6 +103,23 @@ en:
         zero: "The FIN calendar page changed"
         one: "FIN calendar changed (1 row)"
         other: "FIN calendar changed (%{count} rows)"
+      open_board: "Open board"
+      progress: "%{done} of %{total} changed meetings with a link already in the pipeline: the alert closes by itself after the last one."
+    fin_notice:
+      title: "FIN calendar: %{parts}"
+      removed:
+        one: "1 meeting removed"
+        other: "%{count} meetings removed"
+      without_link:
+        one: "1 meeting new or changed without a link"
+        other: "%{count} meetings new or changed without a link"
+      results_in_review:
+        one: "1 meeting with results published while in review (crawl it again by hand if needed)"
+        other: "%{count} meetings with results published while in review (crawl them again by hand if needed)"
+      text_only: "page text changed, no meeting row"
+      detail: "Nothing to crawl: %{names}"
+      detail_text_only: "Nothing to crawl: only the page text changed."
+      dismiss: "Dismiss"
       open_board: "Open board"
     drift:
       red_title: "DB sync red: the local DB no longer mirrors production (Phase 6 commits are refused)"

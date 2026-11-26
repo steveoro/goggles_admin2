@@ -18,7 +18,7 @@ RSpec.describe Outbox::ScriptRowComponent, type: :component do
     expect(row).to have_link('0012-b-lt4.sql', href: "/outbox/#{script.id}")
     expect(row).to have_text(I18n.t('outbox.blocked_by', file: '0011-a-lt4.sql'))
     expect(row).to have_css("input[type=checkbox][value='#{script.id}']")
-    expect(row).to have_link(I18n.t('outbox.origin.fin_event', id: '150091'), href: '/season_board#season-board-row-150091')
+    expect(row).to have_link(I18n.t('outbox.origin.fin_event', id: '150091'), href: '/season_board?row=150091#season-board-row-150091')
     expect(row).to have_text(I18n.t('outbox.origin.meeting', id: 19_900))
     expect(row).to have_css('details pre', text: 'UPDATE x;', visible: :all)
   end

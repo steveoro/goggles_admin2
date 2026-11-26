@@ -18,7 +18,7 @@ In this repo, "staging" always means the import staging tables (`data_import_*`)
 - When a phase is finished, its file moves to `docs/plans/done/` and the Status column below is updated.
 - Decisions listed as "to confirm" inside a phase file are settled when that phase starts.
 - All phases are developed on the branch `feature/modernize-admin-console-ux`; `main` stays as it is until the whole plan is done, then the branch is merged. Any other framework project touched by a phase (e.g. goggles_db, goggles_api, goggles_main) gets a branch with the same name.
-- Shared names and interfaces between phases (ops models, Outbox, Drift gate, queues, compat layer, inbox registry) are fixed in [contracts.md](contracts.md); the owning phase wins.
+- Shared names and interfaces between phases (ops models, Outbox, Drift gate, queues, compat layer, inbox registry) are fixed in [00-ops-console-masterplan-contracts.md](00-ops-console-masterplan-contracts.md); the owning phase wins.
 
 ## Decisions taken with the operator
 
@@ -72,21 +72,21 @@ These are restated in every phase plan.
 
 | # | Phase | Operator sees | Depends on | Size | Status |
 |---|---|---|---|---|---|
-| 01 | [Safety net, ops DB, event log, quick wins](done/01-safety-net-ops-db.md) | File lists open on the current season and stay there | none | M | done (0.10.79) |
-| 02 | [Legacy Data-Fix retirement (team scores ported first)](done/02-legacy-retirement.md) | One Data-Fix entry point (PDF scan opens v2); staging-environment leftovers gone | 01 | L | done (0.10.80) |
-| 03 | [Bootstrap 5.3 switch + compatibility layer](done/03-bootstrap-5-switch.md) | Same pages, no jQuery, tooltips work in live content, light/dark | 01, 02 | M | done (0.10.81) |
-| 04 | [App shell + native sweep of stable pages](done/04-app-shell.md) | Sidebar, top bar with API target, breadcrumbs, toasts | 03 | L | done (0.10.83) |
-| 05 | [Inbox dashboard](done/05-inbox-dashboard.md) | "Needs you" list, in-progress jobs, season progress, system status, KPI strip | 01, 04 | L | done (0.10.84) |
-| 06 | [Closed-season health report](done/06-season-health-report.md) | Seasons x checks matrix, drill-down, acknowledge/ignore, how-to-fix | 01, 04, 05 | L | done (0.10.85) |
-| 07 | [SQL Outbox](done/07-sql-outbox.md) | One ordered list of scripts; push one/all; no folder picking | 01, 04, 05 | L | done (0.10.86) |
-| 08 | [Remote loop closure + drift indicator (goggles_api, goggles_main)](done/08-remote-loop-closure-drift.md) | Applied/failed per script with error text; real environment name | 07 | M | done (0.10.87; api/main 0.10.82 to release) |
-| 09 | [Pipeline runner, verdicts, commit runner](done/09-pipeline-runner-verdicts.md) | Per-step verdicts and staleness; commit summary; persistent report | 01, 02, 07 | L | done (0.10.88) |
-| 10 | [Pipeline automation up to review](done/10-pipeline-automation.md) | Clean meetings appear as "Ready to commit" with zero clicks | 05, 09 | M | done (0.10.89) |
-| 11 | [Operations framework + health mitigations](done/11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | done (0.10.90) |
-| 12 | [Data-Fix wizard UX](done/12-data-fix-wizard-ux.md) | Stepper, next-issue navigation, in-place saves, verify all | 04, 09 | L | done (0.10.92) |
-| 13 | [Maintenance console (remaining operations, season-start checklist)](done/13-maintenance-console.md) | All rake maintenance available in the UI with history | 11 | L | done (0.10.93) |
-| 14 | [Guided local DB restore](done/14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | done (0.10.91) |
-| 15 | [Sources area, grid chrome, command palette, compat removal, docs](done/15-sources-grids-cleanup.md) | Pull becomes Sources; one grid look; Ctrl+K; no BS4 leftovers | 04, 10, 12 | L | done (0.10.94-0.10.96) |
+| 01 | [Safety net, ops DB, event log, quick wins](01-safety-net-ops-db.md) | File lists open on the current season and stay there | none | M | done (0.10.79) |
+| 02 | [Legacy Data-Fix retirement (team scores ported first)](02-legacy-retirement.md) | One Data-Fix entry point (PDF scan opens v2); staging-environment leftovers gone | 01 | L | done (0.10.80) |
+| 03 | [Bootstrap 5.3 switch + compatibility layer](03-bootstrap-5-switch.md) | Same pages, no jQuery, tooltips work in live content, light/dark | 01, 02 | M | done (0.10.81) |
+| 04 | [App shell + native sweep of stable pages](04-app-shell.md) | Sidebar, top bar with API target, breadcrumbs, toasts | 03 | L | done (0.10.83) |
+| 05 | [Inbox dashboard](05-inbox-dashboard.md) | "Needs you" list, in-progress jobs, season progress, system status, KPI strip | 01, 04 | L | done (0.10.84) |
+| 06 | [Closed-season health report](06-season-health-report.md) | Seasons x checks matrix, drill-down, acknowledge/ignore, how-to-fix | 01, 04, 05 | L | done (0.10.85) |
+| 07 | [SQL Outbox](07-sql-outbox.md) | One ordered list of scripts; push one/all; no folder picking | 01, 04, 05 | L | done (0.10.86) |
+| 08 | [Remote loop closure + drift indicator (goggles_api, goggles_main)](08-remote-loop-closure-drift.md) | Applied/failed per script with error text; real environment name | 07 | M | done (0.10.87; api/main 0.10.82 to release) |
+| 09 | [Pipeline runner, verdicts, commit runner](09-pipeline-runner-verdicts.md) | Per-step verdicts and staleness; commit summary; persistent report | 01, 02, 07 | L | done (0.10.88) |
+| 10 | [Pipeline automation up to review](10-pipeline-automation.md) | Clean meetings appear as "Ready to commit" with zero clicks | 05, 09 | M | done (0.10.89) |
+| 11 | [Operations framework + health mitigations](11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | done (0.10.90) |
+| 12 | [Data-Fix wizard UX](12-data-fix-wizard-ux.md) | Stepper, next-issue navigation, in-place saves, verify all | 04, 09 | L | done (0.10.92) |
+| 13 | [Maintenance console (remaining operations, season-start checklist)](13-maintenance-console.md) | All rake maintenance available in the UI with history | 11 | L | done (0.10.93) |
+| 14 | [Guided local DB restore](14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | done (0.10.91) |
+| 15 | [Sources area, grid chrome, command palette, compat removal, docs](15-sources-grids-cleanup.md) | Pull becomes Sources; one grid look; Ctrl+K; no BS4 leftovers | 04, 10, 12 | L | done (0.10.94-0.10.96) |
 
 ## Dependency notes
 

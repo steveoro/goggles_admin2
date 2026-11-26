@@ -250,4 +250,47 @@ RSpec.describe SeasonBoard::ActivityLog do
       travel_to(late + described_class::HEARTBEAT_STALE_AFTER + 1.minute) { expect(log.reload!.busy?(key, kind: :crawl)).to be false }
     end
   end
+
+  # 0.10.99: run id and reason (SeasonBoard::ActivityReconciler), compare-and-set close, one write for many keys.
+  describe 'run id, reason, finish_unchanged! and record_many!' do
+    it 'keeps the run id of a prepare from queue! through start! to finish!, and writes no run_id key for the others' do
+      log.queue!('150091', kind: :prepare, origin: :auto, run_id: 42)
+      expect(log.start!('150091', kind: :prepare).run_id).to eq(42)
+      expect(log.finish!('150091', kind: :prepare, status: :done).run_id).to eq(42)
+      log.queue!('150092', kind: :crawl, origin: :auto)
+      expect(JSON.parse(File.read(log_path)).dig('entries', '150092', 'crawl')).not_to have_key('run_id')
+    end
+
+    it 'stores a reason on finish! (lost?), dropped by the next close without one' do
+      log.queue!('150091', kind: :crawl, origin: :auto)
+      expect(log.finish!('150091', kind: :crawl, status: :failed, reason: described_class::LOST_REASON)).to be_lost
+      expect(log.finish!('150091', kind: :crawl, status: :failed).reason).to be_nil
+    end
+
+    it 'finish_unchanged! closes the attempt only while it is the one read' do
+      queued = log.queue!('150091', kind: :crawl, origin: :auto)
+      expect(log.finish_unchanged!(queued, status: :failed, message: 'lost')).to have_attributes(status: :failed, message: 'lost')
+      queued = log.queue!('150091', kind: :crawl, origin: :auto)
+      log.start!('150091', kind: :crawl)
+      expect(log.finish_unchanged!(queued, status: :failed)).to be_nil
+      expect(log.entry('150091', :crawl)).to be_running
+      gone = queued.with(fin_event_id: '150099')
+      expect(log.finish_unchanged!(gone, status: :failed)).to be_nil
+      expect(JSON.parse(File.read(log_path))['entries']).not_to have_key('150099')
+    end
+
+    it 'record_many! writes a finished attempt for each key in one write, skipping the busy ones' do
+      log.queue!('150092', kind: :crawl, origin: :auto)
+      log.finish!('150093', kind: :crawl, status: :failed)
+      started = now - 5.minutes
+      written = travel_to(now) do
+        log.record_many!(%w[150091 150092 150093 150091], kind: :crawl, status: :done, origin: :manual, message: 'Sources', started_at: started)
+      end
+      expect(written).to eq(%w[150091 150093])
+      expect(log.entry('150091', :crawl)).to have_attributes(status: :done, origin: :manual, finished_at: now, started_at: started, message: 'Sources')
+      expect(log.entry('150092', :crawl)).to be_queued
+      expect(log.entry('150093', :crawl)).to be_done
+      expect(log.record_many!([], kind: :crawl, status: :done, origin: :manual)).to eq([])
+    end
+  end
 end

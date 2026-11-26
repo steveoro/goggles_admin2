@@ -102,6 +102,18 @@ RSpec.describe SeasonBoard::PipelinePlanner do
       expect(calls.sole).to include(mode: 'rebuild_stale', up_to: 5, phases: nil)
     end
 
+    # 0.10.99: Scheduler.prepare! stores the board's review path (the LT2) on the source row; a prepare refused before it
+    # started leaves it there. The edit check must still read the '<base>-lt4-phaseN.json' files of the working copy.
+    it 'checks the edits on the working copy when the stored source path is still the LT2 (no false :edited)' do
+      prepared_source!
+      lt2 = write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true))
+      pipeline!(stage: 'needs_review', review_phase: 2, statuses: { 2 => 'stale' }).update!(source_path: lt2)
+      calls = prepare_calls
+      result = plan
+      expect(result.skipped).to eq({})
+      expect(calls.sole).to include(mode: 'rebuild_stale')
+    end
+
     it 'ready_to_commit with new entities and a newer db generation => refresh_new_entities' do
       prepared_source!
       pipeline!(stage: 'ready_to_commit', new_teams_count: 2, new_swimmers_count: 0, db_generation: DataFix::Pipeline.db_generation - 1)
@@ -132,6 +144,46 @@ RSpec.describe SeasonBoard::PipelinePlanner do
       pipeline!(stage: 'ready_to_commit')
       expect(plan.prepares).to be_empty
       expect(SeasonBoard::Scheduler).not_to have_received(:prepare!)
+    end
+
+    # 0.10.99: a source prepared in one go keeps the verdict of step 1 from before the later steps were built.
+    describe 'a just-prepared source (time-spaced phase files, each verdict after its own file)' do
+      let(:base_time) { 1.hour.ago }
+
+      def at(minutes) = (base_time + minutes.minutes).to_time
+
+      # Working copy at the base time, phase N at +10N minutes; verdict N at +10N+1 (+31 for 4 and 5), or +verdict1 for
+      # the first one.
+      def spaced!(verdict1: 11)
+        source = prepared_source!
+        File.utime(at(0), at(0), source)
+        (1..3).each { |phase| File.utime(at(10 * phase), at(10 * phase), source.sub('.json', "-phase#{phase}.json")) }
+        row = pipeline!(stage: 'ready_to_commit')
+        (1..5).each do |phase|
+          row.phase_verdicts.find_by(phase:).update!(checked_at: at(phase == 1 ? verdict1 : (10 * [phase, 3].min) + 1))
+        end
+        row
+      end
+
+      it 'queues nothing: the row is ready to commit' do
+        spaced!
+        expect(builder.call.rows.first.state).to eq(:ready_to_commit)
+        expect(plan.prepares).to be_empty
+        expect(SeasonBoard::Scheduler).not_to have_received(:prepare!)
+      end
+
+      it 'skips a rebuild of outdated verdicts when the last prepare ended done after the newest file (:unchanged_since_run)' do
+        row = spaced!(verdict1: 5) # (verdict 1 older than the phase 1 file: not fresh)
+        FactoryBot.create(:ops_pipeline_run, pipeline_source: row, kind: 'prepare', origin: 'auto', status: 'done', finished_at: at(40))
+        expect(builder.call.rows.first.state).to eq(:needs_review)
+        expect(plan.skipped).to eq(fin_id => :unchanged_since_run)
+        expect(SeasonBoard::Scheduler).not_to have_received(:prepare!)
+
+        File.utime(Time.current.to_time, Time.current.to_time, path_for('results.new', 'm-lt4-phase3.json'))
+        calls = prepare_calls
+        plan
+        expect(calls.sole).to include(mode: 'rebuild_stale', phases: nil)
+      end
     end
 
     it 'prepare_failed with the source unchanged => nothing (the operator retries)' do

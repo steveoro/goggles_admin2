@@ -46,8 +46,22 @@ module Sources
         [
           (Badge.new(label: 'TXT', tone: 'secondary', title: I18n.t('sources.manifests.badges.txt')) if path.sub_ext('.txt').file?),
           activity_badge(entry),
-          (Badge.new(label: I18n.t('sources.manifests.badges.gave_up'), tone: 'danger') if gave_up?(path))
+          (Badge.new(label: I18n.t('sources.manifests.badges.gave_up'), tone: 'danger') if gave_up?(path)),
+          linked_badge(path)
         ].compact
+      end
+
+      # (0.10.104) The meeting of the PDF is already linked locally: "Extract next" leaves it out.
+      def linked_badge(path)
+        return unless queue.linked_meeting?(path)
+
+        Badge.new(label: I18n.t('sources.manifests.badges.linked'), tone: 'success', title: I18n.t('sources.manifests.badges.linked_tooltip'))
+      rescue StandardError
+        nil
+      end
+
+      def queue
+        @queue ||= Sources::ManifestQueue.new(season_id: @index.season_id, data_root: @index.data_root)
       end
 
       def activity_badge(entry)

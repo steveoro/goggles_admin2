@@ -15,8 +15,9 @@
                   %span.visually-hidden= t('data_fix.stepper.actions')
                 %ul.dropdown-menu{ aria: { labelledby: "data-fix-step-menu-#{step[:number]}" } }
                   %li
+                    -# (data-turbo-method: Turbo 8 asks the data-turbo-confirm question only for a link it turns into a form)
                     = link_to(step_path(step, rescan: 1), class: 'dropdown-item', id: 'data-fix-step-rescan',
-                                                          data: { turbo_confirm: rescan_confirm(step) }) do
+                                                          data: { turbo_method: :get, turbo_confirm: rescan_confirm(step) }) do
                       %i.fa-solid.fa-rotate.text-warning.me-1{ 'aria-hidden': 'true' }
                       = t('data_fix.stepper.rescan')
           - else

@@ -1,6 +1,7 @@
 .flash-alert.alert.alert-warning.flash-sticky{ id: FedernuotoWatch::ALERT_DOM_ID, role: 'alert',
                                                data: { controller: 'federnuoto-watch',
-                                                       'federnuoto-watch-ack-url-value': federnuoto_watch_acknowledge_path } }
+                                                       'federnuoto-watch-ack-url-value': federnuoto_watch_acknowledge_path,
+                                                       'federnuoto-watch-ack-digest-value': digest } }
   %button.btn-close.float-end{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
                                title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
   %h5.alert-heading
@@ -12,6 +13,27 @@
       = t('federnuoto_watch.alert.first_detected_at', time: first_detected_at) if first_detected_at
       ·
       = link_to(t('federnuoto_watch.alert.open_page'), FedernuotoWatch::URL, target: '_blank', rel: 'noopener')
+  -# (0.10.103: what the automation is doing about the change, FedernuotoWatch::Progress)
+  - if automation_off?
+    %p.mb-2.small.federnuoto-watch-progress{ data: { fin_watch_progress: 'automation_off' } }
+      %i.fa-solid.fa-circle-pause{ 'aria-hidden' => 'true' }
+      = t('federnuoto_watch.alert.progress.automation_off')
+  - elsif progress?
+    .mb-2.small.federnuoto-watch-progress{ data: { fin_watch_progress: 'auto' } }
+      %b
+        %i.fa-solid.fa-gears{ 'aria-hidden' => 'true' }
+        = t('federnuoto_watch.alert.progress.title')
+      %ul.mb-1
+        - progress_lines.each do |line|
+          %li= line
+        - if waiting_rows.any?
+          %li{ data: { fin_watch_waiting: waiting_rows.size } }
+            = t('federnuoto_watch.alert.progress.waiting_for', rows: waiting_rows.first(MAX_PENDING).map { |row| waiting_label(row) }.join('; '))
+            - if more_waiting.positive?
+              %em= t('federnuoto_watch.alert.more', count: more_waiting)
+        - if progress_lines.empty? && waiting_rows.empty?
+          %li= t('federnuoto_watch.alert.progress.nothing_left')
+      %em= t('federnuoto_watch.alert.progress.closes_itself')
   - if page_text_only_change?
     %p.mb-2
       %em= t('federnuoto_watch.alert.text_only')
@@ -21,7 +43,7 @@
       %ul.mb-0.small
         - rows.first(MAX_ITEMS).each do |row|
           %li
-            - if row['url'].present?
+            - if fin_link?(row['url'])
               = link_to(row_label(row), row['url'], target: '_blank', rel: 'noopener')
             - else
               = row_label(row)

@@ -24,12 +24,14 @@ Capybara.register_driver(:goggles_headless_chrome) do |app|
 end
 
 # Capybara 3.40 resets Chrome with a CDP 'Storage.clearDataForOrigin' using origin '*', which newer
-# Chrome versions reject ("* is not a valid URL"). Cookies are cleared by the regular reset anyway.
+# Chrome versions reject ("* is not a valid URL"). That call is also the only one clearing the cookies of the
+# Chrome reset, so they are cleared here instead: no cookie leaks into the next example (e.g. the Season board
+# filters cookie, 0.10.101).
 module GogglesChromeResetPatch
   private
 
   def execute_cdp(cmd, params = {})
-    return if cmd == 'Storage.clearDataForOrigin'
+    return super('Network.clearBrowserCookies') if cmd == 'Storage.clearDataForOrigin'
 
     super
   end

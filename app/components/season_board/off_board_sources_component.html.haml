@@ -1,0 +1,26 @@
+.mb-2#season-board-off-board
+  %p.small.mb-1
+    %b= t('season_board.off_board.title', count: entries.size)
+    %span.text-body-secondary= t('season_board.off_board.text')
+  %ul.list-unstyled.small.mb-0
+    - entries.each do |entry|
+      - state = pipeline_state(entry)
+      %li.d-flex.flex-wrap.align-items-center.gap-2.py-1.border-bottom{ data: { off_board_fin_event_id: entry.fin_event_id } }
+        %span.badge.text-bg-warning FIN #{entry.fin_event_id}
+        %span.text-break= entry.bases.join(', ')
+        %span.text-body-secondary= pending_label(entry)
+        - if state
+          %span.badge{ class: state_css(state.first), data: { off_board_state: state.first } }= state.last
+        - if (path = sources_path(entry))
+          = link_to(t('season_board.off_board.open_sources'), path, class: 'btn btn-sm btn-outline-secondary', data: { turbo_frame: '_top' })
+        - if (review = data_fix_path(entry))
+          = link_to(t('season_board.off_board.open_data_fix'), review, class: 'btn btn-sm btn-outline-secondary', data: { turbo_frame: '_top' })
+        - if (relative = prepare_path(entry))
+          = form_with(url: sources_prepare_path, method: :post, authenticity_token: false, class: 'd-inline',
+                      data: { turbo_frame: '_top', turbo_confirm: t('season_board.off_board.prepare_confirm') }) do
+            = hidden_field_tag(:path, relative, id: nil)
+            = hidden_field_tag(:season_id, season_id, id: nil)
+            = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
+            %button.btn.btn-sm.btn-outline-primary{ type: 'submit', disabled: preparing?(entry), title: t('season_board.off_board.prepare_tooltip'),
+                                                    data: { off_board_action: 'prepare' } }
+              = t('season_board.off_board.prepare')

@@ -26,7 +26,7 @@ RSpec.describe 'Application shell' do
     it 'renders the sign-in page without the shell' do
       get(new_user_session_path)
       expect(html.at_css('main.app-auth #login-box')).to be_present
-      expect(html.at_css('.app-shell, .app-sidebar, .app-topbar')).to be_nil
+      expect(html.at_css('.app-shell, .app-sidebar, .app-topbar, #progress-strip')).to be_nil
       expect(html.at_css('#flash-messages-container')).to be_present
     end
   end
@@ -49,6 +49,20 @@ RSpec.describe 'Application shell' do
     it 'has no global loading indicator any more (phase 15: the PDF scan runs as a job)' do
       get(season_board_path)
       expect(html.at_css('#loading-indicator')).to be_nil
+    end
+
+    it 'renders the progress strip once in the sticky header under the top bar, its panel hidden, and no progress modal' do
+      get(season_board_path)
+      expect(html.css('#progress-strip').size).to eq(1)
+      strip = html.at_css('.app-main > header.app-topbar.sticky-top > .app-topbar-inner + #progress-strip.app-progress-strip')
+      expect(strip).to be_present
+      expect(strip.at_css('#progress-strip-panel')['hidden']).not_to be_nil
+      expect(html.at_css('#modal-progress, #di-progress')).to be_nil
+    end
+
+    it 'turns off the Turbo hover prefetch (several GETs build phase files or write metadata)' do
+      get(season_board_path)
+      expect(html.at_css('head meta[name="turbo-prefetch"]')['content']).to eq('false')
     end
 
     it 'renders the expanded sidebar by default' do

@@ -12,13 +12,26 @@ RSpec.describe 'App shell' do
 
   after(:each) { Ops::Database.reset_state! }
 
+  def compact_status_pill_ids
+    all('turbo-frame#shell-status .app-status-pill').pluck(:id)
+  end
+
+  # Shell::StatusPillsComponent: one pill per probe not OK, plus the summary pill counting the OK ones.
+  def expect_compact_status_pills
+    pills = all('turbo-frame#shell-status .app-status-pill').to_a
+    summary = pills.find { |pill| pill[:id] == 'status-pill-all' }
+    singles = pills - [summary]
+    expect(singles.map { |pill| pill['data-status-level'] }).to all(satisfy { |level| level != 'ok' })
+    expect(singles.size + (summary ? summary['data-ok-count'].to_i : 0)).to eq(SystemStatus::Registry::PROBES.size)
+  end
+
   describe 'journey 12: sidebar navigation' do
     before(:each) { sign_in_admin(admin_user) }
 
     it 'reaches the first item of every sidebar group, highlighting it, and loads the status pills' do
       visit(settings_path)
-      expect(page).to have_css('turbo-frame#shell-status #status-pill-api')
-      expect(page).to have_css('turbo-frame#shell-status .app-status-pill', count: SystemStatus::Registry::PROBES.size)
+      expect(page).to have_css('turbo-frame#shell-status .app-status-pill')
+      expect_compact_status_pills
 
       Shell::Navigation.groups.each do |group|
         item = group.items.first
@@ -28,6 +41,52 @@ RSpec.describe 'App shell' do
         expect(page).to have_css(".app-sidebar a.nav-link.active[href=\"#{path}\"][aria-current=\"page\"]")
         expect(page).to have_css('.app-sidebar a.nav-link.active', count: 1)
       end
+      expect_no_js_errors
+    end
+  end
+
+  describe 'journey 12b: compact status pills' do
+    let(:ok_results) do
+      SystemStatus::Registry::PROBES.each_index.map do |index|
+        SystemStatus::Result.new(key: :"probe#{index}", label: "Probe #{index}", level: :ok, detail: "fine #{index}")
+      end
+    end
+
+    before(:each) { sign_in_admin(admin_user) }
+
+    it 'folds the probes into one "All OK" pill, listing them in a multi-line tooltip, linking to the dashboard' do
+      allow(SystemStatus::Registry).to receive(:results).and_return(ok_results)
+      visit(settings_path)
+      expect(page).to have_css('turbo-frame#shell-status a#status-pill-all[data-status-summary="all"]', visible: :visible)
+      expect(page).to have_css('turbo-frame#shell-status .app-status-pill', count: 1)
+
+      find_by_id('status-pill-all').hover
+      expect(page).to have_css('.tooltip.app-status-tooltip', text: 'Probe 0: fine 0')
+      expect(page).to have_css('.tooltip.app-status-tooltip', text: "Probe #{ok_results.size - 1}: fine #{ok_results.size - 1}")
+      expect(evaluate_script("getComputedStyle(document.querySelector('.app-status-tooltip .tooltip-inner')).whiteSpace"))
+        .to eq('pre-line')
+      expect_no_js_errors
+
+      find_by_id('status-pill-all').click
+      expect(page).to have_current_path(root_path)
+      expect(page).to have_css('#dashboard-system')
+    end
+
+    it 'shows the probes needing attention one by one, next to an "N OK" pill for the others' do
+      results = ok_results.dup
+      results[1] = SystemStatus::Result.new(key: :crawler, label: 'Crawler', level: :error, detail: 'Crawler down')
+      results[3] = SystemStatus::Result.new(key: :cable, label: 'Live', level: :unknown, detail: 'Never checked')
+      allow(SystemStatus::Registry).to receive(:results).and_return(results)
+      visit(settings_path)
+      expect(page).to have_css('turbo-frame#shell-status .app-status-pill', count: 3)
+      expect(page).to have_css('#status-pill-crawler[data-status-level="error"]')
+      expect(page).to have_css('#status-pill-cable[data-status-level="unknown"]')
+      expect(page).to have_css('#status-pill-all[data-status-summary="rest"] .app-status-summary-label', text: "#{results.size - 2} OK")
+      expect(compact_status_pill_ids).to eq(%w[status-pill-crawler status-pill-cable status-pill-all])
+
+      find_by_id('status-pill-all').hover
+      expect(page).to have_css('.tooltip.app-status-tooltip', text: 'Probe 0: fine 0')
+      expect(page).to have_no_css('.tooltip.app-status-tooltip', text: 'Crawler down')
       expect_no_js_errors
     end
   end

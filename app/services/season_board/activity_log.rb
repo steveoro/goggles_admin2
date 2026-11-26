@@ -17,7 +17,9 @@ module SeasonBoard
   #   { "entries" => { "<fin_event_id>" => { "crawl" => {...}, "extract" => {...}, "prepare" => {...} } } }
   # (unknown kinds found in the file are ignored: only KINDS are read.)
   # where each entry stores: origin, status, queued_at, started_at, finished_at (ISO8601), url, message, and the
-  # optional (phase 15) label (shown instead of the FIN id) and heartbeat_at (written by a long job at each poll).
+  # optional (phase 15) label (shown instead of the FIN id) and heartbeat_at (written by a long job at each poll),
+  # plus (0.10.99) run_id (the Ops::PipelineRun of a prepare, kept from queue! to finish!) and reason (why the entry
+  # was closed by SeasonBoard::ActivityReconciler, e.g. LOST_REASON).
   #
   # Phase 15: the manual crawls & extractions of the Sources pages use a source key instead of a FIN id
   # ('src:<sha1>', see .source_key), so the same strip, "In progress" zone and busy checks show them.
@@ -48,6 +50,8 @@ module SeasonBoard
     HEARTBEAT_STALE_AFTER = 5.minutes
     # Prefix of the keys of the Sources work (no FIN id).
     SOURCE_KEY_PREFIX = 'src:'
+    # Reason of an entry closed because its job was no longer in the queue (SeasonBoard::ActivityReconciler).
+    LOST_REASON = 'lost'
 
     attr_reader :path
 
@@ -72,19 +76,20 @@ module SeasonBoard
     end
 
     # Records a new queued attempt (resetting any previous one for the same FIN id & kind).
+    # - run_id: the Ops::PipelineRun of the attempt (a prepare), kept until finish! (read by ActivityReconciler).
     # Returns the new Entry.
-    def queue!(fin_event_id, kind:, origin:, url: nil, message: nil, label: nil) # rubocop:disable Metrics/ParameterLists
+    def queue!(fin_event_id, kind:, origin:, url: nil, message: nil, label: nil, run_id: nil) # rubocop:disable Metrics/ParameterLists
       write_entry(fin_event_id, kind) do |_previous|
         entry = {
           'origin' => check!(origin, ORIGINS, :origin).to_s, 'status' => 'queued',
           'queued_at' => now_iso, 'started_at' => nil, 'finished_at' => nil,
           'url' => url, 'message' => message
         }
-        with_label(entry, label)
+        with_run_id(with_label(entry, label), run_id)
       end
     end
 
-    # Marks the attempt as running. Keeps queued_at/origin/url from a previous queued entry;
+    # Marks the attempt as running. Keeps queued_at/origin/url/run_id from a previous queued entry;
     # origin defaults to :manual when there's nothing to inherit. Returns the new Entry.
     def start!(fin_event_id, kind:, origin: nil, url: nil, label: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       write_entry(fin_event_id, kind) do |previous|
@@ -95,7 +100,7 @@ module SeasonBoard
           'queued_at' => inherit['queued_at'], 'started_at' => now_iso, 'finished_at' => nil,
           'url' => url || inherit['url'] || previous&.dig('url'), 'message' => nil
         }
-        with_label(entry, label || previous&.dig('label'))
+        with_run_id(with_label(entry, label || previous&.dig('label')), inherit['run_id'])
       end
     end
 
@@ -109,12 +114,40 @@ module SeasonBoard
       end
     end
 
-    # Closes the attempt with status :done or :failed. Returns the new Entry.
-    def finish!(fin_event_id, kind:, status:, message: nil)
+    # Closes the attempt with status :done or :failed (+reason+: optional code, e.g. LOST_REASON). Returns the new Entry.
+    def finish!(fin_event_id, kind:, status:, message: nil, reason: nil)
       status = check!(status, FINAL_STATUSES, :status)
       write_entry(fin_event_id, kind) do |previous|
-        (previous || { 'origin' => 'manual' }).merge('status' => status.to_s, 'finished_at' => now_iso, 'message' => message)
+        closed_hash(previous, status, message, reason)
       end
+    end
+
+    # Closes +entry+ (an Entry read before) like #finish!, but only when the stored attempt is still the same one (same
+    # status, queued_at and started_at): a job that started, or a new attempt queued, in the meantime is left alone.
+    # Returns the new Entry, or nil when the stored attempt changed.
+    def finish_unchanged!(entry, status:, message: nil, reason: nil)
+      status = check!(status, FINAL_STATUSES, :status)
+      applied = false
+      saved = write_entry(entry.fin_event_id, entry.kind) do |previous|
+        next previous unless same_attempt?(build_entry(entry.fin_event_id, entry.kind, previous), entry)
+
+        applied = true
+        closed_hash(previous, status, message, reason)
+      end
+      applied ? saved : nil
+    end
+
+    # Records a finished attempt (status :done or :failed) of +kind+ for every key of +keys+ in ONE locked write (e.g. a
+    # Sources crawl that brought the files of several FIN meetings), skipping the keys whose entry of that kind is busy
+    # (queued or running, not stale): their own job will close them. Returns the keys written.
+    def record_many!(keys, kind:, status:, origin:, message: nil, url: nil, started_at: nil) # rubocop:disable Metrics/ParameterLists
+      kind = check!(kind, KINDS, :kind)
+      attempt = {
+        'origin' => check!(origin, ORIGINS, :origin).to_s, 'status' => check!(status, FINAL_STATUSES, :status).to_s,
+        'queued_at' => nil, 'started_at' => started_at&.iso8601, 'finished_at' => now_iso, 'url' => url, 'message' => message
+      }
+      ids = Array(keys).map { |key| normalize_id(key) }.compact_blank.uniq
+      ids.empty? ? [] : write_many(ids, kind, attempt)
     end
 
     # Returns { crawl: Entry|nil, extract: Entry|nil, prepare: Entry|nil } (one key per KINDS) for the FIN id.
@@ -179,7 +212,8 @@ module SeasonBoard
           state['entries'] = {} unless state['entries'].is_a?(Hash)
           by_kind = (state['entries'][fin_id] ||= {})
           saved = yield(by_kind[kind.to_s])
-          by_kind[kind.to_s] = saved
+          saved.nil? ? by_kind.delete(kind.to_s) : by_kind[kind.to_s] = saved
+          state['entries'].delete(fin_id) if by_kind.empty?
           state
         end
       ensure
@@ -188,16 +222,56 @@ module SeasonBoard
       build_entry(fin_id, kind, saved)
     end
 
+    # Writes +attempt+ (a stored entry Hash) under each of +ids+ whose +kind+ entry is not busy, in one locked update.
+    # Returns the ids written.
+    def write_many(ids, kind, attempt)
+      written = []
+      @store.update do |state|
+        state['entries'] = {} unless state['entries'].is_a?(Hash)
+        ids.each do |fin_id|
+          by_kind = (state['entries'][fin_id] ||= {})
+          next if build_entry(fin_id, kind, by_kind[kind.to_s])&.busy?
+
+          by_kind[kind.to_s] = attempt.dup
+          written << fin_id
+        end
+        state
+      end
+      written
+    ensure
+      reload!
+    end
+
+    # Time members of an Entry (ISO 8601 Strings in the file).
+    TIME_KEYS = %w[queued_at started_at finished_at heartbeat_at].freeze
+    private_constant :TIME_KEYS
+
     def build_entry(fin_id, kind, hash)
       return nil unless hash.is_a?(Hash)
 
       Entry.new(
         fin_event_id: fin_id, kind: kind,
         origin: hash['origin'].to_s.presence&.to_sym, status: hash['status'].to_s.presence&.to_sym,
-        queued_at: parse_time(hash['queued_at']), started_at: parse_time(hash['started_at']),
-        finished_at: parse_time(hash['finished_at']), url: hash['url'], message: hash['message'],
-        label: hash['label'].presence, heartbeat_at: parse_time(hash['heartbeat_at'])
+        url: hash['url'], message: hash['message'], label: hash['label'].presence, run_id: hash['run_id'].presence,
+        reason: hash['reason'].presence, **TIME_KEYS.to_h { |key| [key.to_sym, parse_time(hash[key])] }
       )
+    end
+
+    # The stored Hash of a closed attempt (+previous+: the stored one, or nil). A +reason+ replaces any former one.
+    def closed_hash(previous, status, message, reason)
+      hash = (previous || { 'origin' => 'manual' }).merge('status' => status.to_s, 'finished_at' => now_iso, 'message' => message)
+      reason.present? ? hash.merge('reason' => reason.to_s) : hash.except('reason')
+    end
+
+    # True when +stored+ (an Entry or nil) is the attempt +expected+ was read from.
+    def same_attempt?(stored, expected)
+      stored.present? && stored.status == expected.status && stored.queued_at == expected.queued_at &&
+        stored.started_at == expected.started_at
+    end
+
+    # The entry with its 'run_id' key when there is one (the other entries keep their former layout).
+    def with_run_id(entry, run_id)
+      run_id.present? ? entry.merge('run_id' => run_id) : entry
     end
 
     # The entry with its 'label' key when there is one (FIN entries keep their former layout).

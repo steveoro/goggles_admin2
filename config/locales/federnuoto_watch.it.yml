@@ -9,10 +9,43 @@ it:
       dismiss: 'Chiudi (segna come visto)'
       text_only: 'Il testo della pagina è cambiato, ma nessuna riga del calendario è stata modificata.'
       more: '...e altri %{count}'
-      pull_calendar: 'Scarica calendario'
       open_board: 'Apri Plancia stagione'
       open_board_tooltip: "Apre la Plancia stagione per l'ultima stagione MASFIN"
-      pull_calendar_tooltip: 'Avvia il crawler se necessario e apre la scheda Crawler delle Sorgenti'
+      progress:
+        title: "Cosa sta facendo l'automazione:"
+        automation_off: "L'automazione è spenta: scarica e prepara questi meeting a mano, poi chiudi questo avviso."
+        calendar_queued: 'Scaricamento del calendario FIN "Eventi" in coda (può dare il link ai meeting che non lo hanno).'
+        calendar_running: 'Scaricamento del calendario FIN "Eventi" in corso.'
+        awaiting_calendar:
+          one: '1 meeting senza link attende il calendario FIN "Eventi".'
+          other: '%{count} meeting senza link attendono il calendario FIN "Eventi".'
+        busy:
+          crawling:
+            one: '1 meeting in scaricamento.'
+            other: '%{count} meeting in scaricamento.'
+          extracting:
+            one: '1 manifesto in estrazione.'
+            other: '%{count} manifesti in estrazione.'
+          preparing:
+            one: '1 meeting in preparazione (passi Data-Fix 1-5).'
+            other: '%{count} meeting in preparazione (passi Data-Fix 1-5).'
+          busy:
+            one: '1 meeting occupato da un job.'
+            other: '%{count} meeting occupati da un job.'
+        waiting_for: 'In attesa: %{rows}'
+        reasons:
+          not_on_board: '%{name} (non ancora sulla Plancia stagione)'
+          crawling: '%{name} (in scaricamento)'
+          extracting: '%{name} (manifesto in estrazione)'
+          preparing: '%{name} (in preparazione)'
+          busy: '%{name} (occupato)'
+          waiting_crawl: '%{name} (scaricamento da mettere in coda)'
+          crawl_failed: "%{name} (ultimo scaricamento fallito: viene ritentato da solo, oppure premi Scarica sulla plancia)"
+          waiting_prepare: '%{name} (preparazione da mettere in coda)'
+          waiting_extract: '%{name} (estrazione del manifesto da mettere in coda)'
+          waiting_recrawl: '%{name} (risultati da scaricare di nuovo)'
+        nothing_left: 'Ogni meeting con un link è nella pipeline: questo avviso si chiude al prossimo controllo.'
+        closes_itself: 'Questo avviso si chiude da solo quando ogni meeting nuovo o modificato con un link è scaricato e sulla plancia.'
       sections:
         with_results:
           one: 'Link pubblicato (1)'
@@ -31,6 +64,12 @@ it:
       started: "Controllo pagina FIN avviato: l'esito comparirà qui tra qualche secondo."
       no_changes: 'Nessuna modifica sulla pagina FIN "Riepilogo Eventi" (%{count} meeting elencati).'
       failed: 'Controllo pagina FIN fallito: %{error}'
+      wait: 'La pagina FIN è cambiata: i meeting senza link attendono lo scaricamento del calendario FIN "Eventi" (nessun avviso finché uno non prende un link).'
+      nothing_to_crawl: 'La pagina FIN è cambiata, ma non c''è nulla da scaricare: la modifica è annotata in "Da fare" (dashboard).'
+      parity: 'La pagina FIN è cambiata: ogni meeting modificato con un link è già sulla plancia.'
+    notice:
+      dismissed: 'Nota sul calendario FIN ignorata.'
+      not_dismissed: 'Impossibile ignorare la nota sul calendario FIN (nota sconosciuta, oppure il DB ops locale non è disponibile).'
     status:
       last_checked: 'Ultimo controllo: %{time}'
       never_checked: 'Mai controllato'

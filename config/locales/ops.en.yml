@@ -23,3 +23,5 @@ en:
         calendar_linked: "Calendar linked to a FIN event"
       fin:
         watch_changed: "FIN events page changed"
+        watch_acknowledged: "FIN events page change acknowledged"
+        calendar_notice: "FIN calendar change with nothing to crawl"

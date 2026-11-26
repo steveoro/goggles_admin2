@@ -2,11 +2,7 @@
 = render(Shell::PageHeaderComponent.new(title: t('season_board.title'), count: nil,
                                         subtitle: t('season_board.header.season', description: @season.description))) do |header|
   - header.with_actions do
-    = button_to(season_board_prepare_all_path,
-                method: :post, class: 'btn btn-sm btn-outline-primary', form_class: 'd-inline', id: 'btn-season-board-prepare-all',
-                disabled: !DataFix::Automation.enabled?(:auto_prepare), title: t('pipeline_automation.board.prepare_all_tooltip')) do
-      %i.fa-solid.fa-wand-magic-sparkles{ 'aria-hidden' => 'true' }
-      = t('pipeline_automation.board.prepare_all')
+    = render('season_board/prepare_all_button')
     = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-outline-secondary',
                 form_class: 'd-inline', id: 'btn-season-board-check') do
       %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
@@ -19,11 +15,10 @@
     - else
       = t('season_board.header.never_checked')
     %br
-    - paused = DataFix::Automation.paused?
+    -# (a switch flipped here is answered with a turbo stream replacing only the panel and the badge: the <details> stays open)
     %details.d-inline-block#season-board-automation{ open: (true if DataFix::Automation.env_off?) }
       %summary
-        %span.badge{ class: paused ? 'text-bg-warning' : 'text-bg-success' }
-          = t(paused ? 'pipeline_automation.board.paused' : 'pipeline_automation.board.on')
+        = render('season_board/automation_badge')
         = t('pipeline_automation.board.switches')
       .border.rounded.bg-body-tertiary.px-3.py-2.mt-1
         = render('automation/switches', return_to: 'season_board')
@@ -33,6 +28,13 @@
         %span.badge.text-bg-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
         = link_to(t('season_board.header.board_sql_pending_link'),
                   SeasonBoard::ActionPaths.outbox_focus_path(@board.pending_board_sql_paths.min_by { |path| File.basename(path.to_s) }))
+    -# (0.10.104: rows flagged "redundant file" / "PDF pending" lead to the Sources clean-up page, a dry run first)
+    - cleanup_rows = @board.rows.count { |row| row.flags.intersect?(%i[redundant_result_free_source manifest_pdf_pending]) }
+    - if cleanup_rows.positive?
+      %br
+      %span#season-board-cleanup{ title: t('sources.cleanup.board.tooltip') }
+        %span.badge.text-bg-secondary= t('sources.cleanup.board.rows', count: cleanup_rows)
+        = link_to(t('sources.cleanup.board.link'), sources_cleanup_path(season_id: @season.id), id: 'season-board-cleanup-link')
 
   %div{ data: { controller: 'season-board', 'season-board-interval-value': 20_000,
                 'season-board-ping-id-value': 'season-board-ping' } }

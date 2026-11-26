@@ -1,0 +1,9 @@
+-#
+  "Prepare all" button of the Season board header (disabled while auto-prepare is off): its wrapper id is a target of
+  the turbo-stream answer of AutomationController#switch.
+%span.d-inline#season-board-prepare-all
+  = button_to(season_board_prepare_all_path,
+              method: :post, class: 'btn btn-sm btn-outline-primary', form_class: 'd-inline', id: 'btn-season-board-prepare-all',
+              disabled: !DataFix::Automation.enabled?(:auto_prepare), title: t('pipeline_automation.board.prepare_all_tooltip')) do
+    %i.fa-solid.fa-wand-magic-sparkles{ 'aria-hidden' => 'true' }
+    = t('pipeline_automation.board.prepare_all')

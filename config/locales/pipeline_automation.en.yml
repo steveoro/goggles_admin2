@@ -36,8 +36,6 @@ en:
       title: 'Automation'
       env_off: '%{key}=0 is set: every automation switch is forced off (unset it and restart the server to resume).'
       ops_unavailable: 'The switches need the local ops DB (run bin/rails ops:prepare).'
-      turn_on: 'Turn on'
-      turn_off: 'Turn off'
       states:
         'on': 'On'
         paused: 'Paused'
@@ -51,6 +49,9 @@ en:
       auto_prepare:
         label: 'Auto-prepare (Data-Fix steps 1-5)'
         help: 'Unattended Data-Fix preparation up to "ready to commit" or "needs review". It never commits and never pushes.'
+      auto_calendar:
+        label: "Auto-crawl the FIN 'Eventi' calendar"
+        help: 'Crawls the FIN "Eventi" calendar by itself after a FIN change (at most once every 6 hours while the change is pending) and once a day, so the meetings without a link can take theirs from it. Off: only the Crawl button of Sources › Crawler does it.'
     worker_mode:
       puma: 'Jobs run inside Puma (default).'
       separate: 'Jobs run in a separate bin/jobs process (SOLID_QUEUE_IN_PUMA=false).'
@@ -63,10 +64,9 @@ en:
     row:
       prepare: 'Prepare'
       prepare_tooltip: 'Build the missing and stale Data-Fix steps in the background (an edited step is never rebuilt; nothing is committed)'
-      hold: 'Hold automation'
-      hold_tooltip: 'Never prepare this meeting automatically (the buttons keep working)'
-      release: 'Release hold'
-      release_tooltip: 'Let the automation prepare this meeting again'
+      auto_prepare: 'Auto-prepare'
+      hold_tooltip: 'On: the automation may prepare this meeting. Turn it off to never prepare it automatically (the buttons keep working)'
+      release_tooltip: 'Off: the automation never prepares this meeting (held). Turn it on to let the automation prepare it again'
     review:
       being_prepared: 'Being prepared in the background: the verdicts refresh when the job ends. Edits are refused meanwhile.'
       edit_refused: 'This source is being prepared in the background: retry in a moment.'
@@ -84,6 +84,7 @@ en:
       ops_unavailable: 'The automation switches need the local ops DB (run bin/rails ops:prepare).'
       switch_on: '%{switch}: on.'
       switch_off: '%{switch}: off.'
+      store_failed: '%{switch}: the switch could not be saved (local ops DB).'
       env_override: 'ADMIN2_AUTOMATION=0 is set: the automation stays off until it is unset (and the server restarted).'
   season_board:
     states:
@@ -99,6 +100,7 @@ en:
       prepare_failed_no_phase: 'Preparation failed'
       needs_review: 'Needs review at step %{step}'
       blocked: 'Blocked at step %{step}'
+      outdated: 'Checks outdated'
       issues:
         one: '1 issue'
         other: '%{count} issues'
@@ -121,6 +123,7 @@ en:
       prepare_queued: 'Preparation queued'
       prepare_running: 'Preparing since %{time}'
       prepare_stuck: 'Preparation seems stuck since %{time}'
+      lost_message: 'lost: the job is no longer in the queue'
       kinds:
         prepare: 'preparation'
     strip:

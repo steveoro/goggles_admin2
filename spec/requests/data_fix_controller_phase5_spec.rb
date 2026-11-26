@@ -320,6 +320,20 @@ RSpec.describe DataFixController do
         expect(disabled_payload.dig('_meta', 'individual_result_overwrite', 'snapshot', 'candidates')).to eq([])
       end
 
+      it 'renders the overwrite mode as a switch posting the new state (0.10.101)' do
+        season = GogglesDb::Season.first || FactoryBot.create(:season)
+        File.write(phase1_file_a, JSON.pretty_generate({ 'data' => { 'season_id' => season.id } }))
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+        form = response.parsed_body.at_css("form[action='#{toggle_individual_result_overwrite_path}']")
+        expect(form.at_css('input#data-fix-overwrite-switch[role=switch][name=enabled]').to_h.slice('value', 'checked')).to eq('value' => '1')
+
+        post toggle_individual_result_overwrite_path(file_path: source_file_a, enabled: '1')
+        follow_redirect!
+        form = response.parsed_body.at_css("form[action='#{toggle_individual_result_overwrite_path}']")
+        expect(form.at_css('input#data-fix-overwrite-switch')['checked']).to be_present
+        expect(form.at_css('input[type=hidden][name=file_path]')['value']).to be_present
+      end
+
       it 'autosaves individual selection and applies bulk selection operations' do
         write_overwrite_metadata!([
                                     { 'id' => 900, 'meeting_program_id' => 200, 'swimmer_id' => 1, 'team_id' => 2,

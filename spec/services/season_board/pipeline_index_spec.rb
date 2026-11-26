@@ -47,8 +47,83 @@ RSpec.describe SeasonBoard::PipelineIndex do
     source = source!(stage: 'needs_review', review_phase: 2, review_count: 4)
     verdicts!(source)
     expect(facts.state_and_detail).to eq([:needs_review, { step: 2, count: 4, blocked: false }])
-    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', status: 'queued', subject_key: 'm')
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', status: 'running', subject_key: 'm')
     expect(described_class.new(season_id: 262).for_entry(disk_index.for(fin_id)).state_and_detail).to eq([:preparing, {}])
+  end
+
+  it 'reads a queued prepare as :prepare_queued for a source without verdicts or whose last prepare failed' do
+    source = source!(stage: 'new')
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', status: 'queued', subject_key: 'm')
+    expect(facts).to have_attributes(prepare_queued?: true, preparing?: false)
+    expect(facts.state_and_detail).to eq([:prepare_queued, {}])
+
+    source.update!(stage: 'failed')
+    expect(described_class.new(season_id: 262).for_entry(disk_index.for(fin_id)).state_and_detail).to eq([:prepare_queued, {}])
+    Ops::PipelineRun.update_all(status: 'running') # rubocop:disable Rails/SkipsModelValidations
+    expect(described_class.new(season_id: 262).for_entry(disk_index.for(fin_id))).to have_attributes(prepare_queued?: false, preparing?: true)
+  end
+
+  it 'keeps the state while a prepare run is merely queued (0.10.99: only a running run or the lease is preparing)' do
+    source = source!(stage: 'needs_review', review_phase: 2, review_count: 4)
+    verdicts!(source)
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', status: 'queued', subject_key: 'm')
+    expect(facts).to have_attributes(preparing?: false, leased?: false, prepare_queued?: true)
+    expect(facts.state_and_detail).to eq([:needs_review, { step: 2, count: 4, blocked: false }])
+  end
+
+  # 0.10.99: each verdict is compared with the files its cache fingerprint covers (working copy + phase files 1..N).
+  describe 'freshness per verdict' do
+    let(:base_time) { 1.hour.ago }
+
+    # Phase files 1..3 written at base + 10 * N minutes, each verdict N checked one minute after its file (verdicts 4-5
+    # after the last one); the LT4 working copy at the base time.
+    def set_mtime(path, time) = File.utime(time.to_time, time.to_time, path)
+
+    def prepared!(stage: 'ready_to_commit')
+      set_mtime(path_for('results.new', 'm-lt4.json'), base_time)
+      (1..3).each { |phase| set_mtime(write_json('results.new', "m-lt4-phase#{phase}.json", { 'data' => {} }), base_time + (10 * phase).minutes) }
+      source = source!(stage:)
+      (1..5).each do |phase|
+        checked_at = base_time + ((10 * [phase, 3].min) + 1).minutes
+        FactoryBot.create(:ops_phase_verdict, pipeline_source: source, phase:, status: 'clean', checked_at:)
+      end
+      source
+    end
+
+    def fresh_facts = described_class.new(season_id: 262).for_entry(disk_index.for(fin_id))
+
+    it 'is fresh when each verdict is newer than its own files, even if the first one is older than the last file' do
+      prepared!
+      expect(Ops::PhaseVerdict.minimum(:checked_at)).to be < File.mtime(path_for('results.new', 'm-lt4-phase3.json'))
+      expect(fresh_facts).to have_attributes(fresh?: true, ready_to_commit?: true)
+      expect(fresh_facts.state_and_detail.first).to eq(:ready_to_commit)
+      expect(fresh_facts.newest_file_at).to be_within(1.second).of(base_time + 30.minutes)
+    end
+
+    it 'stays fresh when only the LT2 is newer (a CSV crawl rewrites a same-named LT2: the LT4 working copy is the source)' do
+      prepared!
+      lt2 = write_json('results.new', 'm.json', lt2_hash(fin_id:, results: true))
+      File.utime(Time.current.to_time, Time.current.to_time, lt2)
+      expect(fresh_facts).to be_fresh
+      Ops::PipelineSource.update_all(source_path: lt2) # rubocop:disable Rails/SkipsModelValidations -- as stored by a schedule from the LT2
+      expect(fresh_facts).to be_fresh
+    end
+
+    it 'is not fresh when the phase 2 file is newer than its verdict, and then reads "checks outdated"' do
+      prepared!
+      later = (base_time + 25.minutes).to_time # (after its verdict at +21, before the phase 3 file)
+      File.utime(later, later, path_for('results.new', 'm-lt4-phase2.json'))
+      expect(fresh_facts).to have_attributes(fresh?: false, needs_review?: true, outdated?: true)
+      state, detail = fresh_facts.state_and_detail
+      expect([state, detail]).to eq([:needs_review, { step: 3, count: 0, blocked: false, outdated: true }])
+      expect(SeasonBoard::StateText.label(state, detail)).to eq(I18n.t('season_board.state_details.outdated'))
+    end
+
+    it 'is not fresh when the working copy is newer than the verdicts' do
+      prepared!
+      File.utime(Time.current.to_time, Time.current.to_time, path_for('results.new', 'm-lt4.json'))
+      expect(fresh_facts).not_to be_fresh
+    end
   end
 
   it 'is not fresh when a file is newer than the verdicts, or the db generation moved under new entities' do
@@ -78,10 +153,10 @@ RSpec.describe SeasonBoard::PipelineIndex do
     expect(described_class.new(season_id: 262).for_entry(disk_index.for(fin_id))).to have_attributes(prepare_failed?: false, failed_but_changed?: true)
   end
 
-  it 'reports a source being prepared (job lease or pending run)' do
+  it 'reports a source being prepared (job lease or running run), the lease as leased? (the board locks the links)' do
     source = source!(stage: 'preparing')
     source.acquire_lease!('job:abc', ttl: 5.minutes)
-    expect(facts).to be_preparing
+    expect(facts).to have_attributes(preparing?: true, leased?: true)
   end
 
   it 'answers nil without the ops DB' do

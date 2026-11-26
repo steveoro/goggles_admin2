@@ -30,29 +30,29 @@ RSpec.describe FedernuotoWatchJob do
     expect(recurring.dig('production', 'season_board_recheck')).to include('class' => 'SeasonRecheckJob', 'queue' => 'background')
   end
 
-  describe 'automatic crawl planning' do
-    let(:change) { { 'added' => [{ 'url' => 'https://www.federnuoto.it/x#/risultati/150091:m.html' }] } }
+  describe 'the follow-up of a change (0.10.103: SeasonBoard::ChangeChain, then FedernuotoWatch::ParityCheck)' do
     let(:season) { FactoryBot.build_stubbed(:season, id: 262) }
-    let(:planner) { instance_double(SeasonBoard::CrawlPlanner, call: ['150091'], plan_recrawl: []) }
-    let(:store) { instance_double(FedernuotoWatch::StateStore, pending_change: change) }
+    let(:outcome) { SeasonBoard::ChangeChain::Outcome.new(calendar: :queued, crawls: ['150091'], recrawls: []) }
+    let(:chain) { instance_double(SeasonBoard::ChangeChain, call: outcome) }
+    let(:parity_outcome) { FedernuotoWatch::ParityCheck::Outcome.new(status: :pending, parity: nil) }
 
     before(:each) do
-      allow(FedernuotoWatch::StateStore).to receive(:new).and_return(store)
       allow(SeasonBoard::Builder).to receive(:latest_season).and_return(season)
-      allow(SeasonBoard::CrawlPlanner).to receive(:new).and_return(planner)
+      allow(SeasonBoard::ChangeChain).to receive(:new).and_return(chain)
+      allow(FedernuotoWatch::ParityCheck).to receive(:call).and_return(parity_outcome)
     end
 
-    it 'plans the crawls for the pending change when the check detects a change' do
+    it 'runs the same chain entry as the planner passes on a detected change, then the parity check' do
       allow(FedernuotoWatch::Checker).to receive(:call).and_return(:changed)
       expect(described_class.perform_now).to eq(:changed)
-      expect(SeasonBoard::CrawlPlanner).to have_received(:new).with(season:)
-      expect(planner).to have_received(:call).with(change)
+      expect(SeasonBoard::ChangeChain).to have_received(:new).with(season:)
+      expect(chain).to have_received(:call)
+      expect(FedernuotoWatch::ParityCheck).to have_received(:call).with(season:)
     end
 
-    it 'then re-crawls the structure-committed rows FIN now lists with results, and queues a pipeline planner pass' do
+    it 'queues a pipeline planner pass after a change' do
       allow(FedernuotoWatch::Checker).to receive(:call).and_return(:changed)
       expect { described_class.perform_now }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'FedernuotoWatchJob')
-      expect(planner).to have_received(:plan_recrawl).with(change)
     end
 
     it 'queues no planner pass while the automation is off (ADMIN2_AUTOMATION=0)' do
@@ -61,14 +61,26 @@ RSpec.describe FedernuotoWatchJob do
       expect { described_class.perform_now }.not_to have_enqueued_job(PipelinePlannerJob)
     end
 
-    it 'does not plan anything when nothing changed' do
-      described_class.perform_now
-      expect(SeasonBoard::CrawlPlanner).not_to have_received(:new)
+    %i[unchanged baseline reverted].each do |checked|
+      it "runs only the parity check after a #{checked} check" do
+        allow(FedernuotoWatch::Checker).to receive(:call).and_return(checked)
+        described_class.perform_now
+        expect(SeasonBoard::ChangeChain).not_to have_received(:new)
+        expect(FedernuotoWatch::ParityCheck).to have_received(:call).with(season:)
+      end
     end
 
-    it 'swallows planning failures' do
+    it 'runs nothing after a failed check' do
+      allow(FedernuotoWatch::Checker).to receive(:call).and_return(:error)
+      expect(described_class.perform_now).to eq(:error)
+      expect(SeasonBoard::ChangeChain).not_to have_received(:new)
+      expect(FedernuotoWatch::ParityCheck).not_to have_received(:call)
+    end
+
+    it 'swallows planning and parity failures' do
       allow(FedernuotoWatch::Checker).to receive(:call).and_return(:changed)
-      allow(planner).to receive(:call).and_raise(RuntimeError, 'boom')
+      allow(chain).to receive(:call).and_raise(RuntimeError, 'boom')
+      allow(FedernuotoWatch::ParityCheck).to receive(:call).and_raise(RuntimeError, 'bang')
       expect(described_class.perform_now).to eq(:changed)
     end
   end

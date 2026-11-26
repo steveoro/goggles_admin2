@@ -1,0 +1,7 @@
+-#
+  "Automation on / paused" badge of the Season board header (inside the <summary> of the switches): its id is a
+  target of the turbo-stream answer of AutomationController#switch.
+- paused = DataFix::Automation.paused?
+%span.badge#season-board-automation-badge{ class: paused ? 'text-bg-warning' : 'text-bg-success',
+                                           data: { automation_paused: paused.to_s } }
+  = t(paused ? 'pipeline_automation.board.paused' : 'pipeline_automation.board.on')

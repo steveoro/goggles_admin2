@@ -15,8 +15,13 @@
 # form posts the same link again with <tt>drift_ack=1</tt>.
 #
 # Pipeline automation (phase 10): +prepare+ queues a DataFixPrepareJob for the row's source (the "Prepare" and
-# "Retry" buttons; phases 1-5 only, never a commit), +hold+ toggles the row hold (no automatic prepare), and
-# +prepare_all+ runs the pipeline planner now (PipelinePlannerJob). Nothing here commits or pushes.
+# "Retry" buttons; phases 1-5 only, never a commit), +hold+ toggles the row hold (no automatic prepare; the row's
+# "Auto-prepare" switch, answered with a turbo stream of the rows frame), and +prepare_all+ runs the pipeline planner
+# now (PipelinePlannerJob). Nothing here commits or pushes.
+#
+# Filters (SeasonBoard::Filters): an explicit choice (a chip or toggle link, marker <tt>filters=1</tt>, or a deep link
+# with filter params) is stored in the cookie +season_board_filters+; a request without one (the sidebar link, the
+# redirects after every POST, the live refresh, the turbo stream of +hold+) restores the last choice from it.
 #
 class SeasonBoardController < ApplicationController # rubocop:disable Metrics/ClassLength
   # Extraction engines offered by the existing manifest extraction form (see pull/calendar_meetings):
@@ -26,12 +31,13 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
   helper_method :rows_frame_locals
 
   # [GET] The board, always built live (the build is stored as the board summary).
-  # Filters (all optional, kept in the query string):
+  # Filters (all optional; see SeasonBoard::Filters for their cookie):
   # - state: shows only the rows in that state;
   # - show_unlinked: includes the rows w/o a FIN link (state not_linked);
-  # - show_done: includes the past rows already committed with results.
+  # - show_done: includes the past rows already committed with results;
+  # - filters=1: marks an explicit choice (stored even when it filters nothing, e.g. the "All" chip).
   # With <tt>frame=1</tt> only the rows frame ('season-board-rows') is rendered, without the layout
-  # (used by the live refresh, see season_board_controller.js).
+  # (used by the live refresh, see season_board_controller.js; it never stores the filters).
   def index
     season = SeasonBoard::Builder.latest_season
     if season.nil?
@@ -42,7 +48,7 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
     @season = season
     @board = SeasonBoard::Snapshot.build!(season)
     assign_counts
-    assign_filters
+    assign_filters(store: params[:frame].blank?)
     @rows = visible_rows
     render_rows_frame if params[:frame].present?
   end
@@ -91,12 +97,20 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   # [POST] Holds (hold=1) or releases (hold=0) the row's source: a held source is never prepared automatically.
+  # A Turbo request (the row's "Auto-prepare" switch) is answered with a turbo stream replacing the content of the
+  # rows frame (rebuilt, with the stored filters) and the toasts; any other request is redirected to the board row
+  # (the filters are restored from their cookie).
   def hold
     row = find_row
-    redirect_to(season_board_path) && return unless row
-
-    flash_hold_result(row, params[:hold].to_s == '1')
-    redirect_to(season_board_path(anchor: SeasonBoard::ActionPaths.row_dom_id(row.fin_event_id)))
+    flash_hold_result(row, params[:hold].to_s == '1') if row
+    # (html first: the answer to an Accept '*/*' request)
+    respond_to do |format|
+      format.html do
+        redirect_to(row ? season_board_path(anchor: SeasonBoard::ActionPaths.row_dom_id(row.fin_event_id)) : season_board_path)
+      end
+      # (no season: nothing was stored, the redirect never leaves the switch in an unstored position)
+      format.turbo_stream { @season ? render_rows_stream : redirect_to(season_board_path) }
+    end
   end
 
   # [POST] "Prepare all": runs the pipeline planner now (same rules and switches as the 15-minute pass).
@@ -136,9 +150,12 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
 
   # DB sync gate of the board writes (scope :board_write). Returns true after rendering the confirmation page
   # (a warning not ticked yet) or redirecting (a blocking verdict: never for this scope, kept for safety).
+  # 0.10.102: a row whose link is adopted from the FIN 'Eventi' calendar always gets the confirmation page first
+  # (the operator ticks +adopted_ack+: the FIN id and link come from a calendar file, not from the summary page).
   def refused_by_drift_gate?(row, calendar_id)
     @gate = Drift::Gate.check(scope: :board_write, acknowledged: params[:drift_ack].to_s == '1')
-    return false if @gate.allowed?
+    @adopted_unconfirmed = row.flag?(:link_adopted) && params[:adopted_ack].to_s != '1'
+    return false if @gate.allowed? && !@adopted_unconfirmed
 
     if @gate.block?
       flash[:error] = I18n.t('db_sync.gate.blocked', summary: @gate.summary)
@@ -154,6 +171,21 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
   # Renders only the rows frame partial, without the layout (live refresh).
   def render_rows_frame
     render(partial: 'season_board/rows_frame', locals: rows_frame_locals, layout: false)
+  end
+
+  # Turbo stream of a row action: the content of the rows frame (a fresh build, the stored filters) and the toasts
+  # (shown by this response only).
+  def render_rows_stream
+    @board = SeasonBoard::Snapshot.build!(@season)
+    assign_counts
+    assign_filters(store: false)
+    @rows = visible_rows
+    render(turbo_stream: helpers.safe_join([
+                                             turbo_stream.update('season-board-rows', partial: 'season_board/rows_frame_content',
+                                                                                      locals: rows_frame_locals),
+                                             turbo_stream.update('flash-messages-container', partial: 'goggles/flash_messages')
+                                           ]))
+    flash.discard
   end
 
   # Locals of the 'season_board/rows_frame' partial.
@@ -245,10 +277,27 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
     end
   end
 
-  def assign_filters
-    @state_filter = params[:state].to_s.presence_in(SeasonBoard::Builder::STATES.map(&:to_s))
-    @show_unlinked = params[:show_unlinked].present?
-    @show_done = params[:show_done].present?
+  # Filters of the request: an explicit choice (stored in the cookie when +store+), else the cookie's (a row link whose
+  # row they would hide shows the whole board, see #reveal_linked_row).
+  def assign_filters(store: true)
+    filters = if SeasonBoard::Filters.explicit?(params)
+                SeasonBoard::Filters.from_params(params).tap { |chosen| store_filters(chosen) if store }
+              else
+                reveal_linked_row(SeasonBoard::Filters.load(cookies[SeasonBoard::Filters.cookie_name]))
+              end
+    @state_filter = filters.state
+    @show_unlinked = filters.show_unlinked
+    @show_done = filters.show_done
+  end
+
+  # Stores the filters in their cookie (deleted when nothing is filtered).
+  def store_filters(filters)
+    value = filters.to_cookie
+    if value
+      cookies[SeasonBoard::Filters.cookie_name] = { value:, expires: 1.year, httponly: true, same_site: :lax }
+    else
+      cookies.delete(SeasonBoard::Filters.cookie_name)
+    end
   end
 
   def assign_counts
@@ -262,11 +311,26 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
     SeasonBoard::Builder.hidden_as_done?(row)
   end
 
-  def visible_rows
-    return @board.rows.select { |row| row.state.to_s == @state_filter } if @state_filter
+  # The restored +filters+, or no filter at all (unlinked and done rows shown too) when they would hide the row named
+  # by the +row+ param (a FIN event ID: the row links of SeasonBoard::ActionPaths.board_row_path). For this request
+  # only: nothing is stored, and +row+ is no filter param.
+  def reveal_linked_row(filters)
+    fin_event_id = params[:row].to_s.strip
+    row = @board.rows.find { |candidate| candidate.fin_event_id.to_s == fin_event_id } if fin_event_id.present?
+    return filters if row.nil? || row_visible?(row, filters)
 
-    @board.rows.reject do |row|
-      (row.state == :not_linked && !@show_unlinked) || (hidden_as_done?(row) && !@show_done)
-    end
+    SeasonBoard::Filters.new(state: nil, show_unlinked: true, show_done: true)
+  end
+
+  # True when the +filters+ (SeasonBoard::Filters) show the +row+.
+  def row_visible?(row, filters)
+    return row.state.to_s == filters.state if filters.state
+
+    !((row.state == :not_linked && !filters.show_unlinked) || (hidden_as_done?(row) && !filters.show_done))
+  end
+
+  def visible_rows
+    filters = SeasonBoard::Filters.new(state: @state_filter, show_unlinked: @show_unlinked, show_done: @show_done)
+    @board.rows.select { |row| row_visible?(row, filters) }
   end
 end

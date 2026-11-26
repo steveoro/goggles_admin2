@@ -63,6 +63,17 @@ it:
         start_crawler: 'Avvia il crawler'
         check_fin: 'Verifica ora'
       on_dashboard: '%{action} (nella dashboard)'
+      # Shell::StatusPillsComponent: la pillola riassuntiva (tutte le verifiche OK, o quelle OK accanto alle altre)
+      summary:
+        all_ok: 'Tutto OK'
+        all_ok_aria:
+          one: "L'unica verifica è OK"
+          other: 'Tutte le %{count} verifiche OK'
+        some_ok: '%{count} OK'
+        some_ok_aria:
+          one: "Un'altra verifica OK"
+          other: 'Altre %{count} verifiche OK'
+        details: 'Dettagli nella dashboard'
       api:
         label: 'API'
         offline: 'Sessione API offline: nessun JWT valido per questa API, quindi qui il suo stato è sconosciuto'

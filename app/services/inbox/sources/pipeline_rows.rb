@@ -10,13 +10,17 @@ module Inbox
     # BAND, ACTION_KIND (the item key suffix) and #item_action(row). The item title is the meeting name with the state
     # label (SeasonBoard::StateText), the detail its date and place; +subject[:file_path]+ is the row's source, so a
     # Data-Fix session item about the same file is de-duplicated (these sources are board sources, see
-    # Inbox::Builder::BOARD_SOURCES). Busy rows (a prepare queued or running) are skipped.
+    # Inbox::Builder::BOARD_SOURCES). A row whose action is a link (review step, commit summary) keeps its item while it
+    # is only busy (e.g. a prepare merely queued: 0.10.99) and loses it while locked (a job works on its files right
+    # now); a row whose action is a POST (Retry) is skipped while busy.
     #
     # Key: 'board:<fin_event_id>:<ACTION_KIND>'.
     #
     # Phase 15: the non-FIN sources prepared from the Sources page (the summary's unmatched sources with the same
     # pipeline state) get the same items, keyed 'unmatched:<base>:<ACTION_KIND>', titled with their base name; their
     # action comes from #unmatched_action.
+    # 0.10.103: so do the off-board sources (a FIN id on no board row) prepared from the board's off-board list, keyed
+    # 'off_board:<fin_event_id>:<base>:<ACTION_KIND>'.
     #
     class PipelineRows < Inbox::Source
       STATE = nil
@@ -50,20 +54,26 @@ module Inbox
       private
 
       def unmatched_items(summary, context)
-        summary.unmatched_sources.filter_map do |source|
+        off_board = summary.respond_to?(:off_board_sources) ? Array(summary.off_board_sources) : []
+        (summary.unmatched_sources + off_board).filter_map do |source|
           next unless source.pipeline_state == self.class::STATE && source.review_path
 
           primary = unmatched_action(source, summary)
-          next unless primary
-
-          label = SeasonBoard::StateText.label(source.pipeline_state, source.pipeline_detail)
-          item(
-            key: "unmatched:#{source.base}:#{self.class::ACTION_KIND}", kind: self.class::STATE, band: self.class::BAND,
-            title: I18n.t('inbox.pipeline_rows.title', name: source.base, state: label), detail: I18n.t('inbox.pipeline_rows.non_fin'),
-            subject: { file_path: source.review_path, season_id: summary.season_id }, action: primary,
-            since: newest_mtime(source.paths) || summary.built_at || context.now
-          )
+          primary && unmatched_item(source, primary, summary, context)
         end
+      end
+
+      # (an off-board source has a FIN id: on no board row)
+      def unmatched_item(source, primary, summary, context)
+        label = SeasonBoard::StateText.label(source.pipeline_state, source.pipeline_detail)
+        fin_event_id = source.respond_to?(:fin_event_id) ? source.fin_event_id : nil
+        item(
+          key: "#{fin_event_id ? "off_board:#{fin_event_id}" : 'unmatched'}:#{source.base}:#{self.class::ACTION_KIND}",
+          kind: self.class::STATE, band: self.class::BAND, title: I18n.t('inbox.pipeline_rows.title', name: source.base, state: label),
+          detail: fin_event_id ? I18n.t('inbox.pipeline_rows.off_board', fin_event_id:) : I18n.t('inbox.pipeline_rows.non_fin'),
+          subject: { file_path: source.review_path, season_id: summary.season_id }, action: primary,
+          since: newest_mtime(source.paths) || summary.built_at || context.now
+        )
       end
 
       def newest_mtime(paths)
@@ -73,7 +83,7 @@ module Inbox
       end
 
       def item_for(row, summary, context)
-        return if row.busy? || row.fin_event_id.blank? || row.next_action.nil?
+        return if row.fin_event_id.blank? || row.next_action.nil? || SeasonBoard::ActionPaths.blocked?(row)
 
         primary = item_action(row)
         return unless primary

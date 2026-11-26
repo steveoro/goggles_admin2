@@ -50,9 +50,6 @@ module DataFix
         review_teams_path(file_path: @file_path, phase2_v2: 1, filter_state: @filter_state, q: @q.presence,
                           teams_per_page: @per_page, teams_page: page, anchor: "team-card-#{position}")
       end
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review teams: ready', @total_count, @total_count)
     end
 
     # AJAX endpoint: cross-validate a Phase 2 team match using swimmer badges from Phase 3.

@@ -136,6 +136,13 @@ RSpec.describe Shell::Navigation do
       expect(crumbs.map(&:first).first(3)).to eq([I18n.t('shell.groups.data_quality'), I18n.t('maintenance.nav'), I18n.t('maintenance.season_start.nav')])
     end
 
+    it 'maps the clean-up page (0.10.104) to a contextual child of Sources' do
+      item = described_class.item_for('sources/cleanups', 'show')
+      expect(item).to have_attributes(key: :sources_cleanup, parent: :sources, sidebar?: false)
+      crumbs = described_class.breadcrumbs_for('sources/cleanups', 'show', {})
+      expect(crumbs.map(&:first).first(3)).to eq([I18n.t('shell.groups.import'), I18n.t('sources.nav'), I18n.t('sources.cleanup.nav')])
+    end
+
     it 'returns nil for an unknown page' do
       expect(described_class.item_for('lookup', 'index')).to be_nil
       expect(described_class.item_for('whatever', 'index')).to be_nil

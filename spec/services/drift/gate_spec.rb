@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-# Every scope of Drift::Gate (contract: docs/plans/contracts.md, "Drift and restore"). No network call: the stored
+# Every scope of Drift::Gate (contract: docs/plans/done/00-ops-console-masterplan-contracts.md, "Drift and restore"). No network call: the stored
 # check is fresh, or the API has no 'db_fingerprint' capability (a fresh check is then 'unknown' without any call).
 RSpec.describe Drift::Gate do
   include ActiveSupport::Testing::TimeHelpers

@@ -1,0 +1,6 @@
+-#
+  OperationsController#switch from the dashboard (Turbo request): the switch panel of the system column and the toasts.
+= turbo_stream.replace('operations-switch-dashboard') do
+  = render('operations/switch', return_to: 'dashboard')
+= turbo_stream.update('flash-messages-container') do
+  = render(partial: 'goggles/flash_messages')

@@ -19,6 +19,9 @@ module DataFix
     end
     private_class_method :local_prefixes
 
+    # One progress operation per request (see #progress_sink): its 'done' once the action ends, even on an exception.
+    around_action :finish_progress
+
     # @api_url is only needed by actions that render review views.
     before_action :set_api_url, only: %i[review_sessions review_teams review_swimmers review_events review_results]
 
@@ -397,16 +400,29 @@ module DataFix
       DataFix::IssueDetector.relay_result_has_issues?(relay_result, **kwargs)
     end
 
-    # Progress sink of the interactive requests (ActionCable 'ImportStatusChannel', see Import::Progress):
-    # passed to the pipeline, the solvers and the committer as their +progress:+ keyword.
+    # Progress sink of the interactive requests (ActionCable 'ImportStatusChannel', see Import::Progress), shown by the
+    # progress strip under the top bar: one per request (one +op+), passed to the pipeline (which hands it to the
+    # solvers and the populator) and used by #broadcast_progress. Scope: the source base name.
     def progress_sink
-      @progress_sink ||= Import::Progress::Cable.new
+      @progress_sink ||= Import::Progress::Cable.new(scope: progress_scope)
+    end
+
+    def progress_scope
+      File.basename(@source_path.to_s, '.json').presence
     end
 
     # Broadcast progress updates via ActionCable for real-time UI feedback
     # Used during long-running operations (team/swimmer/result processing)
     def broadcast_progress(message, current, total)
       progress_sink.call(message, current, total)
+    end
+
+    # (around_action) Ends the request's progress operation: 'done' only when it sent a tick, so a plain review GET
+    # that builds nothing broadcasts nothing.
+    def finish_progress
+      yield
+    ensure
+      @progress_sink&.done
     end
     #-- -------------------------------------------------------------------------
     #++
