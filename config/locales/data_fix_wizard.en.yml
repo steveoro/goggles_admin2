@@ -53,7 +53,8 @@ en:
         issues_help: (missing program gender, unresolved required links excluding NEW meeting programs, or swimmer/team/badge/affiliation inconsistencies)
         all_valid: All results are valid!
         all_valid_hint: No unresolved required links detected.
-        new_results: '%{count} new result(s) will be created on commit'
+        outcome_summary: "%{reassign} correction(s) in place, %{create} physical create(s), %{delete} deletion/merge removal(s); net MIR change %{net}"
+        new_results: '%{count} result row(s) are not yet bound to existing MIRs'
         unmatched_parents: '(%{count} unmatched parent rows)'
         filtered_issues: 'Filtered: Issues'
         filtered_new: 'Filtered: New only'

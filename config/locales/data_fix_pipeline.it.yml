@@ -99,6 +99,10 @@ it:
       results: Risultati da creare
       results_update: Risultati da aggiornare
       relay_results: Risultati staffetta
+      outcome_reassignments: Correzioni di categoria in place
+      outcome_plain_deletions: Eliminazioni distruttive / rimozioni per merge
+      no_net_change: nessuna variazione netta
+      net_mir_delta: variazione MIR netta %{count}
       overwrite_deletions: Risultati esistenti da eliminare
       team_scores: Punteggi di squadra
       new_teams: Squadre nuove

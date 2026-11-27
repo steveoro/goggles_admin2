@@ -170,6 +170,153 @@ RSpec.describe Import::Committers::Main do
     end
   end
 
+  describe '#reconcile_reassigned_laps!' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |path| File.write(path, '{}') } }
+    let(:committer) { create_committer(src_path) }
+    let(:mir) { FactoryBot.create(:meeting_individual_result) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'preserves compatible old laps for an exact-timing reassignment and realigns them to the corrected program' do
+      lap = FactoryBot.create(:lap, meeting_individual_result: mir, length_in_meters: 50)
+      updated_program = FactoryBot.create(:meeting_program)
+      mir.update!(meeting_program: updated_program)
+
+      committer.send(:reconcile_reassigned_laps!, mir.id, { 'timing_exact' => true }, [])
+
+      lap.reload
+      expect(lap.meeting_individual_result_id).to eq(mir.id)
+      expect(lap.meeting_program_id).to eq(updated_program.id)
+      expect(committer.stats[:mirs_reassigned]).to eq(1)
+      expect(committer.stats[:laps_reassigned]).to eq(1)
+      expect(committer.sql_log.grep(/UPDATE `laps`/).size).to eq(1)
+      expect(committer.sql_log.grep(/DELETE FROM laps/)).to be_empty
+    end
+
+    it 'deletes stale lengths for a timing-change reassignment and keeps authoritative lengths' do
+      stale_lap = FactoryBot.create(:lap, meeting_individual_result: mir, length_in_meters: 50)
+      authoritative_lap = FactoryBot.create(:lap, meeting_individual_result: mir, length_in_meters: 100)
+      imported_lap = instance_double(GogglesDb::DataImportLap, length_in_meters: 100)
+
+      committer.send(:reconcile_reassigned_laps!, mir.id, { 'timing_exact' => false }, [imported_lap])
+
+      expect(GogglesDb::Lap.exists?(stale_lap.id)).to be(false)
+      expect(GogglesDb::Lap.exists?(authoritative_lap.id)).to be(true)
+      expect(committer.stats[:laps_deleted]).to eq(1)
+      expect(committer.sql_log.grep(/DELETE FROM laps/).size).to eq(1)
+    end
+
+    it 'deletes all existing laps when timing changed and the authoritative row has no laps' do
+      lap = FactoryBot.create(:lap, meeting_individual_result: mir, length_in_meters: 50)
+
+      committer.send(:reconcile_reassigned_laps!, mir.id, { 'timing_exact' => false }, [])
+
+      expect(GogglesDb::Lap.exists?(lap.id)).to be(false)
+      expect(committer.stats[:laps_deleted]).to eq(1)
+      expect(committer.stats[:mirs_reassigned]).to eq(1)
+    end
+  end
+
+  describe 'in-place overwrite reassignment' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |path| File.write(path, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    # rubocop:disable-next RSpec/ExampleLength, RSpec/MultipleExpectations
+    it 'updates the existing MIR in place, reuses its matching lap row, and realigns surviving laps' do
+      source_mir = FactoryBot.create(:meeting_individual_result, rank: 7, minutes: 0, seconds: 30, hundredths: 0)
+      wrong_program = source_mir.meeting_program
+      correct_category = FactoryBot.create(:category_type, season: wrong_program.category_type.season, code: 'M99', federation_code: '99')
+      correct_program = FactoryBot.create(
+        :meeting_program,
+        meeting_event: wrong_program.meeting_event,
+        category_type: correct_category,
+        gender_type: wrong_program.gender_type,
+        pool_type: wrong_program.pool_type,
+        event_order: wrong_program.event_order
+      )
+      event = wrong_program.meeting_event
+      program_key = [
+        event.meeting_session.session_order,
+        event.event_type.code,
+        correct_category.code,
+        correct_program.gender_type.code
+      ].join('-')
+      swimmer_key = "M|#{source_mir.swimmer.last_name}|#{source_mir.swimmer.first_name}|#{source_mir.swimmer.year_of_birth}|TEAM"
+      import_key = "#{program_key}/#{swimmer_key}"
+      data_import_mir = FactoryBot.create(
+        :data_import_meeting_individual_result,
+        import_key:,
+        meeting_program_key: program_key,
+        phase_file_path: src_path,
+        meeting_program_id: correct_program.id,
+        swimmer_id: source_mir.swimmer_id,
+        team_id: source_mir.team_id,
+        badge_id: source_mir.badge_id,
+        swimmer_key:,
+        team_key: 'TEAM',
+        rank: 3,
+        minutes: 0,
+        seconds: 30,
+        hundredths: 0
+      )
+      FactoryBot.create(
+        :data_import_lap,
+        parent_import_key: import_key,
+        import_key: "#{import_key}/50",
+        meeting_individual_result_key: import_key,
+        phase_file_path: src_path,
+        length_in_meters: 50,
+        minutes: 0,
+        seconds: 30,
+        hundredths: 0,
+        minutes_from_start: 0,
+        seconds_from_start: 30,
+        hundredths_from_start: 0
+      )
+      existing_lap = FactoryBot.create(
+        :lap,
+        meeting_individual_result: source_mir,
+        meeting_program: wrong_program,
+        swimmer: source_mir.swimmer,
+        team: source_mir.team,
+        length_in_meters: 50,
+        minutes: 0,
+        seconds: 31,
+        hundredths: 0
+      )
+      reassignment = {
+        'source_mir_id' => source_mir.id,
+        'import_key' => import_key,
+        'timing' => data_import_mir.to_timing.to_s,
+        'timing_exact' => true
+      }
+      committer.instance_variable_set(:@overwrite_reassign_by_import_key, import_key => reassignment)
+      committer.instance_variable_set(:@season_id, source_mir.badge.season_id)
+
+      expect do
+        committer.send(:commit_individual_results_for_program, program_key, correct_program.id)
+      end.not_to change(GogglesDb::MeetingIndividualResult, :count)
+
+      source_mir.reload
+      expect(source_mir.meeting_program_id).to eq(correct_program.id)
+      expect(source_mir.rank).to eq(3)
+      expect(source_mir.seconds).to eq(30)
+      expect(GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id, length_in_meters: 50).count).to eq(1)
+      existing_lap.reload
+      expect(existing_lap.meeting_program_id).to eq(correct_program.id)
+      expect(existing_lap.seconds).to eq(30)
+      expect(committer.stats[:mirs_created]).to eq(0)
+      expect(committer.stats[:mirs_updated]).to eq(1)
+      expect(committer.stats[:mirs_reassigned]).to eq(1)
+      expect(committer.stats[:laps_updated]).to eq(1)
+      expect(committer.stats[:laps_reassigned]).to eq(1)
+    end
+  end
+
   describe '#merge_overwrite_candidates!' do
     let(:tmp_dir) { Dir.mktmpdir }
     let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }

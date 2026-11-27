@@ -27,10 +27,10 @@ module Import
       # @param season_id [Integer, nil] season for badge lookup
       # @return [Hash] { perfect_matches: [...], partial_matches: [...], team_mismatches: [...],
       #                   other_events: [...], swimmer_badges: [...] }
-      def check_individual(swimmer_id:, meeting_program_id:, timing: {}, team_id: nil, season_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-        result = { perfect_matches: [], partial_matches: [], team_mismatches: [],
-                   other_events: [], swimmer_badges: [] }
-        return result unless swimmer_id.to_i.positive? && meeting_program_id.to_i.positive?
+      def check_individual(swimmer_id:, meeting_program_id:, timing: {}, team_id: nil, season_id: nil, meeting_id: nil, meeting_program_key: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ParameterLists
+        result = { perfect_matches: [], partial_matches: [], category_corrections: [], category_timing_corrections: [],
+                   team_mismatches: [], other_events: [], swimmer_badges: [] }
+        return result unless swimmer_id.to_i.positive?
 
         import_timing = Timing.new(
           minutes: timing[:minutes].to_i,
@@ -38,21 +38,27 @@ module Import
           hundredths: timing[:hundredths].to_i
         )
 
-        # Resolve the import row's event_type and category from its meeting_program
+        # Resolve the import row's event/category from its DB program when present.
+        # When the corrected program does not exist yet, derive the same intent
+        # from the stable program key so verification still works.
         meeting_program = GogglesDb::MeetingProgram
                           .includes(meeting_event: [:event_type, :meeting_session])
                           .find_by(id: meeting_program_id)
-        return result unless meeting_program
-
-        import_event_type_id = meeting_program.meeting_event&.event_type_id
-        import_category_type_id = meeting_program.category_type_id
-        meeting_id = meeting_program.meeting_event&.meeting_session&.meeting_id
-        return result unless meeting_id
+        key_parts = meeting_program_key.to_s.split('-', 4)
+        import_event_type_id = meeting_program&.meeting_event&.event_type_id
+        import_category_type_id = meeting_program&.category_type_id
+        meeting_session = meeting_program&.meeting_event&.meeting_session
+        effective_meeting_id = meeting_session&.meeting_id || meeting_id.to_i
+        import_event_type_id = GogglesDb::EventType.find_by(code: key_parts[1])&.id if import_event_type_id.to_i <= 0 && key_parts.size == 4
+        if import_category_type_id.to_i <= 0 && key_parts.size == 4 && season_id.to_i.positive?
+          import_category_type_id = GogglesDb::CategoryType.find_by(code: key_parts[2], season_id: season_id)&.id
+        end
+        return result unless effective_meeting_id.positive? && import_event_type_id.to_i.positive?
 
         # Query ALL existing MIRs for this swimmer in the same meeting
         all_mirs = GogglesDb::MeetingIndividualResult
                    .joins(meeting_program: { meeting_event: :meeting_session })
-                   .where(swimmer_id: swimmer_id, 'meeting_sessions.meeting_id': meeting_id)
+                   .where(swimmer_id: swimmer_id, 'meeting_sessions.meeting_id': effective_meeting_id)
                    .includes(:team, :badge, meeting_program: [{ meeting_event: :event_type }, :category_type])
 
         # Classify each existing result into a tier
@@ -60,26 +66,22 @@ module Import
           existing_timing = mir.to_timing
           mir_event_type_id = mir.meeting_program&.meeting_event&.event_type_id
           mir_category_type_id = mir.meeting_program&.category_type_id
-          same_event = (mir_event_type_id == import_event_type_id) &&
-                       (mir_category_type_id == import_category_type_id)
+          same_event_type = mir_event_type_id == import_event_type_id
+          same_category = mir_category_type_id == import_category_type_id
           same_team = team_id.to_i.positive? && mir.team_id == team_id.to_i
           timing_match = import_timing.to_hundredths == existing_timing.to_hundredths
 
           row = build_mir_hash(mir, existing_timing, import_timing, team_id)
+          row['event'] = mir.meeting_program&.meeting_event&.event_type&.label || 'N/A' # rubocop:disable Style/SafeNavigationChainLength
+          row['category'] = mir.meeting_program&.category_type&.code || 'N/A'
 
-          if same_event
-            if same_team
-              if timing_match
-                result[:perfect_matches] << row
-              else
-                result[:partial_matches] << row
-              end
-            else
-              result[:team_mismatches] << row
-            end
+          if same_event_type && same_team && same_category
+            timing_match ? result[:perfect_matches] << row : result[:partial_matches] << row
+          elsif same_event_type && same_team
+            timing_match ? result[:category_corrections] << row : result[:category_timing_corrections] << row
+          elsif same_event_type
+            result[:team_mismatches] << row
           else
-            row['event'] = mir.meeting_program&.meeting_event&.event_type&.label || 'N/A' # rubocop:disable Style/SafeNavigationChainLength
-            row['category'] = mir.meeting_program&.category_type&.code || 'N/A'
             result[:other_events] << row
           end
         end

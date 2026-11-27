@@ -166,8 +166,16 @@
         %div
           %i.fa.fa-plus-circle.me-2{ 'aria-hidden': 'true' }
           %strong= t('data_fix.wizard.results.new_results', count: @new_result_count)
-          - if @unmatched_parent_count.to_i.positive? && @unmatched_parent_count != @new_result_count
+          - if @result_outcome_counts
+            %span.ms-2= t('data_fix.wizard.results.outcome_summary',
+                          reassign: @result_outcome_counts[:candidate_reassign].to_i,
+                          create: @result_outcome_counts[:physical_creates].to_i,
+                          delete: (@result_outcome_counts[:candidate_delete].to_i + @result_outcome_counts[:candidate_merge].to_i),
+                          net: format('%+d', @result_outcome_counts[:net_mir_delta].to_i))
+          - elsif @unmatched_parent_count.to_i.positive? && @unmatched_parent_count != @new_result_count
             %span.ms-2.text-body-secondary= t('data_fix.wizard.results.unmatched_parents', count: @unmatched_parent_count)
+          - if @result_outcome_warnings.present?
+            %small.d-block.text-warning-emphasis= @result_outcome_warnings.first(3).join(' · ')
         .d-flex.gap-2
           - issues_param = @filter_active ? '1' : '0'
           - if @filter_new_active
@@ -243,7 +251,8 @@
                                swimmers_by_key: @swimmers_by_key, teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
                                team_key_by_swimmer_key: @team_key_by_swimmer_key,
                                laps_by_parent_key: @laps_by_parent_key, card_index: idx,
-                               program_card_index_by_key:, issue: @issue_program_keys.include?(program_key) })
+                               program_card_index_by_key:, issue: @issue_program_keys.include?(program_key),
+                               outcome_planner: @result_outcome_planner })
 
     -# Relay Results Section
     - if relay_programs.any?

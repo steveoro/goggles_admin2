@@ -61,6 +61,21 @@ module DataFix
         # and the view all reuse these buckets instead of per-program LIKE queries.
         staging = DataFix::StagingRows.load_staging_rows(source_path)
 
+        phase1_path = pipeline.phase_path(1)
+        phase3_path = pipeline.phase_path(3)
+        phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path))['data'] || {} : {}
+        phase3_data = File.exist?(phase3_path) ? JSON.parse(File.read(phase3_path))['data'] || {} : {}
+        @result_outcome_planner = DataFix::ResultOutcomePlanner.new(
+          source_path:,
+          meeting_id: phase1_data['id'] || phase1_data['meeting_id'],
+          season_id: pipeline.season&.id,
+          overwrite_enabled: @overwrite_existing_results,
+          overwrite_candidates: @overwrite_candidates,
+          badge_rows: phase3_data['badges'] || []
+        )
+        @result_outcome_counts = @result_outcome_planner.counts
+        @result_outcome_warnings = @result_outcome_planner.warnings
+
         # ALWAYS run server-side issue detection BEFORE pagination
         # This ensures we know about issues regardless of filtering or pagination
         filter_data = DataFix::IssueDetector.load_filter_data(source_path, staging)
@@ -379,7 +394,7 @@ module DataFix
       checker = Import::Verification::ResultDuplicateChecker.new
 
       if result_type == 'relay'
-        data_import_row = GogglesDb::DataImportMeetingRelayResult.find_by(import_key: import_key)
+        data_import_row = scoped_import_row(GogglesDb::DataImportMeetingRelayResult, import_key)
         unless data_import_row
           render json: { error: 'Result not found' }, status: :not_found
           return
@@ -392,29 +407,22 @@ module DataFix
                     hundredths: data_import_row.hundredths }
         )
       else
-        data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+        data_import_row = scoped_import_row(GogglesDb::DataImportMeetingIndividualResult, import_key)
         unless data_import_row
           render json: { error: 'Result not found' }, status: :not_found
           return
         end
 
         merge_source = DataFix::OverwriteMetadata.merge_target_for(data_import_row)
+        source_path = data_import_row.phase_file_path
+        season_id = source_resolver.detect_season_from_pathname(source_path)&.id if source_path.present?
         if merge_source
-          result = checker.check_individual(
-            swimmer_id: data_import_row.swimmer_id,
-            meeting_program_id: data_import_row.meeting_program_id,
-            timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
-                      hundredths: data_import_row.hundredths },
-            team_id: data_import_row.team_id,
-            season_id: source_resolver.detect_season_from_pathname(data_import_row.phase_file_path)&.id
-          )
+          result = DataFix::ResultVerifier.new(source_path:, season_id:, checker:)
+                                          .verify_row(data_import_row, merge_target: true)
           result[:merge_target] = true
           result[:merge_source_mir_id] = merge_source['id']
           result[:merge_message] = I18n.t('data_import.data_fix.merge_target_no_autofix', mir_id: merge_source['id'])
         else
-          source_path = data_import_row.phase_file_path
-          season_id = source_resolver.detect_season_from_pathname(source_path)&.id if source_path.present?
-
           # Auto-fix: if exactly 1 perfect match found, apply it immediately (DataFix::ResultVerifier)
           result = DataFix::ResultVerifier.new(source_path:, season_id:, checker:)
                                           .verify_row(data_import_row, merge_target: false)
@@ -461,10 +469,10 @@ module DataFix
         return
       end
 
-      @edited_source_path = (result_type == 'relay' ? GogglesDb::DataImportMeetingRelayResult : GogglesDb::DataImportMeetingIndividualResult)
-                            .where(import_key:).pick(:phase_file_path)
+      edited_model = result_type == 'relay' ? GogglesDb::DataImportMeetingRelayResult : GogglesDb::DataImportMeetingIndividualResult
+      @edited_source_path = scoped_import_row(edited_model, import_key)&.phase_file_path
       if result_type != 'relay'
-        data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+        data_import_row = scoped_import_row(GogglesDb::DataImportMeetingIndividualResult, import_key)
         merge_source = DataFix::OverwriteMetadata.merge_target_for(data_import_row)
         if merge_source
           render json: { error: I18n.t('data_import.data_fix.merge_target_no_manual_fix', mir_id: merge_source['id']) },
@@ -474,7 +482,7 @@ module DataFix
       end
 
       if result_type == 'relay'
-        data_import_row = GogglesDb::DataImportMeetingRelayResult.find_by(import_key: import_key)
+        data_import_row = scoped_import_row(GogglesDb::DataImportMeetingRelayResult, import_key)
         existing = GogglesDb::MeetingRelayResult.find_by(id: existing_id)
         unless data_import_row && existing
           render json: { error: 'Record not found' }, status: :not_found
@@ -502,10 +510,21 @@ module DataFix
           )
         end
       else
-        data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+        data_import_row = scoped_import_row(GogglesDb::DataImportMeetingIndividualResult, import_key)
         existing = GogglesDb::MeetingIndividualResult.find_by(id: existing_id)
         unless data_import_row && existing
           render json: { error: 'Record not found' }, status: :not_found
+          return
+        end
+
+        wrong_program = if data_import_row.meeting_program_id.to_i.positive?
+                          existing.meeting_program_id.to_i != data_import_row.meeting_program_id.to_i
+                        else
+                          data_import_row.meeting_program_key.present? &&
+                            meeting_program_key_for_model(existing.meeting_program) != data_import_row.meeting_program_key.to_s
+                        end
+        if wrong_program
+          render json: { error: I18n.t('data_import.data_fix.duplicate_wrong_program_rejected') }, status: :unprocessable_content
           return
         end
 
@@ -542,6 +561,25 @@ module DataFix
     end
 
     private
+
+    def scoped_import_row(model_class, import_key)
+      scope = model_class.where(import_key:)
+      if params[:file_path].present?
+        source_path = source_resolver.resolve_working_source_path(params[:file_path])
+        scope = scope.where(phase_file_path: source_path)
+      end
+      scope.first
+    end
+
+    def meeting_program_key_for_model(program)
+      event = program&.meeting_event
+      [
+        event&.meeting_session&.session_order,
+        event&.event_type&.code,
+        program&.category_type&.code,
+        program&.gender_type&.code
+      ].compact.join('-')
+    end
 
     def program_key_for(program)
       "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"

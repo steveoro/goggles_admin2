@@ -53,7 +53,8 @@ it:
         issues_help: (genere del programma mancante, collegamenti obbligatori non risolti esclusi i programmi NUOVI del meeting, o incoerenze di nuotatore/squadra/cartellino/affiliazione)
         all_valid: Tutti i risultati sono validi!
         all_valid_hint: Nessun collegamento obbligatorio irrisolto.
-        new_results: '%{count} nuovi risultati verranno creati al commit'
+        outcome_summary: "%{reassign} correzione/i in place, %{create} creazione/i fisiche, %{delete} eliminazione/i o rimozione/i per merge; variazione MIR netta %{net}"
+        new_results: '%{count} riga/he risultato non ancora collegate a MIR esistenti'
         unmatched_parents: '(%{count} righe principali non abbinate)'
         filtered_issues: 'Filtro: problemi'
         filtered_new: 'Filtro: solo nuovi'

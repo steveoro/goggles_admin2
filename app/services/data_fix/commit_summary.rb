@@ -39,13 +39,16 @@ module DataFix
       p2 = pipeline.phase_data(2)
       p3 = pipeline.phase_data(3)
       events = Array(pipeline.phase_data(4)['sessions']).flat_map { |session| Array(session['events']) }
+      individual_existing = outcome_counts[:no_change].to_i + outcome_counts[:update].to_i +
+                            outcome_counts[:reassign].to_i + outcome_counts[:merge_target].to_i + staged[:mrr_existing]
+      individual_new = outcome_counts[:physical_creates].to_i + staged[:mrr_new]
       [
         split(:sessions, Array(p1['meeting_session'])) { |row| row['id'].present? },
         split(:teams, Array(p2['teams'])) { |row| row['team_id'].present? },
         split(:swimmers, Array(p3['swimmers'])) { |row| row['swimmer_id'].present? },
         split(:badges, Array(p3['badges'])) { |row| row['badge_id'].present? },
         split(:events, events) { |row| row['id'].present? || row['meeting_event_id'].present? },
-        Row.new(key: :results, existing: staged[:mir_existing] + staged[:mrr_existing], new: staged[:mir_new] + staged[:mrr_new])
+        Row.new(key: :results, existing: individual_existing, new: individual_new)
       ]
     end
 
@@ -59,6 +62,28 @@ module DataFix
       Array(overwrite.dig('snapshot', 'candidates')).count { |candidate| candidate['selected'] == true }
     end
 
+    def result_outcome_planner
+      @result_outcome_planner ||= DataFix::ResultOutcomePlanner.new(
+        source_path: pipeline.source_path,
+        meeting_id: meeting['id'] || pipeline.phase_data(1)['meeting_id'],
+        season_id: pipeline.season&.id,
+        overwrite_enabled: pipeline.phase_meta(5).dig('individual_result_overwrite', 'enabled') == true,
+        overwrite_candidates: pipeline.phase_meta(5).dig('individual_result_overwrite', 'snapshot', 'candidates') || [],
+        badge_rows: Array(pipeline.phase_data(3)['badges'])
+      )
+    end
+
+    def outcome_counts = result_outcome_planner.counts
+
+    def overwrite_breakdown
+      {
+        reassign: outcome_counts[:candidate_reassign].to_i,
+        merge: outcome_counts[:candidate_merge].to_i,
+        delete: outcome_counts[:candidate_delete].to_i,
+        ignored: outcome_counts[:candidate_ignored].to_i
+      }
+    end
+
     def team_scores = Array(pipeline.phase_data(2)['team_scores'])
 
     delegate :result_free?, to: :pipeline
@@ -68,7 +93,9 @@ module DataFix
         'rows' => rows.to_h { |row| [row.key.to_s, { 'existing' => row.existing, 'new' => row.new }] },
         'new_teams' => new_teams.first(LIST_LIMIT), 'new_swimmers' => new_swimmers.first(LIST_LIMIT),
         'new_teams_count' => new_teams.size, 'new_swimmers_count' => new_swimmers.size,
-        'overwrite_deletions' => overwrite_deletions, 'team_scores' => team_scores.size, 'result_free' => result_free? }
+        'overwrite_deletions' => overwrite_deletions, 'overwrite_breakdown' => overwrite_breakdown,
+        'result_outcomes' => outcome_counts, 'result_warnings' => result_outcome_planner.warnings,
+        'team_scores' => team_scores.size, 'result_free' => result_free? }
     end
 
     private

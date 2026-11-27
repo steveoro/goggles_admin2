@@ -36,7 +36,7 @@ module DataFix
       merge_keys = merge_target_import_keys
       outcome = { 'checked' => 0, 'verified' => 0, 'partial' => [], 'merge_targets_skipped' => 0 }
       scope = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path, meeting_individual_result_id: nil)
-                                                          .where.not(meeting_program_id: nil).where.not(swimmer_id: nil)
+                                                          .where.not(swimmer_id: nil)
       total = progress ? scope.count : 0
       progress = nil if total.zero? # (nothing to verify: no tick)
       progress&.call(message, 0, total)
@@ -66,7 +66,7 @@ module DataFix
       result = @checker.check_individual(
         swimmer_id: row.swimmer_id, meeting_program_id: row.meeting_program_id,
         timing: { minutes: row.minutes, seconds: row.seconds, hundredths: row.hundredths },
-        team_id: row.team_id, season_id:
+        team_id: row.team_id, season_id:, meeting_id:, meeting_program_key: row.meeting_program_key
       )
       return result if merge_target
       return result unless result[:perfect_matches]&.length == 1
@@ -77,6 +77,13 @@ module DataFix
       row.update!(AUTO_FIX_COLUMNS.index_with { |column| existing.public_send(column) }
                                   .merge(meeting_individual_result_id: existing.id))
       result.merge(auto_fixed: true, auto_fixed_id: existing.id)
+    end
+
+    def meeting_id
+      @meeting_id ||= begin
+        phase1_path = DataFix::SourceResolver.new.default_phase_path_for(source_path, 1)
+        File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)).dig('data', 'id') || JSON.parse(File.read(phase1_path)).dig('data', 'meeting_id') : nil
+      end
     end
 
     private
@@ -90,7 +97,7 @@ module DataFix
       return Set.new unless overwrite.is_a?(Hash) && overwrite['enabled'] == true
 
       Array(overwrite.dig('snapshot', 'candidates')).filter_map do |candidate|
-        candidate['merge_target_import_key'] if candidate['merge'] == true
+        candidate['merge_target_import_key'] if candidate['selected'] == true && candidate['merge_target_import_key'].present?
       end.to_set
     rescue StandardError
       Set.new

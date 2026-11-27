@@ -193,11 +193,13 @@ module Import
       overwrite = pipeline.phase_meta(5)['individual_result_overwrite']
       return unless overwrite.is_a?(Hash) && overwrite['enabled'] == true
 
-      DataFix::IndividualResultOverwriteReconciler.commit_plan_for(
+      plan = DataFix::IndividualResultOverwriteReconciler.commit_plan_for(
         meeting_id: phase1['id'] || phase1['meeting_id'],
         import_rows: GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: pipeline.source_path).to_a,
         snapshot: overwrite['snapshot']
       )
+      timing_changes = Array(plan['reassign_targets'].values).count { |target| target['timing_exact'] == false }
+      warning!(:overwrite_timing_corrections, 'category corrections will replace stale laps', count: timing_changes, phase: 5) if timing_changes.positive?
     rescue ArgumentError => e
       error!(:overwrite_snapshot_invalid, e.message, phase: 5)
     end

@@ -99,6 +99,10 @@ en:
       results: Results to create
       results_update: Results to update
       relay_results: Relay results
+      outcome_reassignments: Category corrections in place
+      outcome_plain_deletions: Destructive deletions / merge removals
+      no_net_change: no net count change
+      net_mir_delta: net MIR change %{count}
       overwrite_deletions: Existing results to delete
       team_scores: Team scores
       new_teams: New teams

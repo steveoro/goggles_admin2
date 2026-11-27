@@ -49,11 +49,11 @@ module Import
           teams_created: 0, teams_updated: 0,
           affiliations_created: 0, affiliations_updated: 0,
           swimmers_created: 0, swimmers_updated: 0,
-          badges_created: 0, badges_updated: 0,
+          badges_created: 0, badges_updated: 0, badge_categories_updated: 0,
           events_created: 0, events_updated: 0,
           programs_created: 0, programs_updated: 0,
-          mirs_created: 0, mirs_updated: 0, mirs_deleted: 0, mirs_merged: 0,
-          laps_created: 0, laps_updated: 0, laps_deleted: 0, laps_merged: 0,
+          mirs_created: 0, mirs_updated: 0, mirs_deleted: 0, mirs_merged: 0, mirs_reassigned: 0,
+          laps_created: 0, laps_updated: 0, laps_deleted: 0, laps_merged: 0, laps_reassigned: 0,
           mrrs_created: 0, mrrs_updated: 0,
           mrss_created: 0, mrss_updated: 0,
           relay_laps_created: 0, relay_laps_updated: 0,
@@ -80,6 +80,8 @@ module Import
         # Overwrite deletion/merge plan populated by prepare_overwrite_deletions!
         @overwrite_deletion_ids = []
         @overwrite_merge_targets = {}
+        @overwrite_reassign_targets = {}
+        @overwrite_reassign_by_import_key = {}
         # Meeting and season IDs (populated in Phase 1, passed to child committers)
         @meeting = nil
         @season_id = nil
@@ -475,6 +477,8 @@ module Import
         unless overwrite.is_a?(Hash) && overwrite['enabled'] == true
           @overwrite_deletion_ids = []
           @overwrite_merge_targets = {}
+          @overwrite_reassign_targets = {}
+          @overwrite_reassign_by_import_key = {}
           return
         end
 
@@ -487,6 +491,10 @@ module Import
         )
         @overwrite_deletion_ids = plan['delete_ids']
         @overwrite_merge_targets = plan['merge_targets']
+        @overwrite_reassign_targets = plan['reassign_targets'] || {}
+        @overwrite_reassign_by_import_key = @overwrite_reassign_targets.to_h do |source_id, target|
+          [target['import_key'], target.merge('source_mir_id' => source_id)]
+        end
       end
 
       def delete_overwrite_candidates!
@@ -528,7 +536,8 @@ module Import
             next
           end
 
-          moved_lap_ids = move_laps_to_target(source_mir, target_mir)
+          replace_target_laps_for_timing_change!(target, target_mir)
+          moved_lap_ids = target['timing_exact'] == false ? [] : move_laps_to_target(source_mir, target_mir)
           delete_remaining_source_laps!(source_mir, moved_lap_ids)
           delete_source_mir!(source_mir, merged: true)
         end
@@ -563,6 +572,99 @@ module Import
           seconds: data_import_target.seconds,
           hundredths: data_import_target.hundredths
         )
+      end
+
+      def validate_reassignment_target!(reassignment, data_import_mir, program_id)
+        source_id = reassignment['source_mir_id'].to_i
+        source_mir = GogglesDb::MeetingIndividualResult.find_by(id: source_id)
+        unless source_mir
+          raise_phase5_binding_error!(entity_type: 'MeetingIndividualResult', import_key: data_import_mir.import_key,
+                                      details: "reassign source MIR #{source_id} not found")
+        end
+        if source_mir.swimmer_id.to_i != data_import_mir.swimmer_id.to_i || source_mir.team_id.to_i != data_import_mir.team_id.to_i
+          raise_phase5_binding_error!(entity_type: 'MeetingIndividualResult', import_key: data_import_mir.import_key,
+                                      details: "reassign source MIR #{source_id} swimmer/team mismatch")
+        end
+        if source_mir.meeting_program_id.to_i == program_id.to_i
+          raise_phase5_binding_error!(entity_type: 'MeetingIndividualResult', import_key: data_import_mir.import_key,
+                                      details: "reassign source MIR #{source_id} already belongs to target program #{program_id}")
+        end
+        if reassignment['timing'].to_s != data_import_mir.to_timing.to_s
+          raise_phase5_binding_error!(entity_type: 'MeetingIndividualResult', import_key: data_import_mir.import_key,
+                                      details: 'staged target timing changed after reconciliation planning')
+        end
+        conflict = GogglesDb::MeetingIndividualResult.where(
+          meeting_program_id: program_id,
+          swimmer_id: data_import_mir.swimmer_id,
+          team_id: data_import_mir.team_id
+        ).where.not(id: source_id).exists?
+        return unless conflict
+
+        raise_phase5_binding_error!(entity_type: 'MeetingIndividualResult', import_key: data_import_mir.import_key,
+                                    details: "correct-program MIR already exists for program #{program_id}")
+      end
+
+      def reconcile_reassigned_laps!(mir_id, reassignment, imported_laps)
+        lap_scope = GogglesDb::Lap.where(meeting_individual_result_id: mir_id)
+        unless reassignment['timing_exact'] == true
+          imported_lengths = imported_laps.filter_map(&:length_in_meters).uniq
+          stale_scope = lap_scope
+          stale_scope = stale_scope.where.not(length_in_meters: imported_lengths) if imported_lengths.any?
+          stale_ids = stale_scope.pluck(:id)
+          if stale_ids.any?
+            stale_scope.delete_all
+            stats[:laps_deleted] += stale_ids.size
+            where_clause = stale_ids.size == 1 ? "id = #{stale_ids.first}" : "id IN (#{stale_ids.join(', ')})"
+            sql_log << "DELETE FROM laps WHERE #{where_clause};"
+          end
+        end
+
+        mir = GogglesDb::MeetingIndividualResult.find(mir_id)
+        stats[:mirs_reassigned] += 1
+        surviving_scope = GogglesDb::Lap.where(meeting_individual_result_id: mir_id)
+        lap_ids = surviving_scope.pluck(:id)
+        if lap_ids.empty?
+          logger.log_success(entity_type: 'MIR', entity_id: mir_id, action: 'reassigned to corrected program')
+          return
+        end
+
+        update_sql = bulk_lap_realign_sql(mir)
+        sql_log << update_sql
+        GogglesDb::Lap.connection.update(update_sql)
+        stats[:laps_reassigned] += lap_ids.size
+        logger.log_success(entity_type: 'MIR', entity_id: mir_id, action: 'reassigned to corrected program')
+      end
+
+      def bulk_lap_realign_sql(mir)
+        connection = GogglesDb::Lap.connection
+        changes = {
+          meeting_program_id: mir.meeting_program_id,
+          swimmer_id: mir.swimmer_id,
+          team_id: mir.team_id
+        }
+        set_clause = changes.map do |column, value|
+          "#{connection.quote_column_name(column)}=#{connection.quote(value)}"
+        end.join(', ')
+        "UPDATE #{connection.quote_table_name(GogglesDb::Lap.table_name)}
+  " \
+          "SET #{set_clause}
+  WHERE meeting_individual_result_id = #{connection.quote(mir.id)};"
+      end
+
+      def replace_target_laps_for_timing_change!(target, target_mir)
+        return if target['timing_exact'] != false
+
+        imported_lengths = GogglesDb::DataImportLap.where(parent_import_key: target['import_key'], phase_file_path: source_path)
+                                                   .pluck(:length_in_meters).compact.uniq
+        stale_scope = GogglesDb::Lap.where(meeting_individual_result_id: target_mir.id)
+        stale_scope = stale_scope.where.not(length_in_meters: imported_lengths) if imported_lengths.any?
+        stale_ids = stale_scope.pluck(:id)
+        return if stale_ids.empty?
+
+        stale_scope.delete_all
+        stats[:laps_deleted] += stale_ids.size
+        where_clause = stale_ids.size == 1 ? "id = #{stale_ids.first}" : "id IN (#{stale_ids.join(', ')})"
+        sql_log << "DELETE FROM laps WHERE #{where_clause};"
       end
 
       def move_laps_to_target(source_mir, target_mir)
@@ -802,23 +904,32 @@ module Import
         mirs = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path, meeting_program_key: program_key)
                                                            .order(:import_key).to_a
         # Retrieve all laps bound to these MIRs in one query, bucketed by parent key
-        laps_by_parent_key = GogglesDb::DataImportLap.where(parent_import_key: mirs.map(&:import_key))
+        laps_by_parent_key = GogglesDb::DataImportLap.where(parent_import_key: mirs.map(&:import_key), phase_file_path: source_path)
                                                      .order(:import_key).group_by(&:parent_import_key)
         mirs.each do |data_import_mir|
           data_import_mir.meeting_program_id ||= program_id
           hydrate_individual_result_links!(data_import_mir)
           validate_individual_result_row!(data_import_mir, expected_program_id: program_id)
 
-          # Pass resolved IDs explicitly to committer
+          reassignment = @overwrite_reassign_by_import_key[data_import_mir.import_key]
+          if reassignment
+            validate_reassignment_target!(reassignment, data_import_mir, program_id)
+            data_import_mir.meeting_individual_result_id = reassignment['source_mir_id'].to_i
+          end
+
+          # Pass resolved IDs explicitly to committer. For a reassignment this is
+          # the pre-existing wrong-program MIR, so the committer updates it in place.
           mir_id = mir_committer.commit(data_import_mir, season_id: @season_id)
           data_import_mir.meeting_individual_result_id = mir_id
           @mir_id_by_import_key[data_import_mir.import_key] = mir_id
           @mir_program_id_by_import_key[data_import_mir.import_key] = program_id
 
           # Commit laps
-          (laps_by_parent_key[data_import_mir.import_key] || []).each do |data_import_lap|
+          imported_laps = laps_by_parent_key[data_import_mir.import_key] || []
+          imported_laps.each do |data_import_lap|
             lap_committer.commit(data_import_lap, data_import_mir:)
           end
+          reconcile_reassigned_laps!(mir_id, reassignment, imported_laps) if reassignment
         end
       end
       # -----------------------------------------------------------------------

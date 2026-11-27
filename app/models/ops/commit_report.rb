@@ -31,7 +31,7 @@ module Ops
       ['Meetings', :meetings_created, :meetings_updated], ['Calendars', :calendars_created, :calendars_updated],
       ['Sessions', :sessions_created, :sessions_updated], ['Teams', :teams_created, :teams_updated],
       ['Affiliations', :affiliations_created, nil], ['Swimmers', :swimmers_created, :swimmers_updated],
-      ['Badges', :badges_created, nil], ['Events', :events_created, :events_updated],
+      ['Badges', :badges_created, :badges_updated], ['Events', :events_created, :events_updated],
       ['Programs', :programs_created, :programs_updated], ['Individual Results', :mirs_created, :mirs_updated],
       ['Individual Results Deleted', :mirs_deleted, nil], ['Laps', :laps_created, :laps_updated],
       ['Laps Deleted', :laps_deleted, nil], ['Relay Results', :mrrs_created, :mrrs_updated],

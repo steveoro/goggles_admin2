@@ -38,6 +38,7 @@ export default class extends Controller {
     const importKey = btn.dataset.verifyResultImportKeyParam
     const resultType = btn.dataset.verifyResultResultTypeParam || 'individual'
     const targetSelector = btn.dataset.verifyResultTargetPanelParam
+    const filePath = btn.dataset.verifyResultFilePathParam || ''
     const panel = document.querySelector(targetSelector)
     if (!panel) return
 
@@ -45,7 +46,7 @@ export default class extends Controller {
     Collapse.getOrCreateInstance(panel, { toggle: false }).show()
 
     const self = this
-    const url = '/data_fix/verify_result?import_key=' + encodeURIComponent(importKey) + '&result_type=' + encodeURIComponent(resultType)
+    const url = '/data_fix/verify_result?import_key=' + encodeURIComponent(importKey) + '&result_type=' + encodeURIComponent(resultType) + '&file_path=' + encodeURIComponent(filePath)
     fetch(url, {
       method: 'GET',
       headers: {
@@ -57,7 +58,7 @@ export default class extends Controller {
     })
     .then(function(data) {
       const container = panel.querySelector('td > div') || panel.querySelector('div')
-      if (container) container.innerHTML = self._renderVerifyPanel(data, importKey, resultType)
+      if (container) container.innerHTML = self._renderVerifyPanel(data, importKey, resultType, filePath)
     })
     .catch(function(xhr) {
       const msg = 'Verification failed'
@@ -95,6 +96,7 @@ export default class extends Controller {
     formData.append('import_key', importKey)
     formData.append('existing_id', existingId)
     formData.append('result_type', resultType)
+    formData.append('file_path', decodeURIComponent(btn.dataset.filePath || ''))
     formData.append('mode', mode)
 
     fetch('/data_fix/confirm_result_duplicate', {
@@ -126,7 +128,7 @@ export default class extends Controller {
 
   // --- Private: render verification panel HTML (4-tier) ---
 
-  _renderVerifyPanel(data, importKey, resultType) {
+  _renderVerifyPanel(data, importKey, resultType, filePath) {
     let html = ''
 
     // --- MERGE TARGET GUARD ---
@@ -156,7 +158,7 @@ export default class extends Controller {
       html += '<i class="fa fa-ban"></i> <strong>' + data.perfect_matches.length +
               ' perfect matches found!</strong> This indicates DB duplicates — manual cleanup required.'
       html += '</div>'
-      html += this._renderMatchTable(data.perfect_matches, importKey, resultType, 'disabled')
+      html += this._renderMatchTable(data.perfect_matches, importKey, resultType, 'disabled', filePath)
     }
 
     // --- TIER 2: Partial matches (same event + team, different timing) ---
@@ -180,7 +182,7 @@ export default class extends Controller {
         html += '<tr class="table-info"><td><strong>Import row</strong> (this timing)</td>'
         html += '<td class="text-end">'
         html += '<button class="btn btn-sm btn-outline-primary fix-with-this-btn" ' +
-                'data-import-key="' + importKey + '" ' +
+                'data-import-key="' + importKey + '" data-file-path="' + encodeURIComponent(filePath || '') + '" ' +
                 'data-existing-id="' + data.partial_matches[0].id + '" ' +
                 'data-result-type="' + resultType + '" data-mode="keep_timing">' +
                 '<i class="fa fa-wrench"></i> Fix with this</button>'
@@ -191,8 +193,28 @@ export default class extends Controller {
       // Existing rows
       html += this._renderMatchTable(
         data.partial_matches, importKey, resultType,
-        (data.merge_target || multiplePartials) ? 'disabled' : 'overwrite'
+        (data.merge_target || multiplePartials) ? 'disabled' : 'overwrite', filePath
       )
+    }
+
+
+    // --- CATEGORY CORRECTIONS: same event/team, different category — reconciliation-owned, no manual buttons ---
+    const correctionRows = (data.category_corrections || []).concat(data.category_timing_corrections || [])
+    if (correctionRows.length > 0) {
+      html += '<div class="alert alert-info mb-2">'
+      html += '<i class="fa fa-exchange-alt"></i> <strong>' + correctionRows.length +
+              ' category correction match(es):</strong> same swimmer, team, event and timing identity in another category. '
+      html += 'Use authoritative overwrite reconciliation; manual duplicate fixing is disabled for these rows.'
+      html += '</div>'
+      html += '<table class="table table-sm table-bordered mb-2">' +
+              '<thead><tr><th>ID</th><th>Cat.</th><th>Rank</th><th>Timing</th><th>Team (ID)</th><th>Note</th></tr></thead><tbody>'
+      correctionRows.forEach(function(row) {
+        html += '<tr><td>' + row.id + '</td><td>' + (row.category || 'N/A') + '</td>'
+        html += '<td>' + (row.disqualified ? 'DSQ' : row.rank) + '</td><td>' + row.timing + '</td>'
+        html += '<td>' + (row.team_name || 'N/A') + ' (ID: ' + row.team_id + ')</td>'
+        html += '<td><span class="badge text-bg-info">CATEGORY CORRECTION</span></td></tr>'
+      })
+      html += '</tbody></table>'
     }
 
     // --- TIER 3: Team mismatches (same event, different team) — bg-light-red, no buttons ---
@@ -238,7 +260,7 @@ export default class extends Controller {
     if (data.duplicates && data.duplicates.length > 0) {
       html += '<div class="mb-2"><strong class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' +
               data.duplicates.length + ' relay duplicate(s) found:</strong></div>'
-      html += this._renderMatchTable(data.duplicates, importKey, resultType, data.merge_target ? 'disabled' : 'overwrite')
+      html += this._renderMatchTable(data.duplicates, importKey, resultType, data.merge_target ? 'disabled' : 'overwrite', filePath)
     }
 
     // --- No matches at all ---
@@ -246,6 +268,8 @@ export default class extends Controller {
                    (data.merge_target) ||
                    (data.perfect_matches && data.perfect_matches.length > 0) ||
                    (data.partial_matches && data.partial_matches.length > 0) ||
+                   (data.category_corrections && data.category_corrections.length > 0) ||
+                   (data.category_timing_corrections && data.category_timing_corrections.length > 0) ||
                    (data.team_mismatches && data.team_mismatches.length > 0) ||
                    (data.other_events && data.other_events.length > 0) ||
                    (data.duplicates && data.duplicates.length > 0)
@@ -270,7 +294,7 @@ export default class extends Controller {
   // --- Private: render a table of match rows with optional "Fix with this" buttons ---
   // buttonMode: 'overwrite' | 'keep_timing' | 'disabled' | null (no button)
 
-  _renderMatchTable(matches, importKey, resultType, buttonMode) {
+  _renderMatchTable(matches, importKey, resultType, buttonMode, filePath) {
     let html = '<table class="table table-sm table-bordered mb-2">' +
                '<thead><tr><th>ID</th><th>Rank</th><th>Timing</th><th>Team (ID)</th>'
     if (buttonMode) html += '<th>Action</th>'
@@ -297,7 +321,7 @@ export default class extends Controller {
             ? '→ Keep existing DB values (no change on commit)'
             : '→ UPDATE existing row with import timing'
           html += '<button class="btn btn-sm btn-outline-success fix-with-this-btn" ' +
-                  'data-import-key="' + importKey + '" data-existing-id="' + m.id + '" ' +
+                  'data-import-key="' + importKey + '" data-file-path="' + encodeURIComponent(filePath || '') + '" data-existing-id="' + m.id + '" ' +
                   'data-result-type="' + resultType + '" data-mode="' + mode + '">' +
                   label + '</button>'
           html += ' <small class="text-body-secondary ms-1">' + hint + '</small>'

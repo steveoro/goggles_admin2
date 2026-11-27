@@ -42,9 +42,9 @@ module DataFix
 
       candidates = Array(overwrite.dig('snapshot', 'candidates'))
       merge_candidate = candidates.find do |c|
-        c['merge'] == true && c['merge_target_import_key'] == data_import_row.import_key
+        c['selected'] == true && c['merge_target_import_key'] == data_import_row.import_key
       end
-      merge_candidate&.slice('id')
+      merge_candidate&.slice('id', 'merge_target_state', 'reconciliation_kind', 'merge_target_program_key')
     rescue StandardError => e
       Rails.logger.warn("[DataFix::OverwriteMetadata] merge_target_for failed: #{e.message}")
       nil
@@ -63,7 +63,9 @@ module DataFix
       selected = candidates.select { |candidate| candidate['selected'] == true }
       {
         selected_count: selected.size,
-        merge_count: selected.count { |candidate| candidate['merge'] == true },
+        merge_count: selected.count { |candidate| candidate['merge'] == true && candidate['merge_target_state'] == 'target_bound' },
+        reassign_count: selected.count { |candidate| candidate['merge_target_state'] == 'target_unbound' },
+        delete_count: selected.count { |candidate| candidate['merge_target_import_key'].blank? },
         total_count: candidates.size
       }
     end

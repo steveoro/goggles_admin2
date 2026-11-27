@@ -132,10 +132,15 @@ module Import
         # Prevent invalid mappings due to nil key components:
         raise StandardError, 'Null swimmer_key or team_key in datafile object!' if swimmer_key.blank? || team_key.blank?
 
-        # If badge_id was resolved in previous phases, assume categories and other dependencies are already set and fixed, so bail out:
+        # If badge_id was resolved in previous phases, keep every existing field
+        # except the MAS-FIN category. FIN Master categories are season-fixed and
+        # Phase 3 is authoritative when it computed a different one.
         if badge_id.present?
+          existing_badge = GogglesDb::Badge.find_by(id: badge_id.to_i)
+          raise StandardError, "Badge ID=#{badge_id} from datafile not found" unless existing_badge
+
+          correct_category_in_mas_fin_badge!(existing_badge, badge_hash, swimmer_key)
           store_id(swimmer_key, team_key, badge_id.to_i)
-          Rails.logger.debug { "[Badge] ID=#{badge_id} found in datafile, caching and skipping update" }
           return badge_id.to_i
         end
 
@@ -191,6 +196,22 @@ module Import
         logger.log_success(entity_type: 'Badge', entity_id: model_row.id, action: 'created')
         Rails.logger.info("[Badge] Created ID=#{model_row.id}, swimmer_id=#{model_row.swimmer_id}, team_id=#{model_row.team_id}")
         model_row.id
+      end
+      # -----------------------------------------------------------------------
+
+      def correct_category_in_mas_fin_badge!(existing_badge, badge_hash, swimmer_key)
+        return unless @categories_cache.season.season_type_id == GogglesDb::SeasonType::MAS_FIN_ID
+
+        correct_category_id = badge_hash['category_type_id'].to_i
+        correct_category_id = resolve_category_type_id(swimmer_key) unless correct_category_id.positive?
+        return unless correct_category_id.positive? && existing_badge.category_type_id.to_i != correct_category_id
+
+        changes = { 'category_type_id' => correct_category_id }
+        existing_badge.update!(changes)
+        sql_log << SqlMaker.new(row: existing_badge).log_update(changes)
+        stats[:badges_updated] += 1
+        stats[:badge_categories_updated] = stats[:badge_categories_updated].to_i + 1
+        logger.log_success(entity_type: 'Badge', entity_id: existing_badge.id, action: 'category corrected')
       end
       # -----------------------------------------------------------------------
 

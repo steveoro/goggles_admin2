@@ -24,6 +24,11 @@
         - if commit_summary.result_free?
           %p.mb-0.small.text-body-secondary= t('data_fix.commit_summary.structure_only')
   .col-lg-6
+    - if commit_summary.result_outcome_planner.warnings.present?
+      .alert.alert-warning.py-2
+        %ul.mb-0.small
+          - commit_summary.result_outcome_planner.warnings.first(5).each do |warning|
+            %li= warning
     .card.h-100
       .card-body.p-0
         %table.table.table-sm.mb-0#commit-summary-counts
@@ -43,6 +48,15 @@
                 %td.ps-3= t('data_fix.commit_summary.overwrite_deletions')
                 %td.text-end= commit_summary.overwrite_deletions
                 %td.pe-3
+              - breakdown = commit_summary.overwrite_breakdown
+              %tr.table-info
+                %td.ps-3= t('data_fix.commit_summary.outcome_reassignments')
+                %td.text-end= breakdown[:reassign]
+                %td.pe-3.text-body-secondary= t('data_fix.commit_summary.no_net_change')
+              %tr.table-warning
+                %td.ps-3= t('data_fix.commit_summary.outcome_plain_deletions')
+                %td.text-end= breakdown[:delete] + breakdown[:merge]
+                %td.pe-3.text-body-secondary= t('data_fix.commit_summary.net_mir_delta', count: commit_summary.outcome_counts[:net_mir_delta].to_i)
             - if commit_summary.team_scores.any?
               %tr
                 %td.ps-3= t('data_fix.commit_summary.team_scores')

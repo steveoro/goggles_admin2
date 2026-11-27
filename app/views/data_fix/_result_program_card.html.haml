@@ -116,6 +116,7 @@
               laps = laps_by_parent_key[mir.import_key] || []
               has_laps = laps.any?
               result_id = "result-#{card_index}-#{idx}"
+              outcome = outcome_planner&.outcome_for(mir.import_key)
             %tr{ id: "#{result_id}-row", class: is_existing_result ? '' : 'bg-light-yellow' }
               %td.text-center
                 - if has_laps
@@ -156,12 +157,25 @@
               %td.text-center
                 - if mir.disqualified?
                   %span.badge.text-bg-danger DSQ
+                - elsif outcome&.dig('outcome') == 'reassign'
+                  %span.badge.text-bg-info{ title: outcome['label'] }= t('data_import.data_fix.outcome_reassign', mir_id: outcome['source_mir_id'])
+                  %small.d-block.text-body-secondary= "#{outcome['old_program_key']} → #{outcome['program_key']}"
+                  %small.d-block.text-body-secondary= t("data_import.data_fix.outcome_lap_effect_#{outcome['lap_effect']}")
+                - elsif outcome&.dig('outcome') == 'merge_target'
+                  %span.badge.text-bg-info{ title: outcome['label'] }= t('data_import.data_fix.outcome_merge_target', mir_id: outcome['source_mir_id'])
+                - elsif outcome&.dig('outcome') == 'duplicate_risk'
+                  %span.badge.text-bg-warning{ title: outcome['label'] }= t('data_import.data_fix.outcome_duplicate_risk')
+                - elsif outcome&.dig('outcome') == 'reconciliation_available'
+                  %span.badge.text-bg-primary{ title: outcome['label'] }= t('data_import.data_fix.outcome_reconciliation_available', mir_id: outcome['source_mir_id'])
                 - elsif is_existing_result
-                  %i.fa.fa-check-circle.text-success{ title: "Existing result (ID: #{mir.meeting_individual_result_id})" }
+                  - if outcome&.dig('outcome') == 'update'
+                    %span.badge.text-bg-success{ title: outcome['label'] }= t('data_import.data_fix.outcome_update', mir_id: mir.meeting_individual_result_id)
+                  - else
+                    %i.fa.fa-check-circle.text-success{ title: "Existing result (ID: #{mir.meeting_individual_result_id})" }
                 - elsif is_fully_matched
                   %i.fa.fa-plus-circle.text-warning{ title: 'New result (will be created on commit)' }
-                  - if mir.swimmer_id.to_i.positive? && mir.meeting_program_id.to_i.positive?
-                    %button.btn.btn-outline-secondary.btn-sm.ms-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_target_panel_param: "##{result_id}-verify" } }
+                  - if mir.swimmer_id.to_i.positive?
+                    %button.btn.btn-outline-secondary.btn-sm.ms-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_file_path_param: @file_path, verify_result_target_panel_param: "##{result_id}-verify" } }
                       %i.fa.fa-search.me-1
                       Verify
                 - else
@@ -220,12 +234,20 @@
               merge = selected && candidate['merge'] == true
               merge_available = candidate['merge_available'] == true
               merge_ambiguous = candidate['merge_ambiguous'] == true
-              candidate_row_class = selected ? (merge ? 'bg-info text-white' : 'bg-danger text-white') : 'bg-body-tertiary text-body-secondary'
+              candidate_action = outcome_planner&.candidate_outcomes&.dig(candidate['id'].to_i)
+              is_reassign = candidate_action == :candidate_reassign
+              is_true_merge = candidate_action == :candidate_merge
+              candidate_row_class = 'bg-body-tertiary text-body-secondary'
+              if selected
+                candidate_row_class = 'bg-danger-subtle text-danger-emphasis'
+                candidate_row_class = 'bg-primary-subtle text-primary-emphasis' if is_reassign
+                candidate_row_class = 'bg-info-subtle text-info-emphasis' if is_true_merge
+              end
             %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
               %td.text-end.align-middle
                 .d-flex.flex-column.align-items-end.gap-1
                   %input.form-check-input{ type: 'checkbox', checked: selected, aria: { label: "Select MIR #{candidate['id']} for deletion" }, title: t('data_import.data_fix.individual_result_overwrite_zero_timing_help'), data: { action: 'change->data-fix-overwrite#toggle', data_fix_overwrite_target: 'candidate', candidate_id: candidate['id'], minutes: candidate['minutes'], seconds: candidate['seconds'], hundredths: candidate['hundredths'] } }
-                  - if merge_available
+                  - if merge_available && is_true_merge
                     %input.form-check-input{ type: 'checkbox', checked: merge, disabled: !selected, aria: { label: "Merge laps of MIR #{candidate['id']} into target result" }, title: t('data_import.data_fix.individual_result_overwrite_merge_label'), data: { action: 'change->data-fix-overwrite#toggleMerge', data_fix_overwrite_target: 'merge', candidate_id: candidate['id'] } }
               %td.text-center
                 - if candidate['disqualified']
@@ -243,7 +265,9 @@
                 %strong= candidate['timing']
                 %small.d-block= "#{candidate['lap_count']} lap(s)"
               %td.text-center
-                - if merge_available && merge
+                - if is_reassign && selected
+                  %span.badge.text-bg-primary{ data: { data_fix_overwrite_status: 'reassign' } }= t('data_import.data_fix.individual_result_overwrite_reassign')
+                - elsif is_true_merge && merge
                   %span.badge.text-bg-light.text-info{ data: { data_fix_overwrite_status: 'merge' } }= t('data_import.data_fix.individual_result_overwrite_merged')
                 - elsif selected
                   %span.badge.text-bg-light.text-danger{ data: { data_fix_overwrite_status: 'selected' } }= t('data_import.data_fix.individual_result_overwrite_selected')
@@ -253,14 +277,14 @@
                 - if merge_ambiguous
                   %small.d-block.text-warning= t('data_import.data_fix.individual_result_overwrite_merge_ambiguous')
                 - elsif merge_available && selected
-                  %small.d-block.text-info{ data: { data_fix_overwrite_target: 'mergeTarget' } }
+                  %small.d-block.text-dark.fw-semibold{ data: { data_fix_overwrite_target: 'mergeTarget' } }
                     = t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key'])
                 - elsif selected
                   %small.d-block.text-body-secondary= t('data_import.data_fix.individual_result_overwrite_no_merge_target')
             - if candidate['merge_target_import_key'].present?
               - target_parts = candidate['merge_target_program_key'].to_s.split('-')
               - target_card_index = program_card_index_by_key[candidate['merge_target_program_key']]
-              - link_text_color = candidate_row_class.include?('text-white') ? 'text-white' : 'text-body'
+              - link_text_color = 'text-dark fw-semibold'
               %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
                 %td
                 %td

@@ -5,11 +5,14 @@
   auto_fix_rows = {
     'Team links auto-fixed' => stats[:team_links_auto_fixed].to_i,
     'Affiliation links auto-fixed' => stats[:affiliation_links_auto_fixed].to_i,
+    'Badge categories corrected' => stats[:badge_categories_updated].to_i,
     t('data_import.data_fix.team_scores.skipped') => stats[:team_scores_skipped].to_i
   }.select { |_label, count| count.positive? }
   merge_rows = {
     'Individual results merged' => stats[:mirs_merged].to_i,
-    'Laps moved by merge' => stats[:laps_merged].to_i
+    'Laps moved by merge' => stats[:laps_merged].to_i,
+    'Individual results corrected in place' => stats[:mirs_reassigned].to_i,
+    'Laps realigned by correction' => stats[:laps_reassigned].to_i
   }.select { |_label, count| count.positive? }
 .card.mb-3
   .card-header
