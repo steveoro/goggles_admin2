@@ -24,7 +24,7 @@ Default target environment is `development`; use `test` if the user asks to run 
 
 ## 1. Ensure system dependencies
 
-- Ruby 3.4.13 active (see `.ruby-version`). Install with `rbenv`/`ruby-build` or your version manager if missing.
+- Ruby 3.4.13 active with the project RVM gemset from `.versions.conf` (`goggles7-rails8.1` on the current projects). In non-interactive shells select it explicitly: `source "$HOME/.rvm/scripts/rvm" && rvm use ruby-3.4.13@goggles7-rails8.1`.
 - MariaDB 11.8 server & client packages (`mariadb-server`, `mariadb-client`, `libmariadb-dev` or `default-libmysqlclient-dev`) running and reachable.
 - `bunzip2`, `git`, `curl`.
 - Node.js and Yarn only for `goggles_main` JS linting (optional; `goggles_admin2` uses importmap-rails, but the embedded crawler in `crawler/` needs npm only if you are running it directly).
@@ -57,7 +57,7 @@ All apps use `goggles_db` as a git-sourced gem and need its `test.sql.bz2` dump.
 
 ### Database config
 - `goggles_db`: copy `spec/dummy/config/database.yml.example` to `spec/dummy/config/database.yml` and adjust user/password/host.
-- Apps: copy `config/database.yml.example` (or `config/database_ci.yml` for a CI-like setup) to `config/database.yml` and adjust user/password/host.
+- Apps: copy the project-specific example file to `config/database.yml` and adjust user/password/host. Current names differ: `config/database.example.yml` in `goggles_main`/`goggles_admin2`, `config/database.yml.example` in `goggles_api`; use `config/database_ci.yml` only for a CI-like setup.
   - For a local MariaDB socket, use `socket: /var/run/mysqld/mysqld.sock` and `username: root`.
   - For a containerized DB, use `host`/`port` (`127.0.0.1:33060` for Docker Compose default).
 
@@ -91,7 +91,7 @@ Run the custom `goggles_db` rake task:
   `RAILS_ENV=test bin/rails db:rebuild from=test to=test`
   `RAILS_ENV=test bin/rails db:migrate`
 
-For `goggles_main` and `goggles_admin2`, ensure `storage/` exists so the SQLite SolidQueue/SolidCache DBs can be created by migrations.
+For `goggles_main` and `goggles_admin2`, ensure `storage/` exists so SQLite Solid databases can be created. In `goggles_admin2`, run `bin/rails solid:prepare` (which also runs `ops:prepare`) rather than using a bare primary `db:prepare`/`db:migrate` for queue/cable/cache/ops setup.
 
 ## 8. `goggles_admin2` API connection
 
@@ -105,13 +105,19 @@ Use `http://host.docker.internal:8081` or the Docker service name (`http://goggl
 
 - `goggles_api`: `bin/rails s -p 8081` (or `-e staging -p 8081`).
 - `goggles_main`: `bin/dev` (uses `Procfile.dev` on port 3000, runs web, `dartsass:watch`, and Solid Queue worker) or `bin/rails s -p 3000`.
-- `goggles_admin2`: `bin/dev` (uses `Procfile.dev`) or `bin/rails s -p 3000`.
+- `goggles_admin2`: `bin/dev` or `foreman start -f Procfile.dev` (web + `dartsass:watch`) or `bin/rails s -p 3000`. Solid Queue normally runs inside Puma; use `bin/jobs` only when opting out with `SOLID_QUEUE_IN_PUMA=false`.
 
 ## 10. Verify
 
 - `bin/rails zeitwerk:check`
 - `curl -f http://localhost:<port>/` or open the browser.
 - `goggles_api` Swagger docs at `/api/docs` in development.
+
+## Solid Queue and ops DB notes
+
+- `goggles_admin2` uses Solid Queue/Cable/Cache actively. Queue/cable/cache live in local SQLite DBs under `storage/`; prepare them with `bin/rails solid:prepare`.
+- The separate local SQLite `ops` DB lives under `db/ops/<env>.sqlite3` and is prepared by `bin/rails ops:prepare` (also invoked by `solid:prepare`). If the `ops:` block is missing from `config/database.yml`, copy it from `config/database.example.yml`.
+- Do not run a bare `bin/rails db:prepare` just for these SQLite DBs; that also acts on the shared MySQL primary.
 
 ## Validation notes & troubleshooting
 
@@ -122,8 +128,7 @@ Use `http://host.docker.internal:8081` or the Docker service name (`http://goggl
 - `goggles_main` and `goggles_admin2` both default to port 3000. Run one on a different port when both are up:
   `bin/rails s -p 3001`
 - `goggles_main` uses SQLite for `cache`/`queue`/`cable` while the `goggles_db` `scenic` initializer forces a MySQL adapter. If `db:migrate` fails with `SHOW FULL TABLES` on SQLite, set `schema_format: :sql` for the SQLite DB blocks in `config/database.yml` and ensure the `sqlite3` CLI is installed.
-- `goggles_admin2` may ship a broken `storage` symlink. Remove it and create a real directory before starting:
-  `rm -f storage && mkdir storage`
+- `goggles_admin2` may ship a broken `storage` symlink. Inspect it first (`ls -ld storage`); only remove/replace it after confirming it is a symlink or empty artifact, never a populated directory. Prefer `mkdir -p storage` when the path is merely absent.
 - `goggles_db` uses Git LFS for the dump; `GIT_LFS_SKIP_SMUDGE=1` prevents `bundle install` from fetching the dump through the gem. Copy/download the dump manually instead.
 
 ## Notes

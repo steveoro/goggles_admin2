@@ -22,7 +22,11 @@ GogglesDb::AdminGrant.find_or_create_by!(user: u, entity: nil)
 
 Then log in via `/users/sign_in` in the browser.
 
-**Caveat:** the root dashboard (`home#index`) calls the remote API (`APIProxy.call`) and raises `ECONNREFUSED` when no goggles_api runs. Login itself works — navigate directly to file-based pages (`/pull/result_files`, `/data_fix/*`) instead of `/`.
+**Caveat:** admin2 now supports an “API-offline” localhost sign-in in limited areas (Settings/Home) so the API URL can be fixed. Other API-backed pages may still fail or show unavailable state. For file-based DataFix testing, navigate directly to `/sources/results` or `/data_fix/*`.
+
+## Current-flow note
+
+This file preserves hard-won fixture and browser details, but routing/phase behavior evolves quickly. Treat `CLAUDE.md`, `AGENTS.md`, and current controllers as authoritative; verify any instruction that mentions compatibility flags or legacy redirects before relying on it.
 
 ## Staging meeting + phase files
 
@@ -31,11 +35,11 @@ Then log in via `/users/sign_in` in the browser.
 - `spec/fixtures/import/sample-200RA-l4.json` (LT4 source) + `sample-200RA-l4-phase{1..4}.json` pair for season **242** ("Circuito italiano supermaster FIN 2024/2025" — exists in the test dump). The source's sha256 matches the phase `_meta.parent_checksum`, so phases aren't treated as stale.
 - Rewrite `_meta.source_path` in each copied phase file to the absolute staged path (only needed if a `-phaseN.json` path is ever passed directly).
 - Verify every `result['category']` in the LT4 source resolves to a `category_types` row for that season — otherwise `normalize_lt4_result_categories` runs `CategoryRecomputer` and deletes phase3/4/5 + all `data_import_*` rows for the file.
-- To make the phase-5 step exercise `ResultSolver.build!` + `Phase5Populator.populate!`, do **not** stage a `-phase5.json`: first `review_results` visit auto-builds + auto-populates. `&rescan=1` (or the step-tab refresh icon) re-runs both; `&populate_db=1` re-runs only the populator.
+- To make the phase-5 step exercise `Phase5Populator.populate!` and `DataFix::ResultVerifier`, do **not** stage a `-phase5.json`: the first `review_results` visit auto-builds + auto-populates. Current Phase 5 no longer runs the old `ResultSolver` path. `&rescan=1` (or the step-tab refresh icon) rebuilds; `&populate_db=1` re-runs only the populator.
 
 ## Reaching the wizard in the UI
 
-`/pull/result_files` lists `crawler/data/results.new/<dir>` files; every `.json` row has two process icons — `fa-cogs` (legacy) and `fa-bolt` (**v2**). The bolt link goes to `review_sessions?file_path=<abs path>&phase_v2=1`. Step tabs then carry `phaseN_v2=1` params (`phase_v2` for step 1, `phase2_v2`…`phase5_v2`).
+`/pull/result_files` is a legacy redirect to `/sources/results`. Use the Sources Results tab to locate files under `crawler/data/results.new/<dir>`. DataFix V2 is the only flow; current links still often carry optional compatibility params (`phase_v2`, `phase2_v2`…`phase5_v2`), but the routes themselves go directly to the per-phase V2 controllers.
 
 ## Useful verifications
 
@@ -46,7 +50,7 @@ Then log in via `/users/sign_in` in the browser.
 
 ## Pitfalls when hand-writing URLs
 
-- Steps 2-5 require their own `phaseN_v2=1` param (`review_teams?…&phase2_v2=1`, `review_swimmers?…&phase3_v2=1`, `review_results?…&phase5_v2=1`); `phase_v2=1` alone is only for step 1. A bare URL **redirects to `data_fix_legacy`** (all 5 review actions, query preserved, resolution skipped — the redirect itself is side-effect-free). Actually LANDING on the legacy page runs its `prepare_solver`, which rewrites the staged source in place (lt4→lt2 + `-lt4` working copies) — afterwards the v2 wizard silently reads the `-lt4-*` phase set instead of `<src>-phaseN`. To verify the redirect without the rewrite, use `curl -i -b cookies.txt` so the legacy page never renders; if it does land, restore the pristine file from `spec/fixtures/import/` + `rm *-lt4*.json`.
+- Current step links still tend to carry their own optional compatibility param (`phase2_v2`, `phase3_v2`, `phase4_v2`, `phase5_v2`); preserve query params when navigating manually. Bare review URLs now route to the V2 controllers rather than a legacy DataFix controller. Do not rely on legacy-flow notes from older branches unless investigating those branches specifically.
 - `review_teams`/`review_swimmers` have a safety rebuild: they rebuild + redirect only when the phase file's `teams`/`swimmers` key is **missing** — an **empty array is valid** (meeting-only/structure-only LT4 sources walk the wizard fine; see `spec/requests/data_fix_controller_structure_commit_spec.rb` "end-to-end walk"). First visit to each step always rebuilds when the phase file is absent and redirects back once — that is normal, not a loop; a loop only happens if the rebuilt file still lacks the key.
 
 ## Driving `Committers::Main` end-to-end on the fixtures
@@ -78,7 +82,7 @@ On `review_results`, "Start SQL batch creation" renders with `disabled: @issue_c
 
 ## coded_name / teams_for_swimmer are format-gated AJAX endpoints
 
-The thin `DataFixController` actions 302 to `data_fix_legacy`, which requires a specific format or bounces to `/` (500 without goggles_api): `coded_name` needs `Accept: application/json` + `target` in `code|nick_name`; `teams_for_swimmer/:id` needs `Accept: text/vnd.turbo-stream.html`. Exercise them with `fetch(url, {headers: {Accept: ...}})` from `browser_console`.
+The thin cross-phase `DataFixController` AJAX actions are format-sensitive: `coded_name` needs `Accept: application/json` + `target` in `code|nick_name`; `teams_for_swimmer/:id` needs `Accept: text/vnd.turbo-stream.html`. Exercise them with `fetch(url, {headers: {Accept: ...}})` from `browser_console`. Verify current redirects/behavior in the working tree before assuming legacy compatibility details.
 
 ## Shell / DB access notes
 
